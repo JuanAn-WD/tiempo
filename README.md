@@ -62,4 +62,8 @@ npx expo run:android
 
 ## Licencia
 
-Uso privado / prototipo.
+© 2026 Juan Antonio López. Todos los derechos reservados.
+
+El código de Apartag es propietario. El aviso MIT que había en `LICENSE` era el de la plantilla de Expo y ya no aplica a este repositorio. Las dependencias siguen con su propia licencia.
+
+Política de privacidad, términos (español e inglés) y las respuestas para Google Play y el App Store: [`docs/README.md`](docs/README.md).

@@ -2,6 +2,7 @@
   "name": "apartag",
   "main": "expo-router/entry",
   "version": "1.0.0",
+  "license": "UNLICENSED",
   "dependencies": {
     "@expo/ui": "~57.0.22",
     "@react-native-async-storage/async-storage": "2.2.0",
