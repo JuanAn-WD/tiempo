@@ -115,16 +115,22 @@ export default function Onboarding() {
                   : '¿Añades una llave de repuesto? Hace falta para el modo estricto.'}
               </Text>
               {state.spareTagId ? null : (
-                <PrimaryButton
-                  muted
-                  label="Añadir llave de repuesto"
-                  onPress={() => void pairSpareTag()}
-                  onLongPress={__DEV__ ? () => void pairSpareTag('DEMO-SPARE') : undefined}
-                />
+                <>
+                  <PrimaryButton
+                    muted
+                    label="Añadir llave de repuesto"
+                    onPress={() => void pairSpareTag()}
+                    onLongPress={__DEV__ ? () => void pairSpareTag('DEMO-SPARE') : undefined}
+                  />
+                  {__DEV__ ? (
+                    <PrimaryButton
+                      muted
+                      label="Simular llave de repuesto"
+                      onPress={() => void pairSpareTag('DEMO-SPARE')}
+                    />
+                  ) : null}
+                </>
               )}
-              {__DEV__ && !state.spareTagId ? (
-                <Text style={styles.spareDev}>En desarrollo, mantén pulsado para simularla.</Text>
-              ) : null}
             </View>
           ) : null}
         </View>
@@ -276,11 +282,6 @@ const styles = StyleSheet.create({
     color: Palette.muted,
     textAlign: 'center',
     lineHeight: 20,
-  },
-  spareDev: {
-    color: Palette.faint,
-    textAlign: 'center',
-    fontSize: 12,
   },
   actions: {
     gap: 10,

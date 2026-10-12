@@ -192,15 +192,15 @@ export default function SettingsScreen() {
             ? state.spareTagId
             : 'Un segundo tag. Con el principal, basta para activar el modo estricto.'}
         </Text>
-        {__DEV__ ? (
-          <Text style={styles.rowHint}>En desarrollo, mantén pulsado para simular un segundo tag.</Text>
-        ) : null}
         <PrimaryButton
           muted
           label={state.spareTagId ? 'Cambiar segundo tag' : 'Emparejar segundo tag'}
           onPress={() => void pairSpareTag()}
           onLongPress={__DEV__ ? () => void pairSpareTag('DEMO-SPARE') : undefined}
         />
+        {__DEV__ && !state.spareTagId ? (
+          <PrimaryButton muted label="Simular segundo tag" onPress={() => void pairSpareTag('DEMO-SPARE')} />
+        ) : null}
         {state.spareTagId ? (
           <>
             <View style={{ height: 10 }} />

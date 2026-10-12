@@ -12,7 +12,7 @@ import { Fonts, Palette } from '@/constants/theme';
 import { useTiempo } from '@/context/tiempo-store';
 import { EMERGENCY_COUNTDOWN_MS, formatCountdown, formatRefillDate } from '@/lib/emergency';
 
-const HOLD_MS = 800;
+const HOLD_MS = 500;
 const MAX_TICK_MS = 2_000;
 
 type Phase = 'idle' | 'running' | 'ready' | 'confirming' | 'cancelled' | 'done';
@@ -205,6 +205,8 @@ export default function EmergencyScreen() {
             onAccessibilityAction={(event) => {
               if (event.nativeEvent.actionName === 'longpress') start();
             }}
+            onLongPress={start}
+            delayLongPress={HOLD_MS}
             onPressIn={() => {
               clearHold();
               holdRef.current = setTimeout(start, HOLD_MS);
