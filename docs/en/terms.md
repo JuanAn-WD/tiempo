@@ -29,7 +29,7 @@ This version:
 
 - is free and has no in-app purchases;
 - has no account and no server;
-- has no emergency unlock and no backup code;
+- has three emergency unlocks on the phone, and an optional strict mode that removes them;
 - does not stop you from uninstalling the app.
 
 It is physical friction, not a lock the author can open remotely, and it is not a medical device. It does not treat addiction and it is not a substitute for health care.
@@ -62,7 +62,11 @@ Do not use Apartag to lock another person's phone unless they know and agree. Th
 
 ## If you cannot unlock
 
-This version has no emergency exit inside the app. If you lose the tag and there is no mobile key, the author cannot unlock you: he does not have your secret, and there is no account of yours to sign in to.
+You can use an emergency unlock if strict mode is off and you have at least one left. There are 3, stored only on your phone. 1 comes back every 30 days, up to 3. Each one takes 5 minutes with the app in the foreground. If you leave, it is cancelled and no charge is spent. When you confirm, the session is labelled «Emergencia» in the phone's stats. None of that leaves the phone, and the author cannot spend or refill one for you.
+
+Strict mode starts off. Turning it on takes a spare key (a second tag or a mobile key, in addition to the main one) and typing ESTRICTO. While it is on, there are no emergency unlocks. It cannot be turned off during a lock.
+
+If strict mode is on, or no emergency unlocks are left, and you lose the keys, the author cannot unlock you: he does not have your secret, and there is no account of yours to sign in to.
 
 On Android, uninstalling the app, or turning off display-over-other-apps and usage access, ends the lock. On iPhone, you can revoke Apartag's Screen Time authorization in Settings, within what iOS allows, or delete the app.
 

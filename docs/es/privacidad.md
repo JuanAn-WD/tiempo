@@ -52,13 +52,16 @@ Todo lo de esta lista permanece en el almacenamiento privado de la app, en el pr
 |---|---|
 | Si ya terminaste la introducción | No volver a mostrarla |
 | Identificador del tag NFC emparejado | Reconocer tu llave y rechazar otro tag |
+| Identificador de un segundo tag, si lo emparejas | Llave de repuesto. Hace falta, junto con otra llave, para poder activar el modo estricto |
+| Cuántas emergencias quedan, cuándo vuelve la siguiente y la hora más alta que la app ha visto | Llevar la cuenta de los 3 desbloqueos en el teléfono. Si atrasas el reloj, no se recarga ninguno |
+| Si el modo estricto está activo | Recordar que lo encendiste. Viene apagado |
 | Secreto de la llave móvil, si la creas | Comprobar el QR del otro móvil |
 | En el móvil que actúa como llave: ese secreto y una etiqueta | Poder mostrar el QR. La etiqueta que viaja hoy en el QR de emparejar es el texto «apartag.», no tu nombre |
 | Si hay una sesión en curso y cuándo empezó | Mantener el bloqueo y contar la sesión |
 | Apps que marcas en Android (nombre de paquete) | Saber qué hay que bloquear |
 | En iPhone: la selección de Tiempo de uso | Aplicar el escudo del sistema a lo que elegiste |
 | Modo elegido (Trabajo, Estudio, Casa o Deporte) | Una etiqueta de la sesión. En esta versión los cuatro modos comparten la misma lista de apps |
-| Tiempo de las sesiones de Apartag y hasta 40 sesiones (modo, inicio y fin) | La pantalla de estadísticas |
+| Tiempo de las sesiones de Apartag y hasta 40 sesiones (modo, inicio, fin y, si saliste por emergencia, esa marca) | La pantalla de estadísticas. Esa sesión se muestra con la etiqueta «Emergencia». No sale del teléfono |
 | Ajustes del bloqueo en Android (lista, textos del aviso) | El servicio que tapa la app bloqueada |
 
 La edad y las horas de la calculadora de «años en la pantalla» solo existen mientras esa pantalla está abierta. No se guardan. El cálculo no lee tu uso real del teléfono: usa los números que escribes ahí.
@@ -93,9 +96,13 @@ Enseña el QR de emparejar solo a alguien de tu confianza. Puedes revocar la lla
 
 ## Si pierdes el tag
 
-Esta versión no tiene desbloqueo de emergencia ni un código de respaldo. Si pierdes el tag y no tienes una llave móvil emparejada, la app no puede abrir la sesión desde dentro.
+Hay tres desbloqueos de emergencia. Se guardan solo en el teléfono y no se envían a ningún sitio. Empiezas con 3. Cada vez que gastas uno, vuelve 1 a los 30 días, sin pasar de 3. Si atrasas el reloj del teléfono, no se recupera ninguno.
 
-En Android puedes desinstalar Apartag o retirar «mostrar sobre otras apps» y el «acceso de uso». El bloqueo no sobrevive a eso: no pedimos permisos de administrador del dispositivo.
+Para gastar uno, Apartag tiene que quedarse en primer plano durante una cuenta atrás de 5 minutos. Si sales de la app, la cuenta se cancela y no se gasta. Al llegar a cero, confirmas el desbloqueo. La sesión se guarda en las estadísticas del teléfono con la etiqueta «Emergencia». Después puedes emparejar un tag nuevo. Apartag no puede hacerlo por ti desde fuera.
+
+El modo estricto es opcional y viene desactivado. Para activarlo necesitas una llave de repuesto (un segundo tag o la llave móvil, además de la principal) y escribir ESTRICTO. Mientras está activo, las emergencias no aparecen y no se pueden usar. Durante un bloqueo no se puede desactivar.
+
+Si el modo estricto está activo, o si no te quedan emergencias, y tampoco tienes una llave, la app no abre la sesión en remoto. En Android puedes desinstalar Apartag o retirar «mostrar sobre otras apps» y el «acceso de uso». El bloqueo no sobrevive a eso: no pedimos permisos de administrador del dispositivo.
 
 En el iPhone, la autorización es la de Tiempo de uso para el dueño del teléfono. Puedes revocar el permiso de Apartag en Ajustes, dentro de lo que iOS permite, o eliminar la app. Nosotros no tenemos un botón remoto para desbloquearte.
 

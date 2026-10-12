@@ -29,7 +29,7 @@ Esta versión:
 
 - es gratuita y no tiene compras dentro de la app;
 - no tiene cuenta ni servidor;
-- no tiene desbloqueo de emergencia ni código de respaldo;
+- tiene tres desbloqueos de emergencia en el teléfono, y un modo estricto opcional que los quita;
 - no impide desinstalar la app.
 
 Es una fricción física, no una cerradura que el autor pueda abrir en remoto y no un dispositivo médico. No trata adicciones ni sustituye atención sanitaria.
@@ -62,7 +62,11 @@ No uses Apartag para bloquear el teléfono de otra persona sin que lo sepa y lo 
 
 ## Si no puedes desbloquear
 
-Esta versión no ofrece una salida de emergencia dentro de la app. Si pierdes el tag y no hay llave móvil, el autor no puede desbloquearte: no tiene tu secreto ni una cuenta tuya a la que entrar.
+Puedes usar un desbloqueo de emergencia si el modo estricto está apagado y te queda al menos uno. Son 3, guardados solo en tu teléfono. Se recupera 1 cada 30 días, hasta 3. Cada uno pide 5 minutos con la app en primer plano. Si sales, se cancela y no se gasta. Al confirmar, la sesión figura como «Emergencia» en las estadísticas del teléfono. Nada de eso sale del teléfono, y el autor no puede gastarlo ni recargarlo por ti.
+
+El modo estricto viene desactivado. Para encenderlo hace falta una llave de repuesto (un segundo tag o una llave móvil, además de la principal) y escribir ESTRICTO. Mientras está encendido, no hay emergencias. Durante un bloqueo no se apaga.
+
+Si el modo estricto está activo, o si no quedan emergencias, y pierdes las llaves, el autor no puede desbloquearte: no tiene tu secreto ni una cuenta tuya a la que entrar.
 
 En Android, desinstalar la app o retirar los permisos de mostrar sobre otras apps y de acceso de uso termina el bloqueo. En el iPhone, puedes revocar la autorización de Tiempo de uso de Apartag en Ajustes, dentro de lo que iOS permite, o eliminar la app.
 

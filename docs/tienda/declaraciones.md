@@ -2,7 +2,7 @@
 
 Notas internas para Juan Antonio López. No van a la landing. Las páginas públicas están en [`docs/es/`](../es/privacidad.md) y [`docs/en/`](../en/privacy.md).
 
-Describen el binario de esta rama (12 de octubre de 2026): sin cuenta, sin servidor, sin analítica, sin compras, sin desbloqueo de emergencia. Si más adelante se añade analítica, `expo-updates`, un SDK de fallos o un pago, hay que rehacer Data safety y la etiqueta de Apple.
+Describen la v1, con lo de esta rama más los desbloqueos de emergencia de #4 (`feat/3-emergencias`, comprobado en el remoto el 12 de octubre de 2026): sin cuenta, sin servidor, sin analítica y sin compras. Las emergencias son locales. Si más adelante se añade analítica, `expo-updates`, un SDK de fallos o un pago, hay que rehacer Data safety y la etiqueta de Apple.
 
 Los textos **[PENDIENTE: …]** hay que rellenarlos antes de enviar la ficha.
 
@@ -35,7 +35,7 @@ Si un revisor pregunta por categorías concretas, la respuesta sigue siendo que 
 | Fotos o vídeos | La cámara lee un QR en memoria. No hay acceso a la galería ni `READ_MEDIA_IMAGES` / `READ_MEDIA_VIDEO` | No |
 | Audio | `recordAudioAndroid` está en false | No |
 | Contactos, calendario, archivos | No se usan | No |
-| Actividad en apps / apps instaladas | La lista de apps con icono de lanzador se lee para que el usuario elija. Se guarda la selección (nombres de paquete). El acceso de uso mira la app en primer plano para taparla. El módulo nativo puede anotar en local el nombre de la app bloqueada y la hora del intento. Nada de eso se sube | No |
+| Actividad en apps / apps instaladas | La lista de apps con icono de lanzador se lee para que el usuario elija. Se guarda la selección (nombres de paquete). El acceso de uso mira la app en primer plano para taparla. El módulo nativo puede anotar en local el nombre de la app bloqueada y la hora del intento. Las emergencias (cuántas quedan, cuándo vuelve la siguiente, el modo estricto y la etiqueta «Emergencia» de la sesión) también se quedan en el teléfono. Nada de eso se sube | No |
 | Historial de navegación | No | No |
 | Información y rendimiento de la app (fallos, diagnósticos) | No hay SDK de fallos. Los informes que Play genera si el usuario comparte diagnósticos con Google son de la tienda, no una recogida de Apartag | No |
 | Identificadores del dispositivo | No hay ID de publicidad ni identificador de cuenta. El UID del tag NFC se guarda solo en el teléfono | No |
@@ -255,6 +255,10 @@ share the on-device App Group group.com.apartag.app:
 Privacy: the Screen Time tokens and the user's selection stay on the device.
 Apartag has no account, no server, and no analytics. We do not receive the
 names of shielded apps on a server. We do not sell or share Screen Time data.
+Emergency unlocks (3 on the device, one back every 30 days, each after a
+5-minute countdown that only runs while the app is in the foreground) and the
+optional strict mode are stored only on the phone. Leaving the app cancels
+the countdown without spending a charge. Nothing about them is transmitted.
 
 This is not a parental-control product and not an MDM product.
 ```
@@ -268,4 +272,4 @@ Cuando Apple lo apruebe, el perfil de distribución tiene que incluir `com.apple
 - Cuestionario de clasificación por edades (IARC / Apple). Hay que contestarlo en la consola. La app no está dirigida a menores de 14 años y no tiene contenidos de tienda que clasificar más allá de eso; no copies de aquí una edad de PEGI.
 - Publicidad: no hay. En los formularios de anuncios, la respuesta es no.
 - Compras: no hay en esta versión. Cuando exista el pago único, el producto será non-consumable y habrá que actualizar la ficha, no esta política de «no hay compras», el día que el código lo tenga.
-- El README de la app todavía dice que hay tres desbloqueos de emergencia. El código no los tiene (`strict` forzado a verdadero, sin acción de emergencia). Las páginas legales describen el código. No publiques la frase del README en la ficha.
+- Las emergencias de la v1 vienen de #4 (`feat/3-emergencias`), no de esta rama. Hay que fusionar #4 antes que #6. El comportamiento, leído en ese remoto: 3 desbloqueos en el teléfono, se recupera 1 cada 30 días hasta 3, cada uno con 5 minutos de cuenta atrás y la app en primer plano (salir la cancela y no gasta), la sesión queda como «Emergencia» en las estadísticas locales, y el modo estricto viene apagado. Para encenderlo hace falta una llave de repuesto (segundo tag o llave móvil, además de la principal) y escribir ESTRICTO. Mientras está encendido, las emergencias no se ofrecen. Atrasar el reloj no recarga uno. Nada se envía. La respuesta de Data safety sigue siendo «no se recogen datos».

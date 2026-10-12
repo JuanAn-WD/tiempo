@@ -1,6 +1,6 @@
 # Documentos legales de Apartag
 
-Páginas para la landing y notas para rellenar las consolas de las tiendas. Describen la app tal como está en el código de esta rama el 12 de octubre de 2026, no el producto planificado (no hay compras, no hay desbloqueos de emergencia, no hay servidor).
+Páginas para la landing y notas para rellenar las consolas de las tiendas. Describen la v1: lo de esta rama más los desbloqueos de emergencia de #4 (`feat/3-emergencias`), comprobados en el remoto el 12 de octubre de 2026. Sigue sin compras y sin servidor. Las emergencias no salen del teléfono.
 
 ## Publicar en la web
 
@@ -32,10 +32,10 @@ Busca `PENDIENTE` en `docs/`. Ninguno es opcional si la página o el formulario 
 
 ## De dónde sale cada afirmación
 
-- Persistencia local: `src/lib/storage.ts` (AsyncStorage, clave `tiempo.state.v2`). No hay `fetch` ni SDK de analítica en `src/`.
+- Persistencia local: `src/lib/storage.ts` en esta rama (AsyncStorage, clave `tiempo.state.v2`). En #4 la clave pasa a `tiempo.state.v3` y añade el segundo tag, las emergencias y el modo estricto. No hay `fetch` ni SDK de analítica en `src/`.
 - Cámara: `src/app/scan-key.tsx` y `src/app/claim-key.tsx` leen un QR y no guardan foto. `app.json` desactiva el audio en Android (`recordAudioAndroid: false`).
 - NFC: `src/lib/nfc.ts` lee el identificador del tag. No escribe el tag.
 - Llave móvil: `src/lib/mobile-key.ts`. El QR de emparejar lleva el secreto en claro. El QR de pulso caduca a los 60 s (`PULSE_TTL_MS`) y dentro de ese minuto se puede reutilizar. La interfaz de emparejar dice «30 s»; los textos legales usan los 60 s del código.
 - Bloqueo Android: `expo-app-blocker@0.1.77`. El plugin añade overlay (`SYSTEM_ALERT_WINDOW`), acceso de uso (`PACKAGE_USAGE_STATS`), servicio en primer plano `specialUse`, arranque y notificaciones. El manifiesto de la librería añade `QUERY_ALL_PACKAGES`. No hay `AccessibilityService`.
 - iOS: `requestAuthorization(for: .individual)` en la librería. Extensiones `DeviceActivityMonitor`, `ShieldAction` y `ShieldConfiguration`, App Group `group.com.apartag.app`.
-- Modo estricto fijo y sin emergencia: `sanitizeState()` fuerza `strict: true` y `setStrict()` solo muestra un aviso. El README todavía habla de tres emergencias; estos documentos no.
+- Emergencias (código de `origin/feat/3-emergencias`, no de esta rama): `src/lib/emergency.ts` guarda 3 cargos, recarga 1 cada 30 días hasta 3 y no recarga si el reloj va hacia atrás. `src/app/emergency.tsx` exige 5 minutos con la app en primer plano; salir cancela y no gasta el cargo; al confirmar se llama a `emergencyUnlock()`. Las estadísticas muestran la etiqueta «Emergencia» (`session.emergency` en `stats.tsx`). El modo estricto sale apagado; `setStrict(true)` pide al menos dos llaves y la palabra ESTRICTO, y mientras está activo el botón de emergencia no se muestra.
