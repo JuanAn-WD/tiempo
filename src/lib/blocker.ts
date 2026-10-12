@@ -20,15 +20,15 @@ export async function applyAndroidOverlayTheme() {
   if (Platform.OS !== 'android') return;
   const blocker = await native();
   blocker.configureAndroid({
-    overlayTitle: 'Estás en Tiempo',
-    overlayText: '{appName} está bloqueada. Acerca el tag para desbloquear.',
+    overlayTitle: 'Estás en Apartag',
+    overlayText: '{appName} está bloqueada. Ve a por tu llave.',
     overlayBackgroundColor: '#0B0A09',
     overlayTitleColor: '#F7F1E8',
     overlayTextColor: '#9C8F7E',
     overlayTitleFontSize: 28,
     overlayTextFontSize: 16,
     overlaySpinnerColor: '#D4923A',
-    notificationTitle: 'Tiempo',
+    notificationTitle: 'Apartag',
     notificationText: '{appName} está bloqueada. Acerca el tag.',
   });
 }

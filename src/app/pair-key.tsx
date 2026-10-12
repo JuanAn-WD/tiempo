@@ -20,7 +20,7 @@ export default function PairKeyScreen() {
     void (async () => {
       const secret = await ensureMobileKeySecret();
       if (!secret) return;
-      setPayload(await buildPairPayload(secret, 'tiempo.'));
+      setPayload(await buildPairPayload(secret, 'apartag.'));
     })();
   }, [ensureMobileKeySecret, state.locked]);
 
@@ -45,7 +45,7 @@ export default function PairKeyScreen() {
       <Text style={styles.kicker}>Llave móvil</Text>
       <Text style={styles.title}>Empareja otro teléfono</Text>
       <Text style={styles.body}>
-        En el móvil de tu pareja: Tiempo → Ajustes → “Convertirme en llave”, y escanea este QR. Después
+        En el móvil de tu pareja: Apartag → Ajustes → “Convertirme en llave”, y escanea este QR. Después
         podrá bloquearte y desbloquearte mostrando su QR vivo.
       </Text>
 

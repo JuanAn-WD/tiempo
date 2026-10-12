@@ -4,7 +4,7 @@ import UIKit
 import UserNotifications
 
 class ShieldActionExtension: ShieldActionDelegate {
-  private let appGroupIdentifier = "group.com.tiempo.focus"
+  private let appGroupIdentifier = "group.com.apartag.app"
   private let pendingUnlockKey = "appBlocker.pendingUnlock.v1"
   private let pendingInterceptsKey = "appBlocker.pendingIntercepts.v1"
   private let lastInterceptTsKey = "appBlocker.lastInterceptTs.v1"

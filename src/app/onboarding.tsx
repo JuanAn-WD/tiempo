@@ -14,7 +14,7 @@ const STEPS = [
   {
     kicker: '01 · El coste',
     title: 'Cinco horas al día\nno son “un rato”.',
-    body: 'Son presencia, ideas y conversaciones que no vuelven. Tiempo existe para recuperarlas.',
+    body: 'Son presencia, ideas y conversaciones que no vuelven. Aparta el móvil. Recupera tu tiempo.',
     visual: 'cost',
   },
   {
@@ -128,7 +128,7 @@ export default function Onboarding() {
                 void openAndroidPermissionScreens();
               }}
             />
-            <PrimaryButton muted label="Entrar en Tiempo" onPress={() => void completeOnboarding()} />
+            <PrimaryButton muted label="Entrar en Apartag" onPress={() => void completeOnboarding()} />
           </>
         )}
       </View>

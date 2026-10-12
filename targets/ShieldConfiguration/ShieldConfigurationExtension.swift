@@ -4,12 +4,12 @@ import UIKit
 
 class ShieldConfigurationExtension: ShieldConfigurationDataSource {
 
-  private let appGroupIdentifier = "group.com.tiempo.focus"
+  private let appGroupIdentifier = "group.com.apartag.app"
 
   // All values below are replaced by the config plugin at prebuild time
-  private let shieldTitle = "Estás en Tiempo"
-  private let shieldSubtitle = "{appName} está bloqueada. Usa el tag NFC o la llave móvil."
-  private let shieldPrimaryButtonLabel = "Volver a Tiempo"
+  private let shieldTitle = "Estás en Apartag"
+  private let shieldSubtitle = "{appName} está bloqueada. Ve a por tu llave."
+  private let shieldPrimaryButtonLabel = "Volver a Apartag"
   private let shieldSecondaryButtonLabel = "none"
   // Temporary-unlock state copy — shown briefly while ManagedSettings clears
   // after a successful unlock. Configurable via plugin options.

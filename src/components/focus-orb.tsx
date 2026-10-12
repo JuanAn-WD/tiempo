@@ -64,7 +64,7 @@ export function FocusOrb({ locked, onPress, onLongPress, hint, clock }: Props) {
             style={styles.ring}>
             <View style={styles.inner}>
               <Text style={styles.wordmark}>
-                tiempo<Text style={{ color: locked ? Palette.focus : Palette.accent }}>.</Text>
+                apartag<Text style={{ color: locked ? Palette.focus : Palette.accent }}>.</Text>
               </Text>
               {clock ? (
                 <Text style={[styles.clock, locked && styles.clockLock]}>{clock}</Text>

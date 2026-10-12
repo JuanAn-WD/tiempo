@@ -1,27 +1,27 @@
 {
   "expo": {
-    "name": "Tiempo",
-    "slug": "tiempo",
+    "name": "Apartag",
+    "slug": "apartag",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "tiempo",
+    "scheme": "apartag",
     "userInterfaceStyle": "dark",
     "ios": {
       "icon": "./assets/expo.icon",
-      "bundleIdentifier": "com.tiempo.focus",
+      "bundleIdentifier": "com.apartag.app",
       "infoPlist": {
-        "NFCReaderUsageDescription": "Tiempo usa NFC para bloquear y desbloquear las apps que elijas al acercar tu tag."
+        "NFCReaderUsageDescription": "Apartag usa NFC para bloquear y desbloquear las apps que elijas al acercar tu tag."
       },
       "entitlements": {
         "com.apple.developer.family-controls": true,
         "com.apple.security.application-groups": [
-          "group.com.tiempo.focus"
+          "group.com.apartag.app"
         ]
       }
     },
     "android": {
-      "package": "com.tiempo.focus",
+      "package": "com.apartag.app",
       "adaptiveIcon": {
         "backgroundColor": "#0B0A09",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
@@ -53,14 +53,14 @@
       [
         "expo-camera",
         {
-          "cameraPermission": "Tiempo usa la cámara para leer el QR de la llave móvil.",
+          "cameraPermission": "Apartag usa la cámara para leer el QR de la llave móvil.",
           "recordAudioAndroid": false
         }
       ],
       [
         "react-native-nfc-manager",
         {
-          "nfcPermission": "Tiempo usa NFC para bloquear y desbloquear las apps que elijas al acercar tu tag.",
+          "nfcPermission": "Apartag usa NFC para bloquear y desbloquear las apps que elijas al acercar tu tag.",
           "includeNdefEntitlement": true
         }
       ],
@@ -68,11 +68,11 @@
         "expo-app-blocker",
         {
           "ios": {
-            "appGroup": "group.com.tiempo.focus",
+            "appGroup": "group.com.apartag.app",
             "shield": {
-              "title": "Estás en Tiempo",
-              "subtitle": "{appName} está bloqueada. Usa el tag NFC o la llave móvil.",
-              "primaryButtonLabel": "Volver a Tiempo",
+              "title": "Estás en Apartag",
+              "subtitle": "{appName} está bloqueada. Ve a por tu llave.",
+              "primaryButtonLabel": "Volver a Apartag",
               "secondaryButtonLabel": null,
               "primaryButtonColor": "#D4923A",
               "titleColor": "#F7F1E8",
@@ -82,13 +82,13 @@
             }
           },
           "android": {
-            "scheme": "tiempo",
-            "overlayTitle": "Estás en Tiempo",
-            "overlayText": "{appName} está bloqueada. Usa el tag NFC o la llave móvil.",
+            "scheme": "apartag",
+            "overlayTitle": "Estás en Apartag",
+            "overlayText": "{appName} está bloqueada. Ve a por tu llave.",
             "overlayBackgroundColor": "#0B0A09",
             "overlayTitleColor": "#F7F1E8",
             "overlayTextColor": "#9C8F7E",
-            "notificationTitle": "Tiempo",
+            "notificationTitle": "Apartag",
             "notificationText": "{appName} está bloqueada."
           }
         }
@@ -106,32 +106,32 @@
             "ios": {
               "appExtensions": [
                 {
-                  "bundleIdentifier": "com.tiempo.focus.ShieldConfiguration",
+                  "bundleIdentifier": "com.apartag.app.ShieldConfiguration",
                   "targetName": "ShieldConfiguration",
                   "entitlements": {
                     "com.apple.developer.family-controls": true,
                     "com.apple.security.application-groups": [
-                      "group.com.tiempo.focus"
+                      "group.com.apartag.app"
                     ]
                   }
                 },
                 {
-                  "bundleIdentifier": "com.tiempo.focus.ShieldAction",
+                  "bundleIdentifier": "com.apartag.app.ShieldAction",
                   "targetName": "ShieldAction",
                   "entitlements": {
                     "com.apple.developer.family-controls": true,
                     "com.apple.security.application-groups": [
-                      "group.com.tiempo.focus"
+                      "group.com.apartag.app"
                     ]
                   }
                 },
                 {
-                  "bundleIdentifier": "com.tiempo.focus.DeviceActivityMonitor",
+                  "bundleIdentifier": "com.apartag.app.DeviceActivityMonitor",
                   "targetName": "DeviceActivityMonitor",
                   "entitlements": {
                     "com.apple.developer.family-controls": true,
                     "com.apple.security.application-groups": [
-                      "group.com.tiempo.focus"
+                      "group.com.apartag.app"
                     ]
                   }
                 }
