@@ -1,19 +1,52 @@
-import { useRouter } from 'expo-router';
-import { Platform, StyleSheet, Text, View } from 'react-native';
+import { useFocusEffect, useRouter } from 'expo-router';
+import { useCallback, useState } from 'react';
+import { Platform, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { PrimaryButton } from '@/components/primary-button';
 import { Screen } from '@/components/screen';
 import { Badge, BrandMark, Card } from '@/components/ui';
-import { Palette } from '@/constants/theme';
+import { Palette, Radius } from '@/constants/theme';
 import { useTiempo } from '@/context/tiempo-store';
 import { openAndroidPermissionScreens } from '@/lib/blocker';
+import { STRICT_CONFIRMATION, countKeys, formatRefillDate, hasBackupKey } from '@/lib/emergency';
+
+function keySummary(tag: boolean, spare: boolean, mobile: boolean) {
+  const parts = [
+    tag ? 'tag' : null,
+    spare ? 'segundo tag' : null,
+    mobile ? 'llave móvil' : null,
+  ].filter((part): part is string => !!part);
+  if (parts.length === 0) return 'Aún no hay ninguna llave.';
+  return `Llaves: ${parts.join(', ')}.`;
+}
 
 export default function SettingsScreen() {
   const router = useRouter();
-  const { state, pairTag, nfcSupported, permissions, requestPermissions, refreshPermissions } =
-    useTiempo();
+  const {
+    state,
+    pairTag,
+    pairSpareTag,
+    clearSpareTag,
+    setStrict,
+    nfcSupported,
+    permissions,
+    requestPermissions,
+    refreshPermissions,
+    refreshEmergencyClock,
+    clockSkewed,
+  } = useTiempo();
+  const [confirmation, setConfirmation] = useState('');
+  const [confirmOff, setConfirmOff] = useState(false);
+
+  useFocusEffect(
+    useCallback(() => {
+      void refreshEmergencyClock();
+    }, [refreshEmergencyClock]),
+  );
 
   const ok = !!permissions?.allGranted;
+  const backup = hasBackupKey(state);
+  const confirmed = confirmation.trim() === STRICT_CONFIRMATION;
 
   return (
     <Screen scroll>
@@ -22,17 +55,109 @@ export default function SettingsScreen() {
       </View>
 
       <Text style={styles.title}>Control{'\n'}y seguridad</Text>
-      <Text style={styles.sub}>Solo tag NFC o llave móvil. Sin emergencias.</Text>
+      <Text style={styles.sub}>
+        {state.strict
+          ? 'Modo estricto. Solo tus llaves. Sin emergencias.'
+          : `Solo tu tag o tu llave móvil. Emergencias: ${state.emergencyLeft}`}
+      </Text>
 
       <Card style={styles.card}>
         <View style={styles.rowTop}>
-          <Text style={styles.rowTitle}>Desbloqueo</Text>
-          <Badge label="Estricto" tone="focus" />
+          <Text style={styles.rowTitle}>Emergencias</Text>
+          <Badge
+            label={state.strict ? 'Desactivadas' : `${state.emergencyLeft} de 3`}
+            tone={state.strict ? 'danger' : state.emergencyLeft > 0 ? 'focus' : 'neutral'}
+          />
         </View>
         <Text style={styles.rowHint}>
-          Mientras hay bloqueo, solo el tag NFC o un móvil emparejado pueden salir. No hay botones de
-          emergencia ni códigos.
+          Tres desbloqueos, gratis. Se recupera uno cada 30 días, hasta 3. Cada uno espera 5 minutos
+          con la app abierta. Si sales, se cancela.
         </Text>
+        {state.strict ? (
+          <Text style={styles.rowHint}>
+            El modo estricto no deja usarlas. Si lo desactivas, sigues teniendo {state.emergencyLeft}.
+          </Text>
+        ) : state.emergencyLeft < 3 ? (
+          <Text style={styles.rowHint}>
+            {clockSkewed
+              ? 'El reloj del móvil va atrás. No se recupera ninguna hasta que marque la hora bien.'
+              : state.emergencyRefillAt
+                ? `La siguiente vuelve el ${formatRefillDate(state.emergencyRefillAt)}.`
+                : 'La siguiente aún no tiene fecha.'}
+          </Text>
+        ) : null}
+      </Card>
+
+      <Card style={styles.card}>
+        <View style={styles.rowTop}>
+          <Text style={styles.rowTitle}>Modo estricto</Text>
+          <Badge label={state.strict ? 'Estricto' : 'Normal'} tone={state.strict ? 'danger' : 'neutral'} />
+        </View>
+        <Text style={styles.rowHint}>
+          Opcional. Quita las emergencias: solo sales con tus llaves. Para activarlo hace falta una
+          llave de repuesto (segundo tag o llave móvil) y escribir {STRICT_CONFIRMATION}. Durante un
+          bloqueo no se puede desactivar.
+        </Text>
+        <Text style={styles.rowHint}>
+          {keySummary(!!state.tagId, !!state.spareTagId, !!state.mobileKeySecret)}
+        </Text>
+        {state.strict ? (
+          <>
+            {confirmOff && !state.locked ? (
+              <>
+                <Text style={styles.rowHint}>Volverás a tener desbloqueos de emergencia.</Text>
+                <PrimaryButton
+                  danger
+                  label="Sí, desactivar"
+                  onPress={() => {
+                    setStrict(false);
+                    setConfirmOff(false);
+                  }}
+                />
+                <PrimaryButton muted label="Cancelar" onPress={() => setConfirmOff(false)} />
+              </>
+            ) : (
+              <PrimaryButton
+                muted
+                label="Desactivar modo estricto"
+                disabled={state.locked}
+                onPress={() => setConfirmOff(true)}
+              />
+            )}
+            {state.locked ? (
+              <Text style={styles.rowHint}>Durante este bloqueo no se puede desactivar.</Text>
+            ) : null}
+          </>
+        ) : backup ? (
+          <>
+            <Text style={styles.rowHint}>
+              Si lo activas y luego te bloqueas, la única salida son tus llaves.
+            </Text>
+            <TextInput
+              value={confirmation}
+              onChangeText={setConfirmation}
+              autoCapitalize="characters"
+              autoCorrect={false}
+              placeholder={STRICT_CONFIRMATION}
+              placeholderTextColor={Palette.faint}
+              accessibilityLabel="Escribe ESTRICTO para confirmar"
+              style={styles.input}
+            />
+            <PrimaryButton
+              danger
+              label="Activar modo estricto"
+              disabled={!confirmed}
+              onPress={() => {
+                setStrict(true, confirmation);
+                setConfirmation('');
+              }}
+            />
+          </>
+        ) : (
+          <Text style={styles.rowHint}>
+            Te falta una llave de repuesto. Empareja un segundo tag o crea una llave móvil, más abajo.
+          </Text>
+        )}
       </Card>
 
       <Card style={styles.card}>
@@ -55,6 +180,44 @@ export default function SettingsScreen() {
               : 'Sin NFC en este dispositivo'}
         </Text>
         <PrimaryButton label={state.tagId ? 'Cambiar tag' : 'Emparejar tag'} onPress={() => void pairTag()} />
+      </Card>
+
+      <Card style={styles.card}>
+        <View style={styles.rowTop}>
+          <Text style={styles.rowTitle}>Llave de repuesto</Text>
+          <Badge label={state.spareTagId ? 'OK' : '—'} tone={state.spareTagId ? 'focus' : 'neutral'} />
+        </View>
+        <Text style={styles.rowHint}>
+          {state.spareTagId
+            ? state.spareTagId
+            : 'Un segundo tag. Con el principal, basta para activar el modo estricto.'}
+        </Text>
+        {__DEV__ ? (
+          <Text style={styles.rowHint}>En desarrollo, mantén pulsado para simular un segundo tag.</Text>
+        ) : null}
+        <PrimaryButton
+          muted
+          label={state.spareTagId ? 'Cambiar segundo tag' : 'Emparejar segundo tag'}
+          onPress={() => void pairSpareTag()}
+          onLongPress={__DEV__ ? () => void pairSpareTag('DEMO-SPARE') : undefined}
+        />
+        {state.spareTagId ? (
+          <>
+            <View style={{ height: 10 }} />
+            <PrimaryButton
+              muted
+              danger
+              label="Quitar llave de repuesto"
+              disabled={state.strict && countKeys(state) < 3}
+              onPress={() => void clearSpareTag()}
+            />
+            {state.strict && countKeys(state) < 3 ? (
+              <Text style={styles.rowHint}>
+                El modo estricto necesita dos llaves. Añade otra antes de quitar esta.
+              </Text>
+            ) : null}
+          </>
+        ) : null}
       </Card>
 
       <Card style={styles.card}>
@@ -149,6 +312,18 @@ const styles = StyleSheet.create({
     color: Palette.muted,
     lineHeight: 20,
     marginTop: 4,
+  },
+  input: {
+    borderWidth: 1,
+    borderColor: Palette.lineStrong,
+    borderRadius: Radius.md,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    color: Palette.ink,
+    fontSize: 16,
+    fontWeight: '700',
+    letterSpacing: 1,
+    backgroundColor: Palette.bgElevated,
   },
   legal: {
     marginTop: 20,

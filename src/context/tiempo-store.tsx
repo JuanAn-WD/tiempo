@@ -9,7 +9,7 @@ import {
   useState,
   type ReactNode,
 } from 'react';
-import { Alert, Platform } from 'react-native';
+import { Alert, AppState, Platform } from 'react-native';
 
 import type { AndroidBlockableApp, IOSBlockedItem, PermissionStatus } from 'expo-app-blocker';
 
@@ -23,6 +23,17 @@ import {
   stopAndroidBlock,
   stopIosBlock,
 } from '@/lib/blocker';
+import {
+  INITIAL_MONO_CLOCK,
+  STRICT_CONFIRMATION,
+  advanceEmergencyClock,
+  canDropKey,
+  consumeEmergency,
+  hasBackupKey,
+  monotonicNow,
+  type EmergencySnapshot,
+  type MonoClock,
+} from '@/lib/emergency';
 import {
   createMobileKeySecret,
   parseKeyPayload,
@@ -46,6 +57,8 @@ type TiempoContextValue = {
   refreshPermissions: () => Promise<void>;
   requestPermissions: () => Promise<void>;
   pairTag: (id?: string) => Promise<boolean>;
+  pairSpareTag: (id?: string) => Promise<boolean>;
+  clearSpareTag: () => Promise<void>;
   completeOnboarding: () => Promise<void>;
   toggleLockWithTag: (simulate?: boolean) => Promise<void>;
   toggleLockWithMobileKey: (rawQr: string) => Promise<boolean>;
@@ -56,10 +69,29 @@ type TiempoContextValue = {
   setMode: (mode: ModeId) => void;
   togglePackage: (pkg: string) => void;
   setIosSelection: (selectionData: string, items: IOSBlockedItem[]) => void;
-  setStrict: (value: boolean) => void;
+  setStrict: (value: boolean, confirmation?: string) => void;
+  emergencyUnlock: () => Promise<boolean>;
+  refreshEmergencyClock: () => Promise<void>;
+  /** True when the wall clock is behind the last accepted timestamp. */
+  clockSkewed: boolean;
 };
 
 const TiempoContext = createContext<TiempoContextValue | null>(null);
+
+const SIMULATED_TAG_IDS = new Set(['DEMO-TAG', 'DEMO-SPARE']);
+
+function isSimulatedTag(id: string) {
+  return SIMULATED_TAG_IDS.has(id);
+}
+
+function snapshot(state: TiempoState): EmergencySnapshot {
+  return {
+    emergencyLeft: state.emergencyLeft,
+    emergencyRefillAt: state.emergencyRefillAt,
+    lastSeenAt: state.lastSeenAt,
+    strict: state.strict,
+  };
+}
 
 async function applyNativeLock(next: TiempoState) {
   if (Platform.OS === 'android') {
@@ -87,21 +119,55 @@ export function TiempoProvider({ children }: { children: ReactNode }) {
   const [apps, setApps] = useState<AndroidBlockableApp[]>([]);
   const [permissions, setPermissions] = useState<PermissionStatus | null>(null);
   const [nfcSupported, setNfcSupported] = useState(false);
+  const [clockSkewed, setClockSkewed] = useState(false);
   const stateRef = useRef(state);
   const lockBusy = useRef(false);
+  const clockRef = useRef<MonoClock>(INITIAL_MONO_CLOCK);
+  const persistQueue = useRef(Promise.resolve());
 
   useEffect(() => {
     stateRef.current = state;
   }, [state]);
 
   const persist = useCallback(async (updater: TiempoState | ((prev: TiempoState) => TiempoState)) => {
-    const prev = stateRef.current;
-    const next = typeof updater === 'function' ? updater(prev) : updater;
-    stateRef.current = next;
-    setState(next);
-    await saveState(next);
-    return next;
+    const run = persistQueue.current.then(async () => {
+      const prev = stateRef.current;
+      const next = typeof updater === 'function' ? updater(prev) : updater;
+      if (next === prev) return prev;
+      stateRef.current = next;
+      setState(next);
+      await saveState(next);
+      return next;
+    });
+    persistQueue.current = run.then(
+      () => undefined,
+      () => undefined,
+    );
+    return run;
   }, []);
+
+  const refreshEmergencyClock = useCallback(async () => {
+    const now = Date.now();
+    const mono = monotonicNow();
+    await persist((prev) => {
+      const { state: timed, clock } = advanceEmergencyClock(snapshot(prev), clockRef.current, now, mono);
+      clockRef.current = clock;
+      if (
+        timed.emergencyLeft === prev.emergencyLeft &&
+        timed.emergencyRefillAt === prev.emergencyRefillAt &&
+        timed.lastSeenAt === prev.lastSeenAt
+      ) {
+        return prev;
+      }
+      return {
+        ...prev,
+        emergencyLeft: timed.emergencyLeft,
+        emergencyRefillAt: timed.emergencyRefillAt,
+        lastSeenAt: timed.lastSeenAt,
+      };
+    });
+    setClockSkewed(Date.now() < stateRef.current.lastSeenAt);
+  }, [persist]);
 
   useEffect(() => {
     void (async () => {
@@ -132,11 +198,25 @@ export function TiempoProvider({ children }: { children: ReactNode }) {
             Alert.alert('Bloqueo', 'No se pudo reactivar el bloqueo. Revisa los permisos.');
           }
         }
-        // Si no hay apps que bloquear, el estado locked se mantiene: solo sale con llave.
       }
       setReady(true);
     })();
   }, []);
+
+  useEffect(() => {
+    if (!ready) return;
+    void refreshEmergencyClock();
+    const sub = AppState.addEventListener('change', () => {
+      void refreshEmergencyClock();
+    });
+    const id = setInterval(() => {
+      void refreshEmergencyClock();
+    }, 60_000);
+    return () => {
+      sub?.remove();
+      clearInterval(id);
+    };
+  }, [ready, refreshEmergencyClock]);
 
   useEffect(() => {
     if (Platform.OS !== 'ios') return;
@@ -167,13 +247,17 @@ export function TiempoProvider({ children }: { children: ReactNode }) {
   const pairTag = useCallback(
     async (id?: string) => {
       if (lockedGuard(stateRef.current, 'cambiar el tag')) return false;
-      if (id === 'DEMO-TAG' && !__DEV__) return false;
+      if (id && isSimulatedTag(id) && !__DEV__) return false;
       const tagId = id ?? (await readTagId());
       if (!tagId) {
         Alert.alert('No se leyó el tag', 'Acerca un tag NFC al móvil e inténtalo de nuevo.');
         return false;
       }
-      if (tagId === 'DEMO-TAG' && !__DEV__) return false;
+      if (isSimulatedTag(tagId) && !__DEV__) return false;
+      if (tagId === stateRef.current.spareTagId) {
+        Alert.alert('Mismo tag', 'Ese tag ya es tu llave de repuesto. Usa otro como principal.');
+        return false;
+      }
       await persist((prev) => ({ ...prev, tagId }));
       void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       return true;
@@ -181,27 +265,101 @@ export function TiempoProvider({ children }: { children: ReactNode }) {
     [persist],
   );
 
+  const pairSpareTag = useCallback(
+    async (id?: string) => {
+      if (lockedGuard(stateRef.current, 'cambiar la llave de repuesto')) return false;
+      if (!stateRef.current.tagId) {
+        Alert.alert('Primero el tag', 'Empareja tu tag principal y luego la llave de repuesto.');
+        return false;
+      }
+      if (id && isSimulatedTag(id) && !__DEV__) return false;
+      const spareTagId = id ?? (await readTagId());
+      if (!spareTagId) {
+        Alert.alert('No se leyó el tag', 'Acerca otro tag NFC al móvil e inténtalo de nuevo.');
+        return false;
+      }
+      if (isSimulatedTag(spareTagId) && !__DEV__) return false;
+      if (spareTagId === stateRef.current.tagId) {
+        Alert.alert('Mismo tag', 'La llave de repuesto tiene que ser otro tag.');
+        return false;
+      }
+      await persist((prev) => ({ ...prev, spareTagId }));
+      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      return true;
+    },
+    [persist],
+  );
+
+  const clearSpareTag = useCallback(async () => {
+    if (lockedGuard(stateRef.current, 'quitar la llave de repuesto')) return;
+    if (!canDropKey(stateRef.current, { spareTagId: null })) {
+      Alert.alert(
+        'Modo estricto',
+        'No puedes quitar esta llave: el modo estricto necesita al menos dos. Añade otra antes.',
+      );
+      return;
+    }
+    await persist((prev) => {
+      if (!canDropKey(prev, { spareTagId: null })) return prev;
+      return { ...prev, spareTagId: null };
+    });
+  }, [persist]);
+
   const completeOnboarding = useCallback(async () => {
     await persist((prev) => ({ ...prev, onboarded: true }));
   }, [persist]);
 
   const unlock = useCallback(
-    async (current: TiempoState) => {
+    async (options?: { emergency?: boolean }) => {
+      const latest = stateRef.current;
+      if (!latest.locked) return false;
+      if (options?.emergency && !consumeEmergency(snapshot(latest), Date.now())) return false;
       await clearNativeLock();
-      const endedAt = Date.now();
-      const recovered = current.lockedAt ? endedAt - current.lockedAt : 0;
-      await persist({
-        ...current,
-        locked: false,
-        lockedAt: null,
-        recoveredMs: current.recoveredMs + recovered,
-        sessions: current.lockedAt
-          ? [
-              { mode: current.mode, startedAt: current.lockedAt, endedAt },
-              ...current.sessions,
-            ].slice(0, 40)
-          : current.sessions,
+      let spent = false;
+      await persist((prev) => {
+        if (!prev.locked) return prev;
+        const endedAt = Date.now();
+        const recovered = prev.lockedAt ? Math.max(0, endedAt - prev.lockedAt) : 0;
+        const consumed = options?.emergency ? consumeEmergency(snapshot(prev), endedAt) : null;
+        if (options?.emergency && !consumed) return prev;
+        spent = true;
+        return {
+          ...prev,
+          ...(consumed
+            ? {
+                emergencyLeft: consumed.emergencyLeft,
+                emergencyRefillAt: consumed.emergencyRefillAt,
+                lastSeenAt: Math.max(consumed.lastSeenAt, endedAt),
+              }
+            : {}),
+          locked: false,
+          lockedAt: null,
+          recoveredMs: prev.recoveredMs + recovered,
+          sessions: prev.lockedAt
+            ? [
+                {
+                  mode: prev.mode,
+                  startedAt: prev.lockedAt,
+                  endedAt,
+                  ...(options?.emergency ? { emergency: true as const } : {}),
+                },
+                ...prev.sessions,
+              ].slice(0, 40)
+            : prev.sessions,
+        };
       });
+      if (!spent) {
+        const current = stateRef.current;
+        if (current.locked) {
+          try {
+            await applyNativeLock(current);
+          } catch {
+            /* the saved lock is reapplied on next launch */
+          }
+        }
+        return false;
+      }
+      return true;
     },
     [persist],
   );
@@ -225,7 +383,12 @@ export function TiempoProvider({ children }: { children: ReactNode }) {
         }
         await startIosBlock(current.iosItems);
       }
-      await persist({ ...current, locked: true, lockedAt: Date.now() });
+      await persist((prev) => ({
+        ...prev,
+        tagId: current.tagId ?? prev.tagId,
+        locked: true,
+        lockedAt: Date.now(),
+      }));
     },
     [persist],
   );
@@ -234,7 +397,7 @@ export function TiempoProvider({ children }: { children: ReactNode }) {
     async (next: TiempoState) => {
       void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
       if (next.locked) {
-        await unlock(next);
+        await unlock();
       } else {
         await lock(next);
       }
@@ -255,7 +418,7 @@ export function TiempoProvider({ children }: { children: ReactNode }) {
             Alert.alert('Solo con llave', 'El desbloqueo solo funciona con el tag NFC o la llave móvil.');
             return;
           }
-          tagId = current.tagId ?? 'DEMO-TAG';
+          tagId = current.tagId ?? current.spareTagId ?? 'DEMO-TAG';
         } else if (!nfcSupported) {
           Alert.alert(
             'NFC no disponible',
@@ -270,13 +433,15 @@ export function TiempoProvider({ children }: { children: ReactNode }) {
           Alert.alert('Tag no detectado', 'Acerca el tag de Apartag a la parte trasera del móvil.');
           return;
         }
-        if (tagId === 'DEMO-TAG' && !__DEV__) return;
-        if (current.tagId && tagId !== current.tagId && !simulate) {
-          Alert.alert('Tag distinto', 'Este no es el tag que emparejaste.');
+        if (isSimulatedTag(tagId) && !__DEV__) return;
+        const known = [current.tagId, current.spareTagId].filter((id): id is string => !!id);
+        if (known.length > 0 && !known.includes(tagId) && !simulate) {
+          Alert.alert('Tag distinto', 'Este no es uno de tus tags.');
           return;
         }
 
-        await toggleWithIdentity(current.tagId ? current : { ...current, tagId });
+        const identity = current.tagId || known.length > 0 ? current : { ...current, tagId };
+        await toggleWithIdentity(identity);
       } finally {
         lockBusy.current = false;
       }
@@ -326,7 +491,17 @@ export function TiempoProvider({ children }: { children: ReactNode }) {
 
   const revokeMobileKey = useCallback(async () => {
     if (lockedGuard(stateRef.current, 'revocar la llave')) return;
-    await persist((prev) => ({ ...prev, mobileKeySecret: null }));
+    if (!canDropKey(stateRef.current, { mobileKeySecret: null })) {
+      Alert.alert(
+        'Modo estricto',
+        'No puedes revocar la llave móvil: el modo estricto necesita al menos dos llaves.',
+      );
+      return;
+    }
+    await persist((prev) => {
+      if (!canDropKey(prev, { mobileKeySecret: null })) return prev;
+      return { ...prev, mobileKeySecret: null };
+    });
   }, [persist]);
 
   const becomeKeyHolder = useCallback(
@@ -375,14 +550,71 @@ export function TiempoProvider({ children }: { children: ReactNode }) {
   );
 
   const setStrict = useCallback(
-    (_strict: boolean) => {
-      Alert.alert(
-        'Modo estricto fijo',
-        'Mientras hay bloqueo, solo el tag NFC o la llave móvil pueden desbloquear. No hay atajos.',
-      );
+    (value: boolean, confirmation?: string) => {
+      const current = stateRef.current;
+      if (value) {
+        if (current.strict) return;
+        if (!hasBackupKey(current)) {
+          Alert.alert(
+            'Falta una llave de repuesto',
+            'El modo estricto solo se activa si ya tienes dos llaves: un segundo tag o una llave móvil, además de la principal.',
+          );
+          return;
+        }
+        if (confirmation?.trim() !== STRICT_CONFIRMATION) {
+          Alert.alert('Confirmación', 'Escribe ESTRICTO, en mayúsculas, para activar el modo estricto.');
+          return;
+        }
+        void persist((prev) => {
+          if (prev.strict || !hasBackupKey(prev)) return prev;
+          return { ...prev, strict: true };
+        });
+        return;
+      }
+      if (!current.strict) return;
+      if (current.locked) {
+        Alert.alert(
+          'Bloqueado',
+          'Durante un bloqueo el modo estricto no se desactiva. Solo sales con tus llaves.',
+        );
+        return;
+      }
+      void persist((prev) => {
+        if (!prev.strict || prev.locked) return prev;
+        return { ...prev, strict: false };
+      });
     },
-    [],
+    [persist],
   );
+
+  const emergencyUnlock = useCallback(async () => {
+    if (lockBusy.current) return false;
+    await refreshEmergencyClock();
+    const current = stateRef.current;
+    if (!current.locked) return false;
+    if (current.strict) {
+      Alert.alert(
+        'Modo estricto',
+        'Con el modo estricto no hay desbloqueos de emergencia. Hace falta una de tus llaves.',
+      );
+      return false;
+    }
+    if (current.emergencyLeft <= 0) {
+      Alert.alert(
+        'Sin emergencias',
+        'No te queda ninguna. Se recupera una cada 30 días, hasta 3.',
+      );
+      return false;
+    }
+    lockBusy.current = true;
+    try {
+      const ok = await unlock({ emergency: true });
+      if (ok) void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      return ok;
+    } finally {
+      lockBusy.current = false;
+    }
+  }, [refreshEmergencyClock, unlock]);
 
   const value = useMemo(
     () => ({
@@ -394,6 +626,8 @@ export function TiempoProvider({ children }: { children: ReactNode }) {
       refreshPermissions,
       requestPermissions: requestPerms,
       pairTag,
+      pairSpareTag,
+      clearSpareTag,
       completeOnboarding,
       toggleLockWithTag,
       toggleLockWithMobileKey,
@@ -405,17 +639,25 @@ export function TiempoProvider({ children }: { children: ReactNode }) {
       togglePackage,
       setIosSelection,
       setStrict,
+      emergencyUnlock,
+      refreshEmergencyClock,
+      clockSkewed,
     }),
     [
       apps,
       becomeKeyHolder,
       clearKeyHolder,
+      clearSpareTag,
+      clockSkewed,
       completeOnboarding,
+      emergencyUnlock,
       ensureMobileKeySecret,
       nfcSupported,
+      pairSpareTag,
       pairTag,
       permissions,
       ready,
+      refreshEmergencyClock,
       refreshPermissions,
       requestPerms,
       revokeMobileKey,

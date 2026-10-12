@@ -59,7 +59,7 @@ export default function StatsScreen() {
       <Card style={styles.hero}>
         <Text style={styles.heroLabel}>Recuperado</Text>
         <Text style={styles.heroValue}>{formatDuration(state.recoveredMs)}</Text>
-        <Text style={styles.heroMeta}>{state.sessions.length} sesiones · con el tag</Text>
+        <Text style={styles.heroMeta}>{state.sessions.length} sesiones</Text>
       </Card>
 
       <Card style={styles.yearsCard}>
@@ -90,6 +90,7 @@ export default function StatsScreen() {
             <Card key={session.startedAt} style={styles.sessionRow}>
               <View>
                 <Text style={styles.rowTitle}>{session.mode}</Text>
+                {session.emergency ? <Text style={styles.emergencyLabel}>Emergencia</Text> : null}
                 <Text style={styles.rowDate}>
                   {new Date(session.startedAt).toLocaleDateString('es', {
                     day: 'numeric',
@@ -222,6 +223,12 @@ const styles = StyleSheet.create({
     textTransform: 'capitalize',
     color: Palette.ink,
     fontWeight: '700',
+  },
+  emergencyLabel: {
+    color: Palette.danger,
+    fontSize: 12,
+    fontWeight: '700',
+    marginTop: 2,
   },
   rowDate: {
     color: Palette.faint,

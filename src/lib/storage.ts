@@ -2,12 +2,16 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import type { IOSBlockedItem } from 'expo-app-blocker';
 
+import { normalizeEmergencyFields } from '@/lib/emergency';
+
 export type ModeId = 'trabajo' | 'estudio' | 'casa' | 'gym';
 
 export type SessionRecord = {
   mode: ModeId;
   startedAt: number;
   endedAt: number;
+  /** Set when the session ended with an emergency unlock. */
+  emergency?: boolean;
 };
 
 export type TiempoState = {
@@ -18,6 +22,14 @@ export type TiempoState = {
   /** If set, this install acts as a key for someone else's Apartag. */
   keyHolderSecret: string | null;
   keyHolderLabel: string | null;
+  /** Second NFC tag. Counts as a backup key for strict mode. */
+  spareTagId: string | null;
+  /** Charges left. Starts at 3, never above 3. */
+  emergencyLeft: number;
+  /** When the next single charge returns. Null while the bank is full. */
+  emergencyRefillAt: number | null;
+  /** Highest wall-clock time observed. Refills refuse to run if the clock is behind this. */
+  lastSeenAt: number;
   locked: boolean;
   lockedAt: number | null;
   selectedPackages: string[];
@@ -42,6 +54,10 @@ export const DEFAULT_STATE: TiempoState = {
   mobileKeySecret: null,
   keyHolderSecret: null,
   keyHolderLabel: null,
+  spareTagId: null,
+  emergencyLeft: 3,
+  emergencyRefillAt: null,
+  lastSeenAt: 0,
   locked: false,
   lockedAt: null,
   selectedPackages: [
@@ -55,38 +71,58 @@ export const DEFAULT_STATE: TiempoState = {
   mode: 'trabajo',
   recoveredMs: 0,
   sessions: [],
-  strict: true,
+  strict: false,
 };
 
-const KEY = 'tiempo.state.v2';
+const KEY = 'tiempo.state.v3';
+const LEGACY_KEYS = ['tiempo.state.v2', 'tiempo.state.v1'];
 
-function sanitizeState(raw: unknown): TiempoState {
-  if (!raw || typeof raw !== 'object') return DEFAULT_STATE;
-  const data = raw as Partial<TiempoState> & { emergencyLeft?: number };
+function nullableString(value: unknown, fallback: string | null) {
+  if (typeof value === 'string') return value;
+  if (value === null) return null;
+  return fallback;
+}
+
+function sanitizeSessions(raw: unknown): SessionRecord[] {
+  if (!Array.isArray(raw)) return [];
+  const sessions: SessionRecord[] = [];
+  for (const item of raw.slice(0, 40)) {
+    if (!item || typeof item !== 'object') continue;
+    const session = item as Partial<SessionRecord>;
+    if (!MODES.some((mode) => mode.id === session.mode)) continue;
+    if (typeof session.startedAt !== 'number' || typeof session.endedAt !== 'number') continue;
+    const next: SessionRecord = {
+      mode: session.mode as ModeId,
+      startedAt: session.startedAt,
+      endedAt: session.endedAt,
+    };
+    if (session.emergency === true) next.emergency = true;
+    sessions.push(next);
+  }
+  return sessions;
+}
+
+export function sanitizeState(
+  raw: unknown,
+  options: { honorStrict: boolean; now?: number },
+): TiempoState {
+  const now = options.now ?? Date.now();
+  if (!raw || typeof raw !== 'object') {
+    const emergency = normalizeEmergencyFields({}, now, options.honorStrict);
+    return { ...DEFAULT_STATE, ...emergency };
+  }
+  const data = raw as Partial<TiempoState>;
   const mode = MODES.some((m) => m.id === data.mode) ? (data.mode as ModeId) : DEFAULT_STATE.mode;
+  const emergency = normalizeEmergencyFields(data, now, options.honorStrict);
   return {
     ...DEFAULT_STATE,
     ...data,
     mode,
-    tagId: typeof data.tagId === 'string' ? data.tagId : data.tagId === null ? null : DEFAULT_STATE.tagId,
-    mobileKeySecret:
-      typeof data.mobileKeySecret === 'string'
-        ? data.mobileKeySecret
-        : data.mobileKeySecret === null
-          ? null
-          : DEFAULT_STATE.mobileKeySecret,
-    keyHolderSecret:
-      typeof data.keyHolderSecret === 'string'
-        ? data.keyHolderSecret
-        : data.keyHolderSecret === null
-          ? null
-          : DEFAULT_STATE.keyHolderSecret,
-    keyHolderLabel:
-      typeof data.keyHolderLabel === 'string'
-        ? data.keyHolderLabel
-        : data.keyHolderLabel === null
-          ? null
-          : DEFAULT_STATE.keyHolderLabel,
+    tagId: nullableString(data.tagId, DEFAULT_STATE.tagId),
+    mobileKeySecret: nullableString(data.mobileKeySecret, DEFAULT_STATE.mobileKeySecret),
+    keyHolderSecret: nullableString(data.keyHolderSecret, DEFAULT_STATE.keyHolderSecret),
+    keyHolderLabel: nullableString(data.keyHolderLabel, DEFAULT_STATE.keyHolderLabel),
+    spareTagId: nullableString(data.spareTagId, null),
     locked: Boolean(data.locked),
     lockedAt: typeof data.lockedAt === 'number' ? data.lockedAt : null,
     selectedPackages: Array.isArray(data.selectedPackages)
@@ -95,24 +131,32 @@ function sanitizeState(raw: unknown): TiempoState {
     iosSelectionData: typeof data.iosSelectionData === 'string' ? data.iosSelectionData : '',
     iosItems: Array.isArray(data.iosItems) ? data.iosItems : [],
     recoveredMs: typeof data.recoveredMs === 'number' ? Math.max(0, data.recoveredMs) : 0,
-    sessions: Array.isArray(data.sessions) ? data.sessions.slice(0, 40) : [],
+    sessions: sanitizeSessions(data.sessions),
     onboarded: Boolean(data.onboarded),
-    strict: true,
+    emergencyLeft: emergency.emergencyLeft,
+    emergencyRefillAt: emergency.emergencyRefillAt,
+    lastSeenAt: emergency.lastSeenAt,
+    strict: emergency.strict,
   };
 }
 
 export async function loadState(): Promise<TiempoState> {
   try {
-    const raw = (await AsyncStorage.getItem(KEY)) ?? (await AsyncStorage.getItem('tiempo.state.v1'));
-    if (!raw) return DEFAULT_STATE;
-    return sanitizeState(JSON.parse(raw));
+    const current = await AsyncStorage.getItem(KEY);
+    if (current) return sanitizeState(JSON.parse(current), { honorStrict: true });
+    const legacy =
+      (await AsyncStorage.getItem(LEGACY_KEYS[0])) ?? (await AsyncStorage.getItem(LEGACY_KEYS[1]));
+    if (!legacy) return sanitizeState(null, { honorStrict: false });
+    // v2 always persisted strict:true. That was not a user choice.
+    return sanitizeState(JSON.parse(legacy), { honorStrict: false });
   } catch {
-    return DEFAULT_STATE;
+    return sanitizeState(null, { honorStrict: false });
   }
 }
 
 export async function saveState(state: TiempoState) {
   await AsyncStorage.setItem(KEY, JSON.stringify(state));
+  await AsyncStorage.multiRemove(LEGACY_KEYS);
 }
 
 export function formatDuration(ms: number) {

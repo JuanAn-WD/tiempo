@@ -2,7 +2,7 @@
 
 Aparta el móvil. Recupera tu tiempo.
 
-App nativa de foco: eliges las apps, acercas un tag NFC, y esas apps se cierran. Para volver, hay que escanear el mismo tag. Tres desbloqueos de emergencia.
+App nativa de foco: eliges las apps, acercas un tag NFC, y esas apps se cierran. Para volver, hay que escanear el mismo tag o la llave móvil. Hay 3 desbloqueos de emergencia (se recupera 1 cada 30 días, máximo 3), cada uno con 5 minutos de espera. El modo estricto es opcional y las desactiva.
 
 UI propia (noche + ámbar), no copia los colores de Monk.
 
@@ -58,7 +58,7 @@ npx expo run:android
 1. Onboarding: empareja el tag.
 2. Apps: marca las que quieres cerrar.
 3. Foco: acerca el tag (o mantén pulsado para simular).
-4. Para desbloquear, el mismo tag. Emergencia: 3 veces.
+4. Para desbloquear, el mismo tag o la llave móvil. Si los pierdes: Desbloqueo de emergencia, 3 veces, con la app abierta 5 minutos. Se recupera 1 cada 30 días (máximo 3) y no se paga. El modo estricto, en Ajustes, quita esa salida; solo se activa con una llave de repuesto (segundo tag o llave móvil) y escribiendo `ESTRICTO`.
 
 ## Licencia
 

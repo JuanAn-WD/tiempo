@@ -1,7 +1,8 @@
-import { useRouter } from 'expo-router';
-import { useEffect, useMemo, useState } from 'react';
+import { useFocusEffect, useRouter } from 'expo-router';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { EmergencyEntry } from '@/components/emergency-entry';
 import { FocusOrb } from '@/components/focus-orb';
 import { PrimaryButton } from '@/components/primary-button';
 import { Screen } from '@/components/screen';
@@ -12,7 +13,7 @@ import { formatClock, formatDuration, MODES } from '@/lib/storage';
 
 export default function FocusScreen() {
   const router = useRouter();
-  const { state, toggleLockWithTag, setMode } = useTiempo();
+  const { state, toggleLockWithTag, setMode, refreshEmergencyClock } = useTiempo();
   const [clock, setClock] = useState<{ at: number; ms: number } | null>(null);
 
   useEffect(() => {
@@ -27,6 +28,12 @@ export default function FocusScreen() {
   const sessionMs =
     state.locked && state.lockedAt && clock?.at === state.lockedAt ? clock.ms : 0;
   const mode = MODES.find((item) => item.id === state.mode);
+
+  useFocusEffect(
+    useCallback(() => {
+      void refreshEmergencyClock();
+    }, [refreshEmergencyClock]),
+  );
 
   const hint = useMemo(() => {
     const action = state.locked ? 'Acerca tu tag para volver' : 'Acerca tu tag para bloquear';
@@ -96,8 +103,15 @@ export default function FocusScreen() {
         label={state.locked ? 'Escanear llave móvil' : 'Bloquear con llave móvil'}
         onPress={() => router.push('/scan-key')}
       />
+      {state.locked ? (
+        <View style={styles.emergency}>
+          <EmergencyEntry />
+        </View>
+      ) : null}
       <Text style={styles.footer}>
-        Solo tag NFC o llave móvil. Sin emergencias ni atajos.
+        {state.strict
+          ? 'Modo estricto. Solo tus llaves. Sin emergencias.'
+          : `Solo tu tag o tu llave móvil. Emergencias: ${state.emergencyLeft}`}
       </Text>
     </Screen>
   );
@@ -192,6 +206,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 10,
     marginBottom: 14,
+  },
+  emergency: {
+    marginTop: 10,
   },
   footer: {
     textAlign: 'center',
