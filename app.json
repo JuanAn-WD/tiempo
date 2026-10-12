@@ -8,7 +8,6 @@
     "scheme": "apartag",
     "userInterfaceStyle": "dark",
     "ios": {
-      "icon": "./assets/expo.icon",
       "bundleIdentifier": "com.apartag.app",
       "infoPlist": {
         "NFCReaderUsageDescription": "Apartag usa NFC para bloquear y desbloquear las apps que elijas al acercar tu tag."
@@ -47,7 +46,7 @@
         {
           "backgroundColor": "#0B0A09",
           "image": "./assets/images/splash-icon.png",
-          "imageWidth": 76
+          "imageWidth": 200
         }
       ],
       [
