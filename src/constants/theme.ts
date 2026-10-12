@@ -1,26 +1,44 @@
-/**
- * Below are the colors that are used in the app. The colors are defined in the light and dark mode.
- * There are many other ways to style your app. For example, [Nativewind](https://www.nativewind.dev/), [Tamagui](https://tamagui.dev/), [unistyles](https://reactnativeunistyles.vercel.app), etc.
- */
-
 import '@/global.css';
 
 import { Platform } from 'react-native';
 
+/** Ritual studio — deep ink, copper ember, soft mint. Not Monk blue. */
+export const Palette = {
+  bg: '#0B0A09',
+  bgElevated: '#141210',
+  surface: '#1B1815',
+  surfaceHigh: '#26211C',
+  ink: '#F7F1E8',
+  muted: '#9C8F7E',
+  faint: '#5E564C',
+  line: 'rgba(247,241,232,0.08)',
+  lineStrong: 'rgba(247,241,232,0.16)',
+  accent: '#D4923A',
+  accentBright: '#F0B15A',
+  accentSoft: 'rgba(212,146,58,0.14)',
+  accentText: '#1A1206',
+  focus: '#6EE7B0',
+  focusSoft: 'rgba(110,231,176,0.12)',
+  danger: '#E07060',
+  dangerSoft: 'rgba(224,112,96,0.14)',
+  white: '#FFFFFF',
+  black: '#000000',
+} as const;
+
 export const Colors = {
   light: {
-    text: '#000000',
-    background: '#ffffff',
-    backgroundElement: '#F0F0F3',
-    backgroundSelected: '#E0E1E6',
-    textSecondary: '#60646C',
+    text: Palette.ink,
+    background: Palette.bg,
+    backgroundElement: Palette.surface,
+    backgroundSelected: Palette.surfaceHigh,
+    textSecondary: Palette.muted,
   },
   dark: {
-    text: '#ffffff',
-    background: '#000000',
-    backgroundElement: '#212225',
-    backgroundSelected: '#2E3135',
-    textSecondary: '#B0B4BA',
+    text: Palette.ink,
+    background: Palette.bg,
+    backgroundElement: Palette.surface,
+    backgroundSelected: Palette.surfaceHigh,
+    textSecondary: Palette.muted,
   },
 } as const;
 
@@ -28,19 +46,15 @@ export type ThemeColor = keyof typeof Colors.light & keyof typeof Colors.dark;
 
 export const Fonts = Platform.select({
   ios: {
-    /** iOS `UIFontDescriptorSystemDesignDefault` */
-    sans: 'system-ui',
-    /** iOS `UIFontDescriptorSystemDesignSerif` */
-    serif: 'ui-serif',
-    /** iOS `UIFontDescriptorSystemDesignRounded` */
+    sans: 'System',
+    serif: 'Georgia',
     rounded: 'ui-rounded',
-    /** iOS `UIFontDescriptorSystemDesignMonospaced` */
     mono: 'ui-monospace',
   },
   default: {
-    sans: 'normal',
+    sans: 'sans-serif',
     serif: 'serif',
-    rounded: 'normal',
+    rounded: 'sans-serif',
     mono: 'monospace',
   },
   web: {
@@ -61,5 +75,14 @@ export const Spacing = {
   six: 64,
 } as const;
 
-export const BottomTabInset = Platform.select({ ios: 50, android: 80 }) ?? 0;
+export const Radius = {
+  sm: 14,
+  md: 20,
+  lg: 28,
+  xl: 36,
+  full: 999,
+} as const;
+
+/** Floating custom tab bar (~64) + safe-area cushion used by Screen padding. */
+export const BottomTabInset = Platform.select({ ios: 88, android: 96, default: 96 }) ?? 96;
 export const MaxContentWidth = 800;

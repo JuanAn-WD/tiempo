@@ -1,0 +1,107 @@
+import { CameraView, useCameraPermissions } from 'expo-camera';
+import { useRouter } from 'expo-router';
+import { useRef, useState } from 'react';
+import { StyleSheet, Text, View } from 'react-native';
+
+import { PrimaryButton } from '@/components/primary-button';
+import { Screen } from '@/components/screen';
+import { BrandMark } from '@/components/ui';
+import { Palette, Radius } from '@/constants/theme';
+import { useTiempo } from '@/context/tiempo-store';
+
+export default function ScanKeyScreen() {
+  const router = useRouter();
+  const { toggleLockWithMobileKey, state } = useTiempo();
+  const [permission, requestPermission] = useCameraPermissions();
+  const [busy, setBusy] = useState(false);
+  const handled = useRef(false);
+
+  if (!permission?.granted) {
+    return (
+      <Screen tabPadding={false}>
+        <BrandMark />
+        <Text style={styles.title}>Cámara para la llave</Text>
+        <Text style={styles.body}>
+          Necesitamos la cámara para leer el QR del otro móvil. No se guarda ninguna foto.
+        </Text>
+        <PrimaryButton label="Permitir cámara" onPress={() => void requestPermission()} />
+        <View style={{ height: 10 }} />
+        <PrimaryButton muted label="Cancelar" onPress={() => router.back()} />
+      </Screen>
+    );
+  }
+
+  return (
+    <Screen tabPadding={false} contentStyle={{ paddingHorizontal: 0 }}>
+      <View style={styles.header}>
+        <BrandMark />
+        <Text style={styles.title}>Escanear llave</Text>
+        <Text style={styles.body}>
+          {state.locked
+            ? 'Apunta al QR de “Soy la llave” para desbloquear.'
+            : 'Apunta al QR de “Soy la llave” para bloquear.'}
+        </Text>
+      </View>
+
+      <View style={styles.cameraWrap}>
+        <CameraView
+          style={StyleSheet.absoluteFill}
+          facing="back"
+          barcodeScannerSettings={{ barcodeTypes: ['qr'] }}
+          onBarcodeScanned={async ({ data }) => {
+            if (handled.current || busy) return;
+            handled.current = true;
+            setBusy(true);
+            const ok = await toggleLockWithMobileKey(data);
+            if (ok) {
+              router.replace('/');
+            } else {
+              handled.current = false;
+              setBusy(false);
+            }
+          }}
+        />
+        <View style={styles.frame} />
+      </View>
+
+      <View style={styles.footer}>
+        <PrimaryButton muted label="Cancelar" onPress={() => router.back()} />
+      </View>
+    </Screen>
+  );
+}
+
+const styles = StyleSheet.create({
+  header: {
+    paddingHorizontal: 24,
+    paddingBottom: 12,
+  },
+  title: {
+    marginTop: 16,
+    fontSize: 28,
+    color: Palette.ink,
+    fontWeight: '600',
+  },
+  body: {
+    marginTop: 8,
+    color: Palette.muted,
+    lineHeight: 22,
+  },
+  cameraWrap: {
+    flex: 1,
+    marginHorizontal: 24,
+    borderRadius: Radius.xl,
+    overflow: 'hidden',
+    backgroundColor: Palette.surface,
+  },
+  frame: {
+    ...StyleSheet.absoluteFill,
+    borderWidth: 2,
+    borderColor: Palette.accent,
+    borderRadius: Radius.xl,
+    margin: 48,
+  },
+  footer: {
+    padding: 24,
+  },
+});

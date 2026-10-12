@@ -1,23 +1,39 @@
 {
   "expo": {
-    "name": "tiempo",
+    "name": "Tiempo",
     "slug": "tiempo",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "tiempo",
-    "userInterfaceStyle": "automatic",
+    "userInterfaceStyle": "dark",
     "ios": {
-      "icon": "./assets/expo.icon"
+      "icon": "./assets/expo.icon",
+      "bundleIdentifier": "com.tiempo.focus",
+      "infoPlist": {
+        "NFCReaderUsageDescription": "Tiempo usa NFC para bloquear y desbloquear las apps que elijas al acercar tu tag."
+      },
+      "entitlements": {
+        "com.apple.developer.family-controls": true,
+        "com.apple.security.application-groups": [
+          "group.com.tiempo.focus"
+        ]
+      }
     },
     "android": {
+      "package": "com.tiempo.focus",
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
+        "backgroundColor": "#0B0A09",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
         "backgroundImage": "./assets/images/android-icon-background.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "permissions": [
+        "android.permission.NFC",
+        "android.permission.VIBRATE",
+        "android.permission.CAMERA"
+      ]
     },
     "web": {
       "output": "static",
@@ -25,18 +41,107 @@
     },
     "plugins": [
       "expo-router",
+      "expo-dev-client",
       [
         "expo-splash-screen",
         {
-          "backgroundColor": "#208AEF",
+          "backgroundColor": "#0B0A09",
           "image": "./assets/images/splash-icon.png",
           "imageWidth": 76
+        }
+      ],
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Tiempo usa la cámara para leer el QR de la llave móvil.",
+          "recordAudioAndroid": false
+        }
+      ],
+      [
+        "react-native-nfc-manager",
+        {
+          "nfcPermission": "Tiempo usa NFC para bloquear y desbloquear las apps que elijas al acercar tu tag.",
+          "includeNdefEntitlement": true
+        }
+      ],
+      [
+        "expo-app-blocker",
+        {
+          "ios": {
+            "appGroup": "group.com.tiempo.focus",
+            "shield": {
+              "title": "Estás en Tiempo",
+              "subtitle": "{appName} está bloqueada. Usa el tag NFC o la llave móvil.",
+              "primaryButtonLabel": "Volver a Tiempo",
+              "secondaryButtonLabel": null,
+              "primaryButtonColor": "#D4923A",
+              "titleColor": "#F7F1E8",
+              "subtitleColor": "#9C8F7E",
+              "backgroundColor": "#0B0A09",
+              "backgroundBlurStyle": "systemThickMaterialDark"
+            }
+          },
+          "android": {
+            "scheme": "tiempo",
+            "overlayTitle": "Estás en Tiempo",
+            "overlayText": "{appName} está bloqueada. Usa el tag NFC o la llave móvil.",
+            "overlayBackgroundColor": "#0B0A09",
+            "overlayTitleColor": "#F7F1E8",
+            "overlayTextColor": "#9C8F7E",
+            "notificationTitle": "Tiempo",
+            "notificationText": "{appName} está bloqueada."
+          }
         }
       ]
     ],
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
-    }
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "build": {
+          "experimental": {
+            "ios": {
+              "appExtensions": [
+                {
+                  "bundleIdentifier": "com.tiempo.focus.ShieldConfiguration",
+                  "targetName": "ShieldConfiguration",
+                  "entitlements": {
+                    "com.apple.developer.family-controls": true,
+                    "com.apple.security.application-groups": [
+                      "group.com.tiempo.focus"
+                    ]
+                  }
+                },
+                {
+                  "bundleIdentifier": "com.tiempo.focus.ShieldAction",
+                  "targetName": "ShieldAction",
+                  "entitlements": {
+                    "com.apple.developer.family-controls": true,
+                    "com.apple.security.application-groups": [
+                      "group.com.tiempo.focus"
+                    ]
+                  }
+                },
+                {
+                  "bundleIdentifier": "com.tiempo.focus.DeviceActivityMonitor",
+                  "targetName": "DeviceActivityMonitor",
+                  "entitlements": {
+                    "com.apple.developer.family-controls": true,
+                    "com.apple.security.application-groups": [
+                      "group.com.tiempo.focus"
+                    ]
+                  }
+                }
+              ]
+            }
+          }
+        },
+        "projectId": "58a7bafd-e180-4240-a594-9f17bc2ae327"
+      }
+    },
+    "owner": "jhotaota"
   }
 }

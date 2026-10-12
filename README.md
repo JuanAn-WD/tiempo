@@ -1,56 +1,59 @@
-# Welcome to your Expo app 👋
+# Tiempo
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+App nativa de foco: eliges las apps, acercas un tag NFC, y esas apps se cierran. Para volver, hay que escanear el mismo tag. Tres desbloqueos de emergencia.
 
-## Get started
+UI propia (noche + ámbar), no copia los colores de Monk.
 
-1. Install dependencies
+## Qué hace de verdad
 
-   ```bash
-   npm install
-   ```
+- **Android (Windows o Mac):** bloqueo real con overlay + acceso de uso (`expo-app-blocker`) y lectura NFC del tag.
+- **iOS (hace falta Mac):** bloqueo real con Tiempo de uso / Family Controls. Apple tiene que aprobar el entitlement para TestFlight y App Store. Mientras tanto, en Xcode usa *Family Controls (Development)*.
+- **Expo Go no vale.** Hay que generar un development build.
 
-2. Start the app
+## Generar APK (recomendado)
 
-   ```bash
-   npx expo start
-   ```
-
-In the output, you'll find options to open the app in a
-
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
-
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
-
-## Get a fresh project
-
-When you're ready, run:
+No hace falta Android Studio. Con cuenta de Expo:
 
 ```bash
-npm run reset-project
+npx eas-cli@latest login
+npx eas-cli@latest build:configure
+npx eas-cli@latest build --platform android --profile preview
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+Cuando termine, descarga el `.apk` desde el enlace que muestra la CLI e instálalo en el móvil (permite “origenes desconocidos” si te lo pide).
 
-### Other setup steps
+Perfil `preview` en `eas.json` → `android.buildType: "apk"`.
 
-- To set up ESLint for linting, run `npx expo lint`, or follow our guide on ["Using ESLint and Prettier"](https://docs.expo.dev/guides/using-eslint/)
-- If you'd like to set up unit testing, follow our guide on ["Unit Testing with Jest"](https://docs.expo.dev/develop/unit-testing/)
-- Learn more about the TypeScript setup in this template in our guide on ["Using TypeScript"](https://docs.expo.dev/guides/typescript/)
+## Arrancar en Android (local)
 
-## Learn more
+1. Instala [Android Studio](https://developer.android.com/studio) y un emulador, o activa USB debugging en el móvil.
+2. Un tag NFC (NTAG213/215/216). En emulador, **mantén pulsado** el tag de la pantalla de Foco para simular el toque.
+3. En esta carpeta:
 
-To learn more about developing your project with Expo, look at the following resources:
+```bash
+npm install
+npx expo prebuild --platform android
+npx expo run:android
+```
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+4. En Ajustes, abre **permisos Android** y concede:
+   - Mostrar sobre otras apps
+   - Acceso a uso
+   - Notificaciones
 
-## Join the community
+## iOS
 
-Join our community of developers creating universal apps.
+1. Pon tu Team ID de Apple en `app.json` → `expo.ios.appleTeamId`.
+2. Crea el App Group `group.com.tiempo.focus` y 4 App IDs (app + DeviceActivityMonitor + ShieldAction + ShieldConfiguration) con Family Controls.
+3. `npx expo prebuild --platform ios` y `npx expo run:ios --device` (NFC y Screen Time no van en simulador).
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+## Uso
+
+1. Onboarding: empareja el tag.
+2. Apps: marca las que quieres cerrar.
+3. Foco: acerca el tag (o mantén pulsado para simular).
+4. Para desbloquear, el mismo tag. Emergencia: 3 veces.
+
+## Licencia
+
+Uso privado / prototipo.

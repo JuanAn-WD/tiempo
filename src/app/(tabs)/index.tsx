@@ -1,0 +1,203 @@
+import { useRouter } from 'expo-router';
+import { useEffect, useMemo, useState } from 'react';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
+
+import { FocusOrb } from '@/components/focus-orb';
+import { PrimaryButton } from '@/components/primary-button';
+import { Screen } from '@/components/screen';
+import { Badge, BrandMark, StatTile } from '@/components/ui';
+import { Palette, Radius } from '@/constants/theme';
+import { useTiempo } from '@/context/tiempo-store';
+import { formatClock, formatDuration, MODES } from '@/lib/storage';
+
+export default function FocusScreen() {
+  const router = useRouter();
+  const { state, toggleLockWithTag, setMode } = useTiempo();
+  const [clock, setClock] = useState<{ at: number; ms: number } | null>(null);
+
+  useEffect(() => {
+    if (!state.locked || !state.lockedAt) return;
+    const startedAt = state.lockedAt;
+    const id = setInterval(() => {
+      setClock({ at: startedAt, ms: Date.now() - startedAt });
+    }, 1000);
+    return () => clearInterval(id);
+  }, [state.locked, state.lockedAt]);
+
+  const sessionMs =
+    state.locked && state.lockedAt && clock?.at === state.lockedAt ? clock.ms : 0;
+  const mode = MODES.find((item) => item.id === state.mode);
+
+  const hint = useMemo(() => {
+    if (state.locked) return 'Tag NFC o llave móvil · mantén pulsado para simular';
+    return 'Tag NFC o llave móvil · mantén pulsado para simular';
+  }, [state.locked]);
+
+  return (
+    <Screen atmosphere={state.locked ? 'focus' : 'idle'}>
+      <View style={styles.topBar}>
+        <BrandMark size={20} />
+        <Badge
+          label={state.locked ? 'EN FOCO' : 'LISTO'}
+          tone={state.locked ? 'focus' : 'accent'}
+        />
+      </View>
+
+      <View style={styles.heroCopy}>
+        <Text style={styles.kicker}>{state.locked ? mode?.title ?? 'Sesión' : 'Presencia'}</Text>
+        <Text style={styles.title}>
+          {state.locked ? 'El ruido está fuera' : 'Tu atención,\notra vez tuya.'}
+        </Text>
+      </View>
+
+      <View style={styles.orbArea}>
+        <FocusOrb
+          locked={state.locked}
+          hint={hint}
+          clock={state.locked ? formatClock(sessionMs) : undefined}
+          onPress={() => void toggleLockWithTag(false)}
+          onLongPress={() => void toggleLockWithTag(true)}
+        />
+      </View>
+
+      <View style={styles.modeGrid}>
+        {MODES.map((item) => {
+          const on = item.id === state.mode;
+          return (
+            <Pressable
+              key={item.id}
+              accessibilityRole="button"
+              accessibilityState={{ selected: on }}
+              onPress={() => setMode(item.id)}
+              style={[styles.modeCard, on && (state.locked ? styles.modeCardFocus : styles.modeCardOn)]}>
+              <View style={[styles.modeMark, on && styles.modeMarkOn]}>
+                <Text style={[styles.modeMarkText, on && styles.modeMarkTextOn]}>{item.mark}</Text>
+              </View>
+              <Text style={[styles.modeTitle, on && styles.modeTitleOn]}>{item.title}</Text>
+            </Pressable>
+          );
+        })}
+      </View>
+
+      <View style={styles.statsRow}>
+        <StatTile
+          emphasize={!state.locked}
+          value={formatDuration(state.locked ? sessionMs : state.recoveredMs)}
+          label={state.locked ? 'esta sesión' : 'recuperado'}
+        />
+        <StatTile
+          value={state.mobileKeySecret ? 'ON' : '—'}
+          label="llave móvil"
+        />
+      </View>
+
+      <PrimaryButton
+        label={state.locked ? 'Escanear llave móvil' : 'Bloquear con llave móvil'}
+        onPress={() => router.push('/scan-key')}
+      />
+      <Text style={styles.footer}>
+        Solo tag NFC o llave móvil. Sin emergencias ni atajos.
+      </Text>
+    </Screen>
+  );
+}
+
+const styles = StyleSheet.create({
+  topBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 18,
+  },
+  heroCopy: {
+    marginBottom: 8,
+  },
+  kicker: {
+    color: Palette.muted,
+    fontSize: 12,
+    fontWeight: '700',
+    letterSpacing: 1.8,
+    textTransform: 'uppercase',
+  },
+  title: {
+    marginTop: 8,
+    fontSize: 34,
+    lineHeight: 40,
+    color: Palette.ink,
+    fontWeight: '600',
+    letterSpacing: -1,
+  },
+  orbArea: {
+    flex: 1,
+    justifyContent: 'center',
+    minHeight: 300,
+  },
+  modeGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginBottom: 12,
+  },
+  modeCard: {
+    width: '48%',
+    flexGrow: 1,
+    minWidth: '46%',
+    backgroundColor: Palette.surface,
+    borderRadius: Radius.md,
+    borderWidth: 1,
+    borderColor: Palette.line,
+    paddingVertical: 14,
+    paddingHorizontal: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  modeCardOn: {
+    backgroundColor: Palette.accentSoft,
+    borderColor: 'rgba(212,146,58,0.45)',
+  },
+  modeCardFocus: {
+    backgroundColor: Palette.focusSoft,
+    borderColor: 'rgba(110,231,176,0.4)',
+  },
+  modeMark: {
+    width: 28,
+    height: 28,
+    borderRadius: 9,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: Palette.bgElevated,
+  },
+  modeMarkOn: {
+    backgroundColor: Palette.accent,
+  },
+  modeMarkText: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: Palette.faint,
+  },
+  modeMarkTextOn: {
+    color: Palette.accentText,
+  },
+  modeTitle: {
+    color: Palette.muted,
+    fontWeight: '700',
+    fontSize: 14,
+  },
+  modeTitleOn: {
+    color: Palette.ink,
+  },
+  statsRow: {
+    flexDirection: 'row',
+    gap: 10,
+    marginBottom: 14,
+  },
+  footer: {
+    textAlign: 'center',
+    color: Palette.faint,
+    fontSize: 13,
+    fontWeight: '600',
+    letterSpacing: 0.2,
+    paddingVertical: 10,
+  },
+});
