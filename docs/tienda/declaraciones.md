@@ -2,7 +2,7 @@
 
 Notas internas para Juan Antonio López. No van a la landing. Las páginas públicas están en [`docs/es/`](../es/privacidad.md) y [`docs/en/`](../en/privacy.md).
 
-Describen la v1, con lo de esta rama más los desbloqueos de emergencia de #4 (`feat/3-emergencias`, comprobado en el remoto el 12 de octubre de 2026): sin cuenta, sin servidor, sin analítica y sin compras. Las emergencias son locales. Si más adelante se añade analítica, `expo-updates`, un SDK de fallos o un pago, hay que rehacer Data safety y la etiqueta de Apple.
+Describen el binario que junta esta rama (Apartag) con la PR #4 (desbloqueos de emergencia y modo estricto): sin cuenta, sin servidor, sin analítica, sin compras. Los desbloqueos (3, se recupera 1 cada 30 días sin fecha garantizada, cuenta atrás de 5 minutos con la app en pantalla) y el modo estricto opcional funcionan solo en el teléfono y no cambian ninguna respuesta de privacidad. #4, sola, sigue llamándose Tiempo: estos textos valen cuando el binario subido tenga las dos cosas. Si más adelante se añade analítica, `expo-updates`, un SDK de fallos o un pago, hay que rehacer Data safety y la etiqueta de Apple.
 
 Los textos **[PENDIENTE: …]** hay que rellenarlos antes de enviar la ficha.
 
@@ -35,18 +35,21 @@ Si un revisor pregunta por categorías concretas, la respuesta sigue siendo que 
 | Fotos o vídeos | La cámara lee un QR en memoria. No hay acceso a la galería ni `READ_MEDIA_IMAGES` / `READ_MEDIA_VIDEO` | No |
 | Audio | `recordAudioAndroid` está en false | No |
 | Contactos, calendario, archivos | No se usan | No |
-| Actividad en apps / apps instaladas | La lista de apps con icono de lanzador se lee para que el usuario elija. Se guarda la selección (nombres de paquete). El acceso de uso mira la app en primer plano para taparla. El módulo nativo puede anotar en local el nombre de la app bloqueada y la hora del intento. Las emergencias (cuántas quedan, cuándo vuelve la siguiente, el modo estricto y la etiqueta «Emergencia» de la sesión) también se quedan en el teléfono. Nada de eso se sube | No |
+| Actividad en apps / apps instaladas | La lista de apps con icono de lanzador se lee para que el usuario elija. Se guarda la selección (nombres de paquete). El acceso de uso mira la app en primer plano para taparla. El módulo nativo puede anotar en local el nombre de la app bloqueada y la hora del intento. El historial de sesiones (con la marca «Emergencia» si terminó así) y el contador de desbloqueos de emergencia se guardan en AsyncStorage. Nada de eso se sube | No |
 | Historial de navegación | No | No |
 | Información y rendimiento de la app (fallos, diagnósticos) | No hay SDK de fallos. Los informes que Play genera si el usuario comparte diagnósticos con Google son de la tienda, no una recogida de Apartag | No |
-| Identificadores del dispositivo | No hay ID de publicidad ni identificador de cuenta. El UID del tag NFC se guarda solo en el teléfono | No |
+| Identificadores del dispositivo | No hay ID de publicidad ni identificador de cuenta. El UID del tag NFC y, si existe, el del segundo tag (llave de repuesto) se guardan solo en el teléfono | No |
 
 Nota para el campo de revisión, si hace falta (inglés):
 
 ```
 Apartag is an on-device focus app. It has no account, no backend, and no analytics SDK.
-The installed-app list, NFC tag id, Screen Time selection, and session history stay in
-app-private storage and are never transmitted. Camera frames are used only to decode a
-QR code and are not saved. Please treat Data safety as "no data collected".
+The installed-app list, NFC tag ids, Screen Time selection, session history, and the
+emergency-unlock counter stay in app-private storage and are never transmitted to the
+developer. On Android, Auto Backup is left on (Expo's default) and can restore that
+local store to the same user. On iPhone, AsyncStorage excludes its directory from
+iCloud backup. Camera frames are used only to decode a QR code and are not saved.
+Please treat Data safety as "no data collected".
 ```
 
 El perfil `production` de `eas.json` sigue generando APK. Play exige un AAB: eso es otra tarea, anterior a usar estas respuestas en una ficha de producción.
@@ -70,9 +73,11 @@ Tras el prebuild, el manifiesto fusionado pide más de lo que lista `app.json`. 
 | `POST_NOTIFICATIONS` | Sí | Aviso «{app} está bloqueada» | Permiso en tiempo de ejecución en Android 13+. Sin formulario aparte |
 | `RECEIVE_BOOT_COMPLETED` | Sí | El `BootReceiver` de la librería vuelve a arrancar el servicio al encender el teléfono | Sin formulario aparte. Sirve para que una sesión ya empezada siga bloqueando |
 | `QUERY_ALL_PACKAGES` | Sí, hoy | Lo mete el manifiesto de la librería para `getInstalledApps()` | Formulario de permisos, si se deja. Ver §2.3: conviene quitarlo |
-| Accesibilidad (`BIND_ACCESSIBILITY_SERVICE`) | **No** | — | **No presentes la declaración de accesibilidad.** No marques `isAccessibilityTool` |
+| Accesibilidad (`BIND_ACCESSIBILITY_SERVICE`) | **No** | — | **No presentes la declaración de accesibilidad.** No marques `isAccessibilityTool`. La pantalla de emergencia usa `accessibilityLabel`, `accessibilityHint` y `accessibilityActions` de React Native: son etiquetas para TalkBack y VoiceOver, no un `AccessibilityService`, y no piden ningún permiso |
 | Administrador del dispositivo | **No** | — | Nada que declarar |
 | `INTERNET` | Lo añade Expo/React Native al generar `android/` | El código de Apartag no abre conexiones | No declares recogida de datos de red |
+
+La PR #4 (desbloqueos de emergencia y modo estricto) no añade permisos: `app.json` no cambia en esa rama y la única dependencia nueva es la fuente `@expo-google-fonts/jetbrains-mono`, empaquetada en el binario (`require` de un `.ttf` local, licencia SIL OFL 1.1; no hay pantalla de avisos de terceros en la app). La cuenta atrás de emergencia usa `AppState` de React Native para saber si la app está en primer plano; no usa el acceso de uso ni el overlay, y no hay `expo-keep-awake`. Cualquier `AppState` distinto de `active` (cambiar de app, segundo plano y, en la práctica, bloquear la pantalla) cancela la cuenta sin gastar un desbloqueo.
 
 ### 2.1 Acceso de uso y overlay
 
@@ -86,8 +91,8 @@ Apartag necesita dos permisos para bloquear de verdad.
 Acceso de uso: para saber si la app que acabas de abrir es una de las que elegiste.
 Solo se mira en el momento. No guardamos un historial de tu día y no sale de tu teléfono.
 
-Mostrar sobre otras apps: para tapar esa app con un aviso hasta que acerques tu tag
-o escanees la llave móvil.
+Mostrar sobre otras apps: para tapar esa app con un aviso hasta que acerques tu tag,
+escanees la llave móvil o termines un desbloqueo de emergencia dentro de Apartag.
 ```
 
 English, if the listing or a reviewer needs it:
@@ -100,7 +105,7 @@ That check happens in the moment. We do not keep a history of your day,
 and it never leaves your phone.
 
 Display over other apps: to cover that app with a notice until you tap
-your tag or scan your mobile key.
+your tag, scan your mobile key, or finish an emergency unlock inside Apartag.
 ```
 
 Hoy el onboarding abre las dos pantallas del sistema seguidas, sin este texto previo. Conviene enseñar este párrafo antes de cada permiso. Mientras tanto, pégalo en la descripción de Play y en las notas para el revisor.
@@ -116,7 +121,7 @@ El plugin 0.1.77 no añade la propiedad `android.app.PROPERTY_SPECIAL_USE_FGS_SU
 ```
 Detects when a user-selected app comes to the foreground during a focus
 session and covers it with a blocking overlay until the user scans an NFC tag
-or mobile-key QR.
+or mobile-key QR, or completes an in-app emergency unlock.
 ```
 
 Respuestas del formulario:
@@ -139,8 +144,11 @@ Apartag is a digital-wellbeing app. While a focus session the user started
 is active, AppBlockerService (foreground service type specialUse) checks which
 app is in the foreground with UsageStatsManager. If that app is one the user
 chose to block, Apartag shows a full-screen overlay and a notification and
-brings the user back to Apartag. The service stops when the user scans the
-same NFC tag or the mobile-key QR. No usage data leaves the device.
+brings the user back to Apartag. The service stops when the user scans one of
+their paired NFC tags or the mobile-key QR, or completes an emergency unlock
+inside Apartag (limited to 3, each after a 5-minute countdown with the app in
+the foreground; the exact refill date is not guaranteed). No usage data leaves
+the device.
 The service is not an AccessibilityService.
 ```
 
@@ -190,7 +198,7 @@ Con eso, la ficha publica **Data Not Collected**. No marques identificadores, us
 Por qué es «no», y no «datos no vinculados a ti»:
 
 - No hay cuenta ni servidor, así que el desarrollador no recibe datos.
-- La selección de Tiempo de uso, el UID del tag, el secreto de la llave y las sesiones se quedan en el teléfono y en el App Group `group.com.apartag.app`.
+- La selección de Tiempo de uso se comparte en el teléfono con las extensiones, en el App Group `group.com.apartag.app`. Los UID de los tags (principal y de repuesto), el secreto de la llave, las sesiones (con la marca «Emergencia» cuando procede), el contador de desbloqueos y el modo estricto van en AsyncStorage, también en el teléfono. No van al App Group.
 - La cámara decodifica un QR y no guarda la imagen.
 - Expo se usa para compilar. En el binario de tienda no hay `expo-updates` ni un socio que recoja datos. No declares a Expo como tercero que recoge datos.
 - El pago de la tienda, cuando exista, lo procesa Apple. Esta versión no tiene compras, así que no hay datos de pago.
@@ -229,7 +237,19 @@ Apartag (bundle ID com.apartag.app) is a self-control focus app for the
 person who owns the device. They choose the apps or categories to shield,
 then lock that choice with a physical NFC tag or with a short-lived QR code
 shown on a trusted person's phone. To open the shielded apps again, they
-scan that same key.
+scan one of their own keys (the tag, an optional second tag, or the mobile
+key).
+
+So that nobody gets stuck if they lose their key, the app also offers a
+limited emergency unlock inside Apartag: 3 at most, one returning every 30
+days on the device (the exact date is not guaranteed), each only after a
+5-minute countdown with Apartag in the foreground. Locking the screen or
+leaving the app cancels that countdown without using a charge. It removes
+the shield the user set, from within the app. Using one is recorded only in
+the app's local stats, labeled "Emergencia" (the interface is in Spanish).
+The user can turn on an optional strict mode (off by default) that disables
+emergency unlocks; it requires at least two keys and typing ESTRICTO, and it
+cannot be turned off while a lock is active.
 
 We use Family Controls only with AuthorizationCenter for
 FamilyControlsMember.individual. We do not request authorization for a
@@ -240,11 +260,14 @@ Screen Time APIs:
 - FamilyControls: individual authorization, started by the device owner
   with Face ID or Touch ID.
 - ManagedSettings: apply and remove shields for the selection the user made.
+  Shields are removed when the user scans a key or completes an in-app
+  emergency unlock.
 - DeviceActivity: the DeviceActivityMonitor extension keeps the shield in
   place while a focus session is active.
 - ShieldConfiguration and ShieldAction: show a shield the user can recognize
   (title "Estás en Apartag", subtitle telling them to go get their key) and
-  return them to Apartag. The shield has no one-tap bypass.
+  return them to Apartag. The shield itself has no bypass button; the
+  emergency unlock is only available inside the app.
 
 The same distribution entitlement is required for these extensions, which
 share the on-device App Group group.com.apartag.app:
@@ -252,16 +275,15 @@ share the on-device App Group group.com.apartag.app:
 - com.apartag.app.ShieldAction
 - com.apartag.app.ShieldConfiguration
 
-Privacy: the Screen Time tokens and the user's selection stay on the device.
-Apartag has no account, no server, and no analytics. We do not receive the
-names of shielded apps on a server. We do not sell or share Screen Time data.
-Emergency unlocks (3 on the device, one back every 30 days, each after a
-5-minute countdown that only runs while the app is in the foreground) and the
-optional strict mode are stored only on the phone. Leaving the app cancels
-the countdown without spending a charge. Nothing about them is transmitted.
+Privacy: the Screen Time tokens, the user's selection, the session history,
+and the emergency-unlock counter stay on the device. Apartag has no account,
+no server, and no analytics. We do not receive the names of shielded apps on
+a server. We do not sell or share Screen Time data.
 
 This is not a parental-control product and not an MDM product.
 ```
+
+Ese texto asume el binario ya renombrado. En `feat/3-emergencias` el escudo y los permisos de NFC y cámara todavía dicen «Tiempo» (`com.tiempo.focus`, «Estás en Tiempo», «Tiempo usa NFC…», «Tiempo usa la cámara…»). Apple lee esos textos junto con esta justificación: no los pegues hasta que el binario sea Apartag.
 
 Cuando Apple lo apruebe, el perfil de distribución tiene que incluir `com.apple.developer.family-controls` en la app y en cada extensión. Si falla la subida, lo habitual es que falte el entitlement de una de las tres extensiones, no el de la app.
 
@@ -272,4 +294,4 @@ Cuando Apple lo apruebe, el perfil de distribución tiene que incluir `com.apple
 - Cuestionario de clasificación por edades (IARC / Apple). Hay que contestarlo en la consola. La app no está dirigida a menores de 14 años y no tiene contenidos de tienda que clasificar más allá de eso; no copies de aquí una edad de PEGI.
 - Publicidad: no hay. En los formularios de anuncios, la respuesta es no.
 - Compras: no hay en esta versión. Cuando exista el pago único, el producto será non-consumable y habrá que actualizar la ficha, no esta política de «no hay compras», el día que el código lo tenga.
-- Las emergencias de la v1 vienen de #4 (`feat/3-emergencias`), no de esta rama. Hay que fusionar #4 antes que #6. El comportamiento, leído en ese remoto: 3 desbloqueos en el teléfono, se recupera 1 cada 30 días hasta 3, cada uno con 5 minutos de cuenta atrás y la app en primer plano (salir la cancela y no gasta), la sesión queda como «Emergencia» en las estadísticas locales, y el modo estricto viene apagado. Para encenderlo hace falta una llave de repuesto (segundo tag o llave móvil, además de la principal) y escribir ESTRICTO. Mientras está encendido, las emergencias no se ofrecen. Atrasar el reloj no recarga uno. Nada se envía. La respuesta de Data safety sigue siendo «no se recogen datos».
+- Desbloqueos de emergencia: el código está en #4 y el nombre Apartag en #2. Hay que fusionar #4 (después de #1, con la base cambiada a `master`) antes que #6, y el binario de tienda tiene que llevar las dos. Si se describen en la ficha, usa 3 desbloqueos, 1 cada 30 días sin prometer la fecha, cuenta atrás de 5 minutos que se cancela al salir o al bloquear la pantalla, etiqueta «Emergencia» y modo estricto opcional. No hay códigos de respaldo ni recuperación remota. No se ha puesto `android.allowBackup: false`: en Android la copia automática puede restaurar el contador; en iPhone AsyncStorage 2.2.0 lo excluye de iCloud. La respuesta de Data safety sigue siendo «no se recogen datos». Si se publica un binario sin #4, estas frases de emergencia no valen.

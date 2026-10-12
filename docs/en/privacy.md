@@ -27,7 +27,7 @@ If the app is published in the name of a company, replace this section with that
 
 ## What Apartag is
 
-Apartag locks the apps you choose. You tap an NFC tag, or you scan a QR code shown on a trusted person's phone, and those apps are blocked. Opening them again takes the same key.
+Apartag locks the apps you choose. You tap an NFC tag, or you scan a QR code shown on a trusted person's phone, and those apps are blocked. Opening them again takes one of your keys: that tag, a second tag you paired as a spare, or the mobile key. If you lose them, and strict mode is off, you can use one of the emergency unlocks described below.
 
 This version of the app is free and has no purchases.
 
@@ -46,22 +46,22 @@ The stores (Google Play and the App Store) have their own download account. That
 
 ## What is stored on the phone
 
-Everything in this list stays in the app's private storage, on the phone itself. It is deleted when you uninstall the app or clear its data.
+Everything in this list stays in the app's private storage, on the phone itself. Uninstalling the app or clearing its data removes it from that installation. On Android, the system's automatic backup can keep it and restore it: `app.json` does not set `allowBackup`, and Expo leaves it on. On iPhone, AsyncStorage (the counter, the tag identifiers, the key secret, and the sessions) is left out of the iCloud backup. The Screen Time selection lives separately, in the group shared with the extensions. Juan Antonio López does not receive a copy.
 
 | What | Why |
 |---|---|
 | Whether you finished the introduction | So it is not shown again |
 | Identifier of the paired NFC tag | To recognize your key and reject a different tag |
-| Identifier of a second tag, if you pair one | A spare key. Together with another key, it is required before strict mode can be turned on |
-| How many emergency unlocks are left, when the next one returns, and the latest time the app has seen | To keep the count of 3 unlocks on the phone. Setting the clock back does not restore one |
-| Whether strict mode is on | To remember that you turned it on. It starts off |
+| Identifier of a second NFC tag (spare key), if you pair one | To accept it as a key too, and to know how many keys you have, because strict mode needs at least two |
 | Mobile-key secret, if you create one | To check the QR code from the other phone |
 | On the phone that acts as the key: that secret and a label | So it can show the QR code. The label inside today's pairing QR is the text "apartag.", not your name |
 | Whether a session is running, and when it started | To keep the lock and time the session |
 | Apps you select on Android (package name) | To know what to block |
 | On iPhone: the Screen Time selection | To apply the system shield to what you chose |
 | Chosen mode (Work, Study, Home, or Sport) | A label for the session. In this version all four modes share the same app list |
-| Time from Apartag sessions, and up to 40 sessions (mode, start, end, and, if you left by emergency, that mark) | The stats screen. That session is labelled «Emergencia». It does not leave the phone |
+| Time from Apartag sessions, and up to 40 sessions (mode, start, end, and whether it ended with an emergency unlock) | The stats screen. Those sessions show the label «Emergencia». The interface is in Spanish |
+| Emergency unlocks you have left, when the next one comes back, and the latest time the app has seen on the phone's clock | To keep count (one comes back every 30 days, up to 3, with no guaranteed date) and not to refill if the clock is behind that time |
+| Whether strict mode is on | To hide and turn off emergency unlocks while it is on |
 | Android block settings (list, overlay copy) | The service that covers a blocked app |
 
 The age and hours in the "years on screen" calculator exist only while that screen is open. They are not saved. The calculation does not read your real phone use: it uses the numbers you type there.
@@ -92,19 +92,32 @@ If you create a mobile key, a secret is generated on your phone. The pairing QR 
 
 That second QR code expires after 60 seconds. It can be used again during that minute. It does not pass through a server: it goes from one screen to the other phone's camera.
 
-Show the pairing QR code only to someone you trust. You can revoke the key in Settings when a session is not locked. Apartag cannot revoke it for you, because the secret never leaves the phones.
+Show the pairing QR code only to someone you trust. You can revoke the key in Settings when a session is not locked. If strict mode is on, you can revoke it only if you still have two other keys (the tag and a second tag). Apartag cannot revoke it for you, because the secret never leaves the phones.
 
 ## If you lose the tag
 
-There are three emergency unlocks. They are stored only on the phone and are not sent anywhere. You start with 3. Each time you spend one, 1 comes back after 30 days, and the total never goes above 3. Setting the phone's clock back does not restore one.
+If you paired a second tag or a mobile key, you can unlock with it.
 
-To spend one, Apartag has to stay in the foreground for a 5-minute countdown. If you leave the app, the countdown is cancelled and no charge is spent. When it reaches zero, you confirm the unlock. The session is saved in the phone's stats with the label «Emergencia». You can then pair a new tag. Apartag cannot do that for you from outside.
+If not, Apartag has **emergency unlocks**. They work only inside the app and only on your phone:
 
-Strict mode is optional and starts off. Turning it on takes a spare key (a second tag or the mobile key, in addition to the main one) and typing ESTRICTO. While it is on, emergency unlocks are hidden and cannot be used. It cannot be turned off during a lock.
+- You start with 3. They are free.
+- One comes back every 30 days, up to a maximum of 3. Using one does not restart a waiting period that is already running. The days are calculated on the phone, and the date is not guaranteed. If the clock is behind the latest time the app already recorded, none comes back until the clock reaches that time. If the app stays in memory while the phone sleeps, that sleeping time may not count and the wait can run longer. If the app was closed and the clock was set forward, a refill can arrive sooner.
+- Each one takes a 5-minute countdown with Apartag open on screen. If you switch apps, lock the screen, or Apartag goes to the background, the countdown is cancelled and nothing is used up. When it ends, you confirm and the lock opens. The app does not keep the screen awake during those five minutes.
+- The session is recorded with the label «Emergencia» in the app's stats, on your phone. The interface is in Spanish. You can then pair a new tag.
 
-If strict mode is on, or you have no emergency unlocks left, and you also have no key, the app does not open the session remotely. On Android you can uninstall Apartag, or turn off "display over other apps" and "usage access". The lock does not survive that. We do not ask for device-administrator rights.
+Neither the counter nor those sessions leave the phone. Nobody, including Juan Antonio López, is told that you used an emergency unlock.
+
+**Strict mode** is optional and off by default. If you turn it on, there are no emergency unlocks: only your keys unlock. To turn it on you need at least two keys (the tag plus a second tag or a mobile key) and you have to type "ESTRICTO". It cannot be turned off during a lock. While it stays on, you cannot remove a key if that would leave you with fewer than two.
+
+This version has no backup codes. If you have no key and no emergency unlock left, or strict mode is on and you lost all your keys, the app cannot end the session from inside.
+
+In that case, on Android you can uninstall Apartag, or turn off "display over other apps" and "usage access". The lock does not survive that. We do not ask for device-administrator rights.
 
 On iPhone, the authorization is Screen Time for the owner of the phone. You can revoke Apartag's permission in Settings, within what iOS allows, or delete the app. We have no remote button that unlocks you.
+
+On Android, the list of apps you can block does not include Apartag itself. On iPhone, the picker is the system Screen Time picker and this version does not remove Apartag from that selection: if you include it, the shield can stop you from opening the app, and with it the emergency screen.
+
+Uninstalling or clearing data removes the counter from that installation, and a new installation starts again with 3, because there is no copy on a server. On Android, the system's automatic backup can restore the previous counter, the tag identifiers, and the mobile-key secret. On iPhone, that store is left out of iCloud. Juan Antonio López receives none of those copies.
 
 ## Children
 
@@ -112,7 +125,7 @@ Apartag is not directed at children under 14. There is no sign-up, so we do not 
 
 ## How long it lasts
 
-The data lasts as long as the installation. To delete it, uninstall Apartag or clear the app's data in system settings. No copy remains with the controller, because there never was one.
+The data lasts as long as the installation, aside from the phone's own backup described above. To delete it from the installation, uninstall Apartag or clear the app's data in system settings. On Android, if you do not want it to come back, also turn off that app's backup in system settings. No copy remains with the controller, because there never was one.
 
 ## Your rights
 

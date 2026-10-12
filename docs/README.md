@@ -1,6 +1,6 @@
 # Documentos legales de Apartag
 
-Páginas para la landing y notas para rellenar las consolas de las tiendas. Describen la v1: lo de esta rama más los desbloqueos de emergencia de #4 (`feat/3-emergencias`), comprobados en el remoto el 12 de octubre de 2026. Sigue sin compras y sin servidor. Las emergencias no salen del teléfono.
+Páginas para la landing y notas para rellenar las consolas de las tiendas. Describen la app con la PR #4 incluida (desbloqueos de emergencia locales y modo estricto opcional) y el nombre Apartag de esta rama. No hay compras ni servidor. Las emergencias no se envían a nadie. #4, sola, sigue en la marca Tiempo: estos textos valen para el binario que tenga las dos.
 
 ## Publicar en la web
 
@@ -32,10 +32,10 @@ Busca `PENDIENTE` en `docs/`. Ninguno es opcional si la página o el formulario 
 
 ## De dónde sale cada afirmación
 
-- Persistencia local: `src/lib/storage.ts` en esta rama (AsyncStorage, clave `tiempo.state.v2`). En #4 la clave pasa a `tiempo.state.v3` y añade el segundo tag, las emergencias y el modo estricto. No hay `fetch` ni SDK de analítica en `src/`.
+- Persistencia: en #4, AsyncStorage usa la clave `tiempo.state.v3` y al guardar borra `tiempo.state.v2` y `v1`. Esta rama, sin #4, sigue en `tiempo.state.v2`. No hay `fetch` ni SDK de analítica en `src/`. Android: `app.json` no pone `allowBackup`; Expo SDK 57 lo deja en true y la base de AsyncStorage entra en Auto Backup. iPhone: `@react-native-async-storage/async-storage@2.2.0` excluye su carpeta de iCloud por defecto (`RCTAsyncStorageExcludeFromBackup` ausente → exclusión activa). No se ha cambiado `allowBackup`.
 - Cámara: `src/app/scan-key.tsx` y `src/app/claim-key.tsx` leen un QR y no guardan foto. `app.json` desactiva el audio en Android (`recordAudioAndroid: false`).
 - NFC: `src/lib/nfc.ts` lee el identificador del tag. No escribe el tag.
 - Llave móvil: `src/lib/mobile-key.ts`. El QR de emparejar lleva el secreto en claro. El QR de pulso caduca a los 60 s (`PULSE_TTL_MS`) y dentro de ese minuto se puede reutilizar. La interfaz de emparejar dice «30 s»; los textos legales usan los 60 s del código.
 - Bloqueo Android: `expo-app-blocker@0.1.77`. El plugin añade overlay (`SYSTEM_ALERT_WINDOW`), acceso de uso (`PACKAGE_USAGE_STATS`), servicio en primer plano `specialUse`, arranque y notificaciones. El manifiesto de la librería añade `QUERY_ALL_PACKAGES`. No hay `AccessibilityService`.
 - iOS: `requestAuthorization(for: .individual)` en la librería. Extensiones `DeviceActivityMonitor`, `ShieldAction` y `ShieldConfiguration`, App Group `group.com.apartag.app`.
-- Emergencias (código de `origin/feat/3-emergencias`, no de esta rama): `src/lib/emergency.ts` guarda 3 cargos, recarga 1 cada 30 días hasta 3 y no recarga si el reloj va hacia atrás. `src/app/emergency.tsx` exige 5 minutos con la app en primer plano; salir cancela y no gasta el cargo; al confirmar se llama a `emergencyUnlock()`. Las estadísticas muestran la etiqueta «Emergencia» (`session.emergency` en `stats.tsx`). El modo estricto sale apagado; `setStrict(true)` pide al menos dos llaves y la palabra ESTRICTO, y mientras está activo el botón de emergencia no se muestra.
+- Emergencias y modo estricto, en `origin/feat/3-emergencias`: `src/lib/emergency.ts` (`EMERGENCY_MAX = 3`, `EMERGENCY_REFILL_MS` = 30 días, `EMERGENCY_COUNTDOWN_MS` = 5 min, `STRICT_CONFIRMATION = 'ESTRICTO'`). Con el proceso vivo, `advanceEmergencyClock` solo fía de `performance.now()` (en React Native 0.86 no avanza mientras el teléfono duerme), así que la recarga puede tardar más de 30 días; en frío, con la app cerrada, cuenta el reloj de pared, y adelantarlo puede recargar antes. `src/app/emergency.tsx` cancela con cualquier `AppState` distinto de `active`; no hay `expo-keep-awake`. La etiqueta de estadísticas es «Emergencia». `DEFAULT_STATE.strict = false`; el `strict: true` heredado de `v2` se ignora. Activar el modo estricto exige dos llaves (`hasBackupKey`) y no se desactiva con `locked`. Android no lista el propio paquete; el selector de iOS no filtra la app.

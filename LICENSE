@@ -62,6 +62,18 @@ Las dependencias, incluidas Expo, React Native y los demás paquetes que
 figuran en package.json, siguen bajo las licencias de esos paquetes. Este
 archivo no las relicencia. Expo y el nombre Expo son marcas de su titular.
 
+JetBrains Mono, shipped inside the app from #4 as a local font file
+(@expo-google-fonts/jetbrains-mono, required from a .ttf, not downloaded at
+runtime), remains under the SIL Open Font License 1.1. It is not covered by
+the proprietary license above. Copyright of that font belongs to its
+authors. The app has no in-app third-party notices screen.
+
+JetBrains Mono, que #4 mete en la app como archivo de fuente local
+(@expo-google-fonts/jetbrains-mono, con require de un .ttf, sin descarga en
+ejecución), sigue bajo la SIL Open Font License 1.1. No la cubre la licencia
+propietaria de arriba. El copyright de esa fuente es de sus autores. La app
+no tiene una pantalla de avisos de terceros.
+
 5. No warranty / Sin garantía
 
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
