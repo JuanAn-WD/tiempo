@@ -39,11 +39,13 @@ export default function BlockedScreen() {
           locked={state.locked}
           hint={
             state.locked
-              ? 'Tag NFC · mantén pulsado para simular'
+              ? __DEV__
+                ? 'Tag NFC · mantén pulsado para simular'
+                : 'Acerca tu tag para volver'
               : 'Sesión cerrada'
           }
           onPress={() => void toggleLockWithTag(false)}
-          onLongPress={() => void toggleLockWithTag(true)}
+          onLongPress={__DEV__ ? () => void toggleLockWithTag(true) : undefined}
         />
       </View>
 

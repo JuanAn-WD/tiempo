@@ -167,11 +167,13 @@ export function TiempoProvider({ children }: { children: ReactNode }) {
   const pairTag = useCallback(
     async (id?: string) => {
       if (lockedGuard(stateRef.current, 'cambiar el tag')) return false;
+      if (id === 'DEMO-TAG' && !__DEV__) return false;
       const tagId = id ?? (await readTagId());
       if (!tagId) {
         Alert.alert('No se leyó el tag', 'Acerca un tag NFC al móvil e inténtalo de nuevo.');
         return false;
       }
+      if (tagId === 'DEMO-TAG' && !__DEV__) return false;
       await persist((prev) => ({ ...prev, tagId }));
       void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       return true;
@@ -268,6 +270,7 @@ export function TiempoProvider({ children }: { children: ReactNode }) {
           Alert.alert('Tag no detectado', 'Acerca el tag Tiempo a la parte trasera del móvil.');
           return;
         }
+        if (tagId === 'DEMO-TAG' && !__DEV__) return;
         if (current.tagId && tagId !== current.tagId && !simulate) {
           Alert.alert('Tag distinto', 'Este no es el tag que emparejaste.');
           return;
