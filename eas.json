@@ -30,7 +30,7 @@
         "track": "internal"
       },
       "ios": {
-        "ascAppId": "your-app-store-connect-app-id"
+        "ascAppId": "0000000000"
       }
     }
   }
