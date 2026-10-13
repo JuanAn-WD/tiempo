@@ -4,6 +4,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { EmergencyEntry } from '@/components/emergency-entry';
 import { FocusOrb } from '@/components/focus-orb';
+import { NfcNotice } from '@/components/nfc-notice';
 import { PrimaryButton } from '@/components/primary-button';
 import { Screen } from '@/components/screen';
 import { Badge, BrandMark, StatTile } from '@/components/ui';
@@ -68,6 +69,7 @@ export default function FocusScreen() {
           onPress={() => void toggleLockWithTag(false)}
           onLongPress={__DEV__ ? () => void toggleLockWithTag(true) : undefined}
         />
+        <NfcNotice scope="toggle" onRetry={() => void toggleLockWithTag(false)} />
       </View>
 
       <View style={styles.modeGrid}>

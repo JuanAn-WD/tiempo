@@ -2,6 +2,7 @@ import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { Platform, StyleSheet, Text, TextInput, View } from 'react-native';
 
+import { NfcNotice } from '@/components/nfc-notice';
 import { PrimaryButton } from '@/components/primary-button';
 import { Screen } from '@/components/screen';
 import { Badge, BrandMark, Card } from '@/components/ui';
@@ -30,10 +31,12 @@ export default function SettingsScreen() {
     clearSpareTag,
     setStrict,
     nfcSupported,
+    nfcEnabled,
     permissions,
     requestPermissions,
     refreshPermissions,
     refreshEmergencyClock,
+    refreshNfcStatus,
     clockSkewed,
   } = useTiempo();
   const { locale, t } = useI18n();
@@ -43,7 +46,8 @@ export default function SettingsScreen() {
   useFocusEffect(
     useCallback(() => {
       void refreshEmergencyClock();
-    }, [refreshEmergencyClock]),
+      void refreshNfcStatus();
+    }, [refreshEmergencyClock, refreshNfcStatus]),
   );
 
   const ok = !!permissions?.allGranted;
@@ -165,8 +169,16 @@ export default function SettingsScreen() {
           {state.tagId ? state.tagId : __DEV__ ? t('settings.tagMissingDev') : t('settings.tagMissing')}
         </Text>
         <Text style={styles.rowHint}>
-          {nfcSupported ? t('settings.nfcOn') : __DEV__ ? t('settings.nfcDev') : t('settings.nfcOff')}
+          {!nfcSupported
+            ? __DEV__
+              ? t('nfc.statusUnsupportedDev')
+              : t('nfc.statusUnsupported')
+            : !nfcEnabled
+              ? t('nfc.statusDisabled')
+              : t('nfc.statusReady')}
         </Text>
+        <Text style={styles.rowHint}>{t('nfc.doubleScanHint')}</Text>
+        <NfcNotice scope="pair" onRetry={() => void pairTag()} />
         <PrimaryButton
           label={state.tagId ? t('settings.tagChange') : t('settings.tagPair')}
           onPress={() => void pairTag()}
@@ -182,6 +194,7 @@ export default function SettingsScreen() {
           />
         </View>
         <Text style={styles.rowHint}>{state.spareTagId ? state.spareTagId : t('settings.spareHint')}</Text>
+        <NfcNotice scope="spare" onRetry={() => void pairSpareTag()} />
         <PrimaryButton
           muted
           label={state.spareTagId ? t('settings.spareChange') : t('settings.sparePair')}

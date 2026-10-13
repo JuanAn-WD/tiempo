@@ -6,6 +6,7 @@ import { useRouter } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { AppState, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { NfcNotice } from '@/components/nfc-notice';
 import { PrimaryButton } from '@/components/primary-button';
 import { Screen } from '@/components/screen';
 import { BrandMark } from '@/components/ui';
@@ -27,7 +28,6 @@ export default function EmergencyScreen() {
   const [fontsLoaded] = useFonts({ JetBrainsMono_500Medium });
   const [phase, setPhase] = useState<Phase>('idle');
   const [remain, setRemain] = useState(EMERGENCY_COUNTDOWN_MS);
-  const [pairError, setPairError] = useState(false);
   const monoRef = useRef(0);
   const remainRef = useRef(EMERGENCY_COUNTDOWN_MS);
   const holdRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -137,13 +137,8 @@ export default function EmergencyScreen() {
   };
 
   const pairReplacement = async () => {
-    setPairError(false);
     const paired = await pairTag();
-    if (paired) {
-      router.replace('/');
-      return;
-    }
-    setPairError(true);
+    if (paired) router.replace('/');
   };
 
   const blocked = !state.locked && phase !== 'done' && phase !== 'confirming';
@@ -183,7 +178,7 @@ export default function EmergencyScreen() {
         {phase === 'done' ? (
           <>
             <Text style={styles.note}>{t('emergency.lost')}</Text>
-            {pairError ? <Text style={styles.note}>{t('emergency.pairFail')}</Text> : null}
+            <NfcNotice scope="pair" onRetry={() => void pairReplacement()} />
             <PrimaryButton label={t('emergency.pair')} onPress={() => void pairReplacement()} />
             <PrimaryButton muted label={t('emergency.notNow')} onPress={() => router.replace('/')} />
           </>
