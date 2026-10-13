@@ -1,7 +1,7 @@
 ---
 title: Terms of use
 lang: en
-updated: 2026-10-12
+updated: 2026-10-13
 description: Terms of use for the Apartag app. A personal-use license, with no account and no server.
 ---
 
@@ -11,7 +11,7 @@ description: Terms of use for the Apartag app. A personal-use license, with no a
 
 > Before you publish this page, replace every **[PENDING: …]**.
 
-**Last updated: October 12, 2026**
+**Last updated: October 13, 2026**
 
 These terms are the contract between you and **Juan Antonio López** for your use of the Apartag app. By installing or using it, you accept them. If you do not accept them, do not use the app.
 
@@ -68,11 +68,11 @@ If you lose your keys, the app offers emergency unlocks:
 - You have up to 3. They are free and are not part of any purchase.
 - One comes back every 30 days, up to a maximum of 3. Using one does not restart a waiting period that is already running. That date is not guaranteed. If the clock is behind the latest time the app already recorded, none comes back until the clock reaches that time. If the app stays in memory while the phone sleeps, sleeping time may not count and the wait can run longer. If the app was closed and the clock was set forward, a refill can arrive sooner.
 - Each one takes a 5-minute countdown with Apartag open on screen. The app keeps the screen awake during that wait and until you confirm or leave, so the automatic lock does not cancel it. If the app goes to the background, you switch apps, or you lock the screen yourself, the countdown is cancelled and nothing is used up. When it ends, you have to confirm.
-- The session is marked «Emergencia» in the stats, on your phone only. The interface is in Spanish.
+- The session is marked «Emergencia» or “Emergency”, matching the language of the interface, in the stats, on your phone only. The app is available in Spanish and English. It follows the device language: English when that is the primary language, and Spanish otherwise.
 
 The counter is stored and calculated only on your phone. The author cannot see, restore, or grant emergency unlocks. Uninstalling and installing again starts over at 3. On Android this version does not let automatic backup copy or restore that data; an older backup may still exist. On iPhone that store is not part of iCloud.
 
-Strict mode is optional and off by default. While it is on, there are no emergency unlocks: only your keys unlock. To turn it on you need at least two keys (the main tag plus a second tag or a mobile key) and you have to type "ESTRICTO". It cannot be turned off during a lock, and while it is on you cannot remove a key if that would leave you with fewer than two. Turn it on only if you accept that, if you lose all your keys, the app will not be able to open the lock from inside.
+Strict mode is optional and off by default. While it is on, there are no emergency unlocks: only your keys unlock. To turn it on you need at least two keys (the main tag plus a second tag or a mobile key) and you have to type «ESTRICTO» or “STRICT”. Either word is accepted. It cannot be turned off during a lock, and while it is on you cannot remove a key if that would leave you with fewer than two. Turn it on only if you accept that, if you lose all your keys, the app will not be able to open the lock from inside.
 
 On Android you cannot select Apartag itself in the list. On iPhone the Screen Time picker cannot reliably hide Apartag: if you select it and the system does not identify that item, the app cannot remove it, and you can be left unable to open the emergency screen. Categories are not blocked. You choose apps one by one.
 

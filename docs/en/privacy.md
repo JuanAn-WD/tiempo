@@ -1,7 +1,7 @@
 ---
 title: Privacy policy
 lang: en
-updated: 2026-10-12
+updated: 2026-10-13
 description: Apartag has no account, no server, and no analytics. What the app stores stays on your phone.
 ---
 
@@ -11,7 +11,7 @@ description: Apartag has no account, no server, and no analytics. What the app s
 
 > Before you publish this page, replace every **[PENDING: …]**. Those blanks identify the controller. Without them, the page is not fit for the stores or for the people who use the app.
 
-**Last updated: October 12, 2026**
+**Last updated: October 13, 2026**
 
 Apartag has no account, no server, no ads, and no analytics. What the app stores stays on your phone. Juan Antonio López does not receive it and cannot see it.
 
@@ -59,7 +59,7 @@ Everything in this list stays in the app's private storage, on the phone itself.
 | Apps you select on Android (package name) | To know what to block |
 | On iPhone: the Screen Time selection | To apply the system shield to what you chose |
 | Chosen mode (Work, Study, Home, or Sport) | A label for the session. In this version all four modes share the same app list |
-| Time from Apartag sessions, and up to 40 sessions (mode, start, end, and whether it ended with an emergency unlock) | The stats screen. Those sessions show the label «Emergencia». The interface is in Spanish |
+| Time from Apartag sessions, and up to 40 sessions (mode, start, end, and whether it ended with an emergency unlock) | The stats screen. Those sessions show the label «Emergencia» or “Emergency”, matching the interface language. The app is available in Spanish and English and follows the device language (English when that is the primary language, Spanish otherwise) |
 | Emergency unlocks you have left, when the next one comes back, and the latest time the app has seen on the phone's clock | To keep count (one comes back every 30 days, up to 3, with no guaranteed date) and not to refill if the clock is behind that time |
 | Whether strict mode is on | To hide and turn off emergency unlocks while it is on |
 | Android block settings (list, overlay copy) | The service that covers a blocked app |
@@ -103,11 +103,11 @@ If not, Apartag has **emergency unlocks**. They work only inside the app and onl
 - You start with 3. They are free.
 - One comes back every 30 days, up to a maximum of 3. Using one does not restart a waiting period that is already running. The days are calculated on the phone, and the date is not guaranteed. If the clock is behind the latest time the app already recorded, none comes back until the clock reaches that time. If the app stays in memory while the phone sleeps, that sleeping time may not count and the wait can run longer. If the app was closed and the clock was set forward, a refill can arrive sooner.
 - Each one takes a 5-minute countdown with Apartag open on screen. The app keeps the screen awake during that wait and until you confirm or leave, so the phone's automatic lock does not cancel it. If you lock the screen yourself, switch apps, or Apartag goes to the background, the countdown is cancelled and nothing is used up. When it ends, you confirm and the lock opens.
-- The session is recorded with the label «Emergencia» in the app's stats, on your phone. The interface is in Spanish. You can then pair a new tag.
+- The session is recorded with the label «Emergencia» or “Emergency”, matching the interface language, in the app's stats, on your phone. You can then pair a new tag.
 
 Neither the counter nor those sessions leave the phone. Nobody, including Juan Antonio López, is told that you used an emergency unlock.
 
-**Strict mode** is optional and off by default. If you turn it on, there are no emergency unlocks: only your keys unlock. To turn it on you need at least two keys (the tag plus a second tag or a mobile key) and you have to type "ESTRICTO". It cannot be turned off during a lock. While it stays on, you cannot remove a key if that would leave you with fewer than two.
+**Strict mode** is optional and off by default. If you turn it on, there are no emergency unlocks: only your keys unlock. To turn it on you need at least two keys (the tag plus a second tag or a mobile key) and you have to type «ESTRICTO» or “STRICT”. Either word is accepted. It cannot be turned off during a lock. While it stays on, you cannot remove a key if that would leave you with fewer than two.
 
 This version has no backup codes. If you have no key and no emergency unlock left, or strict mode is on and you lost all your keys, the app cannot end the session from inside.
 

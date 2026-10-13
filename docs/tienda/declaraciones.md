@@ -199,7 +199,7 @@ Con eso, la ficha publica **Data Not Collected**. No marques identificadores, us
 Por qué es «no», y no «datos no vinculados a ti»:
 
 - No hay cuenta ni servidor, así que el desarrollador no recibe datos.
-- La selección de Tiempo de uso se comparte en el teléfono con las extensiones, en el App Group `group.com.apartag.app`. Los UID de los tags (principal y de repuesto), el secreto de la llave, las sesiones (con la marca «Emergencia» cuando procede), el contador de desbloqueos y el modo estricto van en AsyncStorage, también en el teléfono. No van al App Group.
+- La selección de Tiempo de uso se comparte en el teléfono con las extensiones, en el App Group `group.com.apartag.app`. Los UID de los tags (principal y de repuesto), el secreto de la llave, las sesiones (con la marca «Emergencia» o «Emergency», según el idioma, cuando procede), el contador de desbloqueos y el modo estricto van en AsyncStorage, también en el teléfono. No van al App Group.
 - La cámara decodifica un QR y no guarda la imagen.
 - Expo se usa para compilar. En el binario de tienda no hay `expo-updates` ni un socio que recoja datos. No declares a Expo como tercero que recoge datos.
 - El pago de la tienda, cuando exista, lo procesa Apple. Esta versión no tiene compras, así que no hay datos de pago.
@@ -252,9 +252,13 @@ during that wait, so the automatic lock does not cancel it. Locking the
 screen by hand or leaving the app cancels that countdown without using a
 charge. It removes the shield the user set, from within the app. Using one
 is recorded only in
-the app's local stats, labeled "Emergencia" (the interface is in Spanish).
+the app's local stats, labeled "Emergencia" in Spanish and "Emergency" in
+English. The interface is available in Spanish and English and follows the
+device language (English when that is the primary language, Spanish
+otherwise).
 The user can turn on an optional strict mode (off by default) that disables
-emergency unlocks; it requires at least two keys and typing ESTRICTO, and it
+emergency unlocks; it requires at least two keys and typing ESTRICTO or
+STRICT (either word is accepted), and it
 cannot be turned off while a lock is active.
 
 We use Family Controls only with AuthorizationCenter for
@@ -271,7 +275,7 @@ Screen Time APIs:
 - DeviceActivity: the DeviceActivityMonitor extension keeps the shield in
   place while a focus session is active.
 - ShieldConfiguration and ShieldAction: show a shield the user can recognize
-  (title "Estás en Apartag", subtitle telling them to go get their key) and
+  (title "Estás en Apartag" in Spanish or "You're in Apartag" in English, subtitle telling them to go get their key) and
   return them to Apartag. The shield itself has no bypass button; the
   emergency unlock is only available inside the app.
 
@@ -300,4 +304,4 @@ Cuando Apple lo apruebe, el perfil de distribución tiene que incluir `com.apple
 - Cuestionario de clasificación por edades (IARC / Apple). Hay que contestarlo en la consola. La app no está dirigida a menores de 14 años y no tiene contenidos de tienda que clasificar más allá de eso; no copies de aquí una edad de PEGI.
 - Publicidad: no hay. En los formularios de anuncios, la respuesta es no.
 - Compras: no hay en esta versión. Cuando exista el pago único, el producto será non-consumable y habrá que actualizar la ficha, no esta política de «no hay compras», el día que el código lo tenga.
-- Orden de fusión: #2, #4, #5 y después #6. #2 ya está en `master`. Quedan #4, luego #5, y al final #6. #4 sigue en la marca Tiempo y hoy entra en conflicto con `master`: hay que rebasarla para que el binario sea Apartag antes de fusionarla. El binario de tienda tiene que llevar #4 y el nombre Apartag. Si se describen las emergencias en la ficha, usa 3 desbloqueos, 1 cada 30 días sin prometer la fecha, cuenta atrás de 5 minutos con la pantalla encendida (el bloqueo automático no la cancela; bloquear a mano o salir sí, y no gasta el cargo), etiqueta «Emergencia» y modo estricto opcional. Las categorías de Tiempo de uso no se aplican. Android, en #4, pone `allowBackup` en false: la copia automática no copia ni restaura; una copia anterior puede seguir existiendo. En iPhone AsyncStorage 2.2.0 sigue fuera de iCloud. No hay códigos de respaldo ni recuperación remota. La respuesta de Data safety sigue siendo «no se recogen datos». Si se publica un binario sin #4, estas frases de emergencia no valen.
+- Orden de fusión: #2, #4, #5 y después #6. #2 ya está en `master`. Quedan #4, luego #5, y al final #6. #4 sigue en la marca Tiempo y hoy entra en conflicto con `master`: hay que rebasarla para que el binario sea Apartag antes de fusionarla. El binario de tienda tiene que llevar #4 y el nombre Apartag. Si se describen las emergencias en la ficha, usa 3 desbloqueos, 1 cada 30 días sin prometer la fecha, cuenta atrás de 5 minutos con la pantalla encendida (el bloqueo automático no la cancela; bloquear a mano o salir sí, y no gasta el cargo), etiqueta «Emergencia» o «Emergency», según el idioma, y modo estricto opcional (la confirmación acepta «ESTRICTO» o «STRICT»). Las categorías de Tiempo de uso no se aplican. Android, en #4, pone `allowBackup` en false: la copia automática no copia ni restaura; una copia anterior puede seguir existiendo. En iPhone AsyncStorage 2.2.0 sigue fuera de iCloud. No hay códigos de respaldo ni recuperación remota. La respuesta de Data safety sigue siendo «no se recogen datos». Si se publica un binario sin #4, estas frases de emergencia no valen.
