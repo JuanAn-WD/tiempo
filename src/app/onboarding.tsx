@@ -26,7 +26,7 @@ const STEPS = [
   {
     kicker: '03 · Emparejar',
     title: 'Tu tag.\nTu ritmo.',
-    body: 'Sin emergencias ni atajos. La fricción es la función.',
+    body: 'Solo tu tag o tu llave móvil. Emergencias: 3, con cinco minutos de espera. El modo estricto las quita, y pide una llave de repuesto.',
     visual: 'pair',
   },
 ] as const;
@@ -65,7 +65,8 @@ function StepVisual({ kind }: { kind: (typeof STEPS)[number]['visual'] }) {
 }
 
 export default function Onboarding() {
-  const { pairTag, completeOnboarding, requestPermissions, nfcSupported, state } = useTiempo();
+  const { pairTag, pairSpareTag, completeOnboarding, requestPermissions, nfcSupported, state } =
+    useTiempo();
   const [step, setStep] = useState(0);
   const current = STEPS[step];
 
@@ -106,6 +107,32 @@ export default function Onboarding() {
             onPress={() => void pairTag()}
             onLongPress={__DEV__ ? () => void pairTag('DEMO-TAG') : undefined}
           />
+          {state.tagId ? (
+            <View style={styles.spare}>
+              <Text style={styles.spareHint}>
+                {state.spareTagId
+                  ? 'Llave de repuesto lista. El modo estricto ya se puede activar en Ajustes.'
+                  : '¿Añades una llave de repuesto? Hace falta para el modo estricto.'}
+              </Text>
+              {state.spareTagId ? null : (
+                <>
+                  <PrimaryButton
+                    muted
+                    label="Añadir llave de repuesto"
+                    onPress={() => void pairSpareTag()}
+                    onLongPress={__DEV__ ? () => void pairSpareTag('DEMO-SPARE') : undefined}
+                  />
+                  {__DEV__ ? (
+                    <PrimaryButton
+                      muted
+                      label="Simular llave de repuesto"
+                      onPress={() => void pairSpareTag('DEMO-SPARE')}
+                    />
+                  ) : null}
+                </>
+              )}
+            </View>
+          ) : null}
         </View>
       ) : (
         <View style={styles.visualWrap}>
@@ -246,6 +273,15 @@ const styles = StyleSheet.create({
   tag: {
     flex: 1,
     justifyContent: 'center',
+    gap: 16,
+  },
+  spare: {
+    gap: 8,
+  },
+  spareHint: {
+    color: Palette.muted,
+    textAlign: 'center',
+    lineHeight: 20,
   },
   actions: {
     gap: 10,

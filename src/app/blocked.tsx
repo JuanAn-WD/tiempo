@@ -1,7 +1,8 @@
-import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useEffect } from 'react';
+import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
+import { useCallback } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
+import { EmergencyEntry } from '@/components/emergency-entry';
 import { FocusOrb } from '@/components/focus-orb';
 import { PrimaryButton } from '@/components/primary-button';
 import { Screen } from '@/components/screen';
@@ -12,14 +13,15 @@ import { useTiempo } from '@/context/tiempo-store';
 export default function BlockedScreen() {
   const { app } = useLocalSearchParams<{ app?: string }>();
   const router = useRouter();
-  const { toggleLockWithTag, state } = useTiempo();
+  const { toggleLockWithTag, state, refreshEmergencyClock } = useTiempo();
   const name = app ? decodeURIComponent(String(app)) : 'Esa app';
 
-  useEffect(() => {
-    if (!state.locked) {
-      router.replace('/');
-    }
-  }, [router, state.locked]);
+  useFocusEffect(
+    useCallback(() => {
+      void refreshEmergencyClock();
+      if (!state.locked) router.replace('/');
+    }, [refreshEmergencyClock, router, state.locked]),
+  );
 
   return (
     <Screen tabPadding={false} atmosphere={state.locked ? 'focus' : 'idle'}>
@@ -30,7 +32,9 @@ export default function BlockedScreen() {
       <Text style={styles.title}>{name}</Text>
       <Text style={styles.body}>
         {state.locked
-          ? 'Acerca el tag NFC o escanea la llave móvil. Sin atajos.'
+          ? state.strict
+            ? 'Modo estricto. Acerca el tag NFC o escanea la llave móvil.'
+            : 'Acerca el tag NFC o escanea la llave móvil.'
           : 'Ya puedes salir. Vuelve a Foco cuando quieras.'}
       </Text>
 
@@ -53,6 +57,7 @@ export default function BlockedScreen() {
         {state.locked ? (
           <PrimaryButton label="Escanear llave móvil" onPress={() => router.push('/scan-key')} />
         ) : null}
+        <EmergencyEntry strictNote />
         <PrimaryButton muted label="Volver a Foco" onPress={() => router.replace('/')} />
       </View>
     </Screen>

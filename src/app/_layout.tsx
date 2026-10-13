@@ -46,6 +46,7 @@ function Gate() {
         <Stack.Screen name="(tabs)" />
         <Stack.Screen name="onboarding" />
         <Stack.Screen name="blocked" options={{ presentation: 'modal' }} />
+        <Stack.Screen name="emergency" options={{ presentation: 'modal' }} />
         <Stack.Screen name="scan-key" options={{ presentation: 'modal' }} />
         <Stack.Screen name="pair-key" options={{ presentation: 'modal' }} />
         <Stack.Screen name="claim-key" options={{ presentation: 'modal' }} />

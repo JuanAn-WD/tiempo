@@ -6,25 +6,46 @@ import { Palette, Radius } from '@/constants/theme';
 type Props = {
   label: string;
   onPress: () => void;
+  onLongPress?: () => void;
+  accessibilityHint?: string;
   muted?: boolean;
   danger?: boolean;
   disabled?: boolean;
 };
 
-export function PrimaryButton({ label, onPress, muted, danger, disabled }: Props) {
+export function PrimaryButton({
+  label,
+  onPress,
+  onLongPress,
+  accessibilityHint,
+  muted,
+  danger,
+  disabled,
+}: Props) {
   return (
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={label}
+      accessibilityHint={accessibilityHint}
+      accessibilityState={{ disabled: !!disabled }}
       onPress={() => {
         void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
         onPress();
       }}
+      onLongPress={
+        onLongPress
+          ? () => {
+              void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+              onLongPress();
+            }
+          : undefined
+      }
       disabled={disabled}
       style={({ pressed }) => [
         styles.btn,
-        muted && styles.muted,
-        danger && styles.danger,
+        muted && !danger && styles.muted,
+        danger && !muted && styles.danger,
+        muted && danger && styles.mutedDanger,
         pressed && styles.pressed,
         disabled && styles.disabled,
       ]}>
@@ -55,6 +76,11 @@ const styles = StyleSheet.create({
     backgroundColor: Palette.dangerSoft,
     borderWidth: 1,
     borderColor: 'rgba(224,112,96,0.4)',
+  },
+  mutedDanger: {
+    backgroundColor: 'transparent',
+    borderWidth: 1,
+    borderColor: 'rgba(224,112,96,0.45)',
   },
   pressed: {
     opacity: 0.9,

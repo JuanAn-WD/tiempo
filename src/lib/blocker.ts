@@ -2,6 +2,9 @@ import { Platform } from 'react-native';
 
 import type { AndroidBlockableApp, IOSBlockedItem, PermissionStatus } from 'expo-app-blocker';
 
+import { ownAppIds } from '@/lib/own-app';
+import { guardIosSelection, withoutOwnPackages } from '@/lib/self-block';
+
 const SUGGESTED = [
   { packageName: 'com.instagram.android', name: 'Instagram' },
   { packageName: 'com.zhiliaoapp.musically', name: 'TikTok' },
@@ -67,7 +70,9 @@ export async function listAndroidApps(): Promise<AndroidBlockableApp[]> {
     const rest = installed
       .filter((app) => !SUGGESTED.some((s) => s.packageName === app.packageName))
       .sort((a, b) => a.name.localeCompare(b.name, 'es'));
-    return [...suggested, ...rest];
+    const apps = [...suggested, ...rest];
+    const allowed = new Set(withoutOwnPackages(apps.map((app) => app.packageName), ownAppIds()));
+    return apps.filter((app) => allowed.has(app.packageName));
   } catch {
     return SUGGESTED;
   }
@@ -76,7 +81,7 @@ export async function listAndroidApps(): Promise<AndroidBlockableApp[]> {
 export async function startAndroidBlock(packages: string[]) {
   if (Platform.OS !== 'android') return;
   const blocker = await native();
-  blocker.setBlockedApps(packages);
+  blocker.setBlockedApps(withoutOwnPackages(packages, ownAppIds()));
   blocker.startMonitoring();
 }
 
@@ -90,7 +95,8 @@ export async function stopAndroidBlock() {
 export async function startIosBlock(items: IOSBlockedItem[]) {
   if (Platform.OS !== 'ios') return;
   const blocker = await native();
-  await blocker.setBlockConfiguration({ blockedItems: items, isActive: true });
+  const blockedItems = guardIosSelection(items, ownAppIds()).items;
+  await blocker.setBlockConfiguration({ blockedItems, isActive: true });
 }
 
 export async function stopIosBlock() {

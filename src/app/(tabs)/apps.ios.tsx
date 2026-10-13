@@ -17,6 +17,11 @@ export default function AppsScreen() {
       </View>
       <Text style={styles.title}>Qué se cierra{'\n'}al escanear</Text>
       <Text style={styles.sub}>Selector nativo de Tiempo de uso.</Text>
+      <Text style={styles.limit}>
+        No incluyas Apartag ni una categoría. Las categorías no se bloquean: iOS no dice si esta app va
+        dentro, y bloquearla dejaría la emergencia fuera de alcance. El selector no permite ocultar
+        Apartag. Si lo marcas y el sistema no identifica el token, no podemos quitarlo.
+      </Text>
       <View style={styles.pickerWrap}>
         <FamilyActivityPickerView
           initialSelection={state.iosSelectionData}
@@ -45,9 +50,15 @@ const styles = StyleSheet.create({
   },
   sub: {
     marginTop: 10,
-    marginBottom: 16,
     color: Palette.muted,
     fontSize: 15,
+  },
+  limit: {
+    marginTop: 8,
+    marginBottom: 16,
+    color: Palette.danger,
+    fontSize: 13,
+    lineHeight: 18,
   },
   pickerWrap: {
     flex: 1,
