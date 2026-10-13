@@ -1,7 +1,8 @@
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 
+import { Text } from '@/components/app-text';
 import { PrimaryButton } from '@/components/primary-button';
-import { Palette, Radius } from '@/constants/theme';
+import { Palette, Radius, Type } from '@/constants/theme';
 import { useTiempo, type NfcScope } from '@/context/tiempo-store';
 import { useI18n, type TranslationKey } from '@/i18n';
 import type { NfcFailure } from '@/lib/nfc-types';
@@ -78,8 +79,7 @@ const styles = StyleSheet.create({
     backgroundColor: Palette.dangerSoft,
   },
   text: {
+    ...Type.body,
     color: Palette.ink,
-    fontSize: 14,
-    lineHeight: 20,
   },
 });

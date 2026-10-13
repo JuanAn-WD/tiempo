@@ -1,12 +1,13 @@
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { useRouter } from 'expo-router';
 import { useRef } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 
+import { Text } from '@/components/app-text';
 import { PrimaryButton } from '@/components/primary-button';
 import { Screen } from '@/components/screen';
 import { BrandMark } from '@/components/ui';
-import { Palette, Radius } from '@/constants/theme';
+import { Palette, Radius, Type } from '@/constants/theme';
 import { useTiempo } from '@/context/tiempo-store';
 import { useI18n } from '@/i18n';
 import { parseKeyPayload } from '@/lib/mobile-key';
@@ -66,15 +67,14 @@ const styles = StyleSheet.create({
     paddingBottom: 12,
   },
   title: {
+    ...Type.displayL,
     marginTop: 16,
-    fontSize: 28,
     color: Palette.ink,
-    fontWeight: '600',
   },
   body: {
+    ...Type.body,
     marginTop: 8,
     color: Palette.muted,
-    lineHeight: 22,
   },
   cameraWrap: {
     flex: 1,

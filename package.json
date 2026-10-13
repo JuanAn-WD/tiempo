@@ -4,6 +4,8 @@
   "version": "1.0.0",
   "license": "UNLICENSED",
   "dependencies": {
+    "@expo-google-fonts/fraunces": "^0.4.1",
+    "@expo-google-fonts/inter": "^0.4.2",
     "@expo-google-fonts/jetbrains-mono": "^0.4.1",
     "@expo/ui": "~57.0.22",
     "@react-native-async-storage/async-storage": "2.2.0",
@@ -54,6 +56,7 @@
     "prebuild": "expo prebuild",
     "lint": "expo lint",
     "i18n:check": "node scripts/check-i18n-keys.mjs",
+    "contrast:check": "node scripts/check-contrast.mjs",
     "build:apk": "eas build --platform android --profile preview --non-interactive"
   },
   "private": true

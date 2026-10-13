@@ -1,16 +1,15 @@
-import { useFonts } from 'expo-font';
 import { activateKeepAwakeAsync, deactivateKeepAwake } from 'expo-keep-awake';
-import { JetBrainsMono_500Medium } from '@expo-google-fonts/jetbrains-mono';
 import * as Haptics from 'expo-haptics';
 import { useRouter } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { AppState, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { AppState, Platform, Pressable, StyleSheet, View } from 'react-native';
 
+import { Text } from '@/components/app-text';
 import { NfcNotice } from '@/components/nfc-notice';
 import { PrimaryButton } from '@/components/primary-button';
 import { Screen } from '@/components/screen';
 import { BrandMark } from '@/components/ui';
-import { Palette } from '@/constants/theme';
+import { Palette, Type } from '@/constants/theme';
 import { useTiempo } from '@/context/tiempo-store';
 import { useI18n } from '@/i18n';
 import { EMERGENCY_COUNTDOWN_MS, formatCountdown, formatRefillDate } from '@/lib/emergency';
@@ -25,7 +24,6 @@ export default function EmergencyScreen() {
   const router = useRouter();
   const { state, emergencyUnlock, pairTag, clockSkewed } = useTiempo();
   const { locale, t } = useI18n();
-  const [fontsLoaded] = useFonts({ JetBrainsMono_500Medium });
   const [phase, setPhase] = useState<Phase>('idle');
   const [remain, setRemain] = useState(EMERGENCY_COUNTDOWN_MS);
   const monoRef = useRef(0);
@@ -153,7 +151,7 @@ export default function EmergencyScreen() {
 
       <View style={styles.clockWrap}>
         <Text
-          style={[styles.clock, fontsLoaded && styles.clockFont]}
+          style={styles.clock}
           accessibilityLabel={t('emergency.countdown', {
             time: formatCountdown(phase === 'idle' || phase === 'cancelled' ? EMERGENCY_COUNTDOWN_MS : remain),
           })}>
@@ -242,26 +240,20 @@ function monotonicSample() {
 
 const styles = StyleSheet.create({
   kicker: {
+    ...Type.kicker,
     marginTop: 22,
     color: Palette.danger,
     letterSpacing: 1.8,
-    textTransform: 'uppercase',
-    fontSize: 11,
-    fontWeight: '800',
   },
   title: {
+    ...Type.displayL,
     marginTop: 10,
-    fontSize: 34,
-    lineHeight: 40,
     color: Palette.ink,
-    fontWeight: '600',
-    letterSpacing: -1,
   },
   body: {
+    ...Type.bodyL,
     marginTop: 10,
     color: Palette.muted,
-    fontSize: 16,
-    lineHeight: 24,
   },
   clockWrap: {
     flex: 1,
@@ -270,22 +262,15 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   clock: {
-    fontFamily: Platform.select({ ios: 'Menlo', android: 'monospace', default: 'monospace' }),
-    fontVariant: ['tabular-nums'],
+    ...Type.mono,
     fontSize: 72,
     lineHeight: 80,
     color: Palette.danger,
-    fontWeight: '500',
-    letterSpacing: -2,
-  },
-  clockFont: {
-    fontFamily: 'JetBrainsMono_500Medium',
   },
   clockHint: {
+    ...Type.body,
     color: Palette.muted,
-    fontSize: 15,
     textAlign: 'center',
-    lineHeight: 22,
     paddingHorizontal: 12,
   },
   actions: {
@@ -293,11 +278,10 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   note: {
+    ...Type.body,
+    fontFamily: Type.label.fontFamily,
     textAlign: 'center',
     color: Palette.danger,
-    fontSize: 15,
-    lineHeight: 22,
-    fontWeight: '600',
   },
   hold: {
     minHeight: 54,
@@ -323,9 +307,8 @@ const styles = StyleSheet.create({
     backgroundColor: Palette.danger,
   },
   holdLabel: {
+    ...Type.labelBold,
     color: Palette.danger,
-    fontSize: 16,
-    fontWeight: '700',
     letterSpacing: -0.2,
   },
 });

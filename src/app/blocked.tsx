@@ -1,14 +1,15 @@
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 
 import { EmergencyEntry } from '@/components/emergency-entry';
+import { Text } from '@/components/app-text';
 import { FocusOrb } from '@/components/focus-orb';
 import { NfcNotice } from '@/components/nfc-notice';
 import { PrimaryButton } from '@/components/primary-button';
 import { Screen } from '@/components/screen';
 import { BrandMark } from '@/components/ui';
-import { Palette } from '@/constants/theme';
+import { Palette, Type } from '@/constants/theme';
 import { useTiempo } from '@/context/tiempo-store';
 import { useI18n } from '@/i18n';
 
@@ -62,26 +63,20 @@ export default function BlockedScreen() {
 
 const styles = StyleSheet.create({
   kicker: {
+    ...Type.kicker,
     marginTop: 22,
     color: Palette.focus,
     letterSpacing: 1.8,
-    textTransform: 'uppercase',
-    fontSize: 11,
-    fontWeight: '800',
   },
   title: {
+    ...Type.displayL,
     marginTop: 10,
-    fontSize: 34,
-    lineHeight: 40,
     color: Palette.ink,
-    fontWeight: '600',
-    letterSpacing: -1,
   },
   body: {
+    ...Type.bodyL,
     marginTop: 10,
     color: Palette.muted,
-    fontSize: 16,
-    lineHeight: 24,
   },
   tag: {
     flex: 1,

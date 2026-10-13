@@ -1,12 +1,13 @@
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
-import { Platform, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Platform, StyleSheet, TextInput, View } from 'react-native';
 
+import { Text } from '@/components/app-text';
 import { NfcNotice } from '@/components/nfc-notice';
 import { PrimaryButton } from '@/components/primary-button';
 import { Screen } from '@/components/screen';
 import { Badge, BrandMark, Card } from '@/components/ui';
-import { Palette, Radius } from '@/constants/theme';
+import { Palette, Radius, Type } from '@/constants/theme';
 import { useTiempo } from '@/context/tiempo-store';
 import { useI18n, type Translate } from '@/i18n';
 import { openAndroidPermissionScreens } from '@/lib/blocker';
@@ -138,7 +139,8 @@ export default function SettingsScreen() {
               autoCapitalize="characters"
               autoCorrect={false}
               placeholder={word}
-              placeholderTextColor={Palette.faint}
+              placeholderTextColor={Palette.faintText}
+              maxFontSizeMultiplier={2}
               accessibilityLabel={t('settings.strictA11y', { word })}
               style={styles.input}
             />
@@ -165,7 +167,7 @@ export default function SettingsScreen() {
             tone={state.tagId ? 'focus' : 'neutral'}
           />
         </View>
-        <Text style={styles.rowHint}>
+        <Text style={[styles.rowHint, state.tagId ? styles.tagId : null]}>
           {state.tagId ? state.tagId : __DEV__ ? t('settings.tagMissingDev') : t('settings.tagMissing')}
         </Text>
         <Text style={styles.rowHint}>
@@ -193,7 +195,9 @@ export default function SettingsScreen() {
             tone={state.spareTagId ? 'focus' : 'neutral'}
           />
         </View>
-        <Text style={styles.rowHint}>{state.spareTagId ? state.spareTagId : t('settings.spareHint')}</Text>
+        <Text style={[styles.rowHint, state.spareTagId ? styles.tagId : null]}>
+          {state.spareTagId ? state.spareTagId : t('settings.spareHint')}
+        </Text>
         <NfcNotice scope="spare" onRetry={() => void pairSpareTag()} />
         <PrimaryButton
           muted
@@ -277,17 +281,14 @@ const styles = StyleSheet.create({
     marginBottom: 18,
   },
   title: {
-    fontSize: 32,
-    lineHeight: 38,
+    ...Type.displayL,
     color: Palette.ink,
-    fontWeight: '600',
-    letterSpacing: -0.9,
   },
   sub: {
+    ...Type.body,
     marginTop: 10,
     marginBottom: 8,
     color: Palette.muted,
-    fontSize: 15,
   },
   card: {
     marginTop: 12,
@@ -300,32 +301,34 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   rowTitle: {
+    ...Type.labelBold,
     color: Palette.ink,
-    fontWeight: '700',
-    fontSize: 16,
   },
   rowHint: {
+    ...Type.body,
     color: Palette.muted,
-    lineHeight: 20,
     marginTop: 4,
   },
+  tagId: {
+    ...Type.mono,
+    fontSize: 15,
+    lineHeight: 22,
+  },
   input: {
+    ...Type.labelBold,
     borderWidth: 1,
     borderColor: Palette.lineStrong,
     borderRadius: Radius.md,
     paddingHorizontal: 16,
     paddingVertical: 14,
     color: Palette.ink,
-    fontSize: 16,
-    fontWeight: '700',
     letterSpacing: 1,
     backgroundColor: Palette.bgElevated,
   },
   legal: {
+    ...Type.caption,
     marginTop: 20,
-    color: Palette.faint,
-    fontSize: 12,
-    lineHeight: 18,
+    color: Palette.faintText,
     paddingBottom: 12,
   },
 });

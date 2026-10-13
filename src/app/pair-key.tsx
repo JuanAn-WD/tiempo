@@ -1,12 +1,13 @@
 import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import QRCode from 'react-native-qrcode-svg';
 
+import { Text } from '@/components/app-text';
 import { PrimaryButton } from '@/components/primary-button';
 import { Screen } from '@/components/screen';
 import { BrandMark } from '@/components/ui';
-import { Palette, Radius } from '@/constants/theme';
+import { Palette, Radius, Type } from '@/constants/theme';
 import { useTiempo } from '@/context/tiempo-store';
 import { useI18n } from '@/i18n';
 import { buildPairPayload } from '@/lib/mobile-key';
@@ -70,26 +71,20 @@ export default function PairKeyScreen() {
 
 const styles = StyleSheet.create({
   kicker: {
+    ...Type.kicker,
     marginTop: 22,
     color: Palette.accentBright,
-    letterSpacing: 1.6,
-    textTransform: 'uppercase',
-    fontSize: 11,
-    fontWeight: '800',
   },
   title: {
+    ...Type.displayL,
     marginTop: 10,
-    fontSize: 32,
     color: Palette.ink,
-    fontWeight: '600',
-    letterSpacing: -0.8,
   },
   body: {
+    ...Type.body,
     marginTop: 10,
     marginBottom: 16,
     color: Palette.muted,
-    fontSize: 15,
-    lineHeight: 22,
   },
   qrWrap: {
     flex: 1,
@@ -104,7 +99,7 @@ const styles = StyleSheet.create({
     padding: 24,
   },
   meta: {
-    color: Palette.faint,
-    fontWeight: '700',
+    ...Type.captionBold,
+    color: Palette.faintText,
   },
 });

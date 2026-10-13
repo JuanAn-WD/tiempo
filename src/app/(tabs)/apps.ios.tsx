@@ -1,9 +1,10 @@
 import { FamilyActivityPickerView } from 'expo-app-blocker';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 
+import { Text } from '@/components/app-text';
 import { Screen } from '@/components/screen';
 import { Badge, BrandMark } from '@/components/ui';
-import { Palette, Radius } from '@/constants/theme';
+import { Palette, Radius, Type } from '@/constants/theme';
 import { useTiempo } from '@/context/tiempo-store';
 import { useI18n } from '@/i18n';
 
@@ -45,23 +46,19 @@ const styles = StyleSheet.create({
     marginBottom: 18,
   },
   title: {
-    fontSize: 32,
-    lineHeight: 38,
+    ...Type.displayL,
     color: Palette.ink,
-    fontWeight: '600',
-    letterSpacing: -0.9,
   },
   sub: {
+    ...Type.body,
     marginTop: 10,
     color: Palette.muted,
-    fontSize: 15,
   },
   limit: {
+    ...Type.caption,
     marginTop: 8,
     marginBottom: 16,
     color: Palette.danger,
-    fontSize: 13,
-    lineHeight: 18,
   },
   pickerWrap: {
     flex: 1,
