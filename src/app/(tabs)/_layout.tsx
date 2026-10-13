@@ -2,8 +2,10 @@ import { Tabs } from 'expo-router';
 
 import { AppTabBar } from '@/components/app-tab-bar';
 import { Palette } from '@/constants/theme';
+import { useI18n } from '@/i18n';
 
 export default function TabsLayout() {
+  const { t } = useI18n();
   return (
     <Tabs
       tabBar={(props) => <AppTabBar {...props} />}
@@ -11,10 +13,10 @@ export default function TabsLayout() {
         headerShown: false,
         sceneStyle: { backgroundColor: Palette.bg },
       }}>
-      <Tabs.Screen name="index" options={{ title: 'Foco' }} />
-      <Tabs.Screen name="apps" options={{ title: 'Apps' }} />
-      <Tabs.Screen name="stats" options={{ title: 'Tiempo' }} />
-      <Tabs.Screen name="ajustes" options={{ title: 'Ajustes' }} />
+      <Tabs.Screen name="index" options={{ title: t('tabs.focus') }} />
+      <Tabs.Screen name="apps" options={{ title: t('tabs.apps') }} />
+      <Tabs.Screen name="stats" options={{ title: t('tabs.time') }} />
+      <Tabs.Screen name="ajustes" options={{ title: t('tabs.settings') }} />
     </Tabs>
   );
 }

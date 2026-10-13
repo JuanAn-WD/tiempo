@@ -2,6 +2,8 @@ import { Platform } from 'react-native';
 
 import type { AndroidBlockableApp, IOSBlockedItem, PermissionStatus } from 'expo-app-blocker';
 
+import type { Locale } from '@/i18n/locale';
+import { translate } from '@/i18n/translate';
 import { ownAppIds } from '@/lib/own-app';
 import { guardIosSelection, withoutOwnPackages } from '@/lib/self-block';
 
@@ -19,20 +21,20 @@ async function native() {
   return import('expo-app-blocker');
 }
 
-export async function applyAndroidOverlayTheme() {
+export async function applyAndroidOverlayTheme(locale: Locale = 'es') {
   if (Platform.OS !== 'android') return;
   const blocker = await native();
   blocker.configureAndroid({
-    overlayTitle: 'Estás en Apartag',
-    overlayText: '{appName} está bloqueada. Ve a por tu llave.',
+    overlayTitle: translate(locale, 'native.overlayTitle'),
+    overlayText: translate(locale, 'native.overlayText'),
     overlayBackgroundColor: '#0B0A09',
     overlayTitleColor: '#F7F1E8',
     overlayTextColor: '#9C8F7E',
     overlayTitleFontSize: 28,
     overlayTextFontSize: 16,
     overlaySpinnerColor: '#D4923A',
-    notificationTitle: 'Apartag',
-    notificationText: '{appName} está bloqueada. Acerca el tag.',
+    notificationTitle: translate(locale, 'native.overlayNotificationTitle'),
+    notificationText: translate(locale, 'native.overlayNotificationText'),
   });
 }
 
@@ -61,7 +63,7 @@ export async function openAndroidPermissionScreens() {
   setTimeout(() => blocker.openUsageStatsSettings(), 600);
 }
 
-export async function listAndroidApps(): Promise<AndroidBlockableApp[]> {
+export async function listAndroidApps(locale: Locale = 'es'): Promise<AndroidBlockableApp[]> {
   if (Platform.OS !== 'android') return SUGGESTED;
   try {
     const installed = await (await native()).getInstalledApps();
@@ -69,7 +71,7 @@ export async function listAndroidApps(): Promise<AndroidBlockableApp[]> {
     const suggested = SUGGESTED.map((app) => byPkg.get(app.packageName) ?? app);
     const rest = installed
       .filter((app) => !SUGGESTED.some((s) => s.packageName === app.packageName))
-      .sort((a, b) => a.name.localeCompare(b.name, 'es'));
+      .sort((a, b) => a.name.localeCompare(b.name, locale));
     const apps = [...suggested, ...rest];
     const allowed = new Set(withoutOwnPackages(apps.map((app) => app.packageName), ownAppIds()));
     return apps.filter((app) => allowed.has(app.packageName));

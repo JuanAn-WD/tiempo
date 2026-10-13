@@ -8,11 +8,13 @@ import { Screen } from '@/components/screen';
 import { BrandMark } from '@/components/ui';
 import { Palette, Radius } from '@/constants/theme';
 import { useTiempo } from '@/context/tiempo-store';
+import { useI18n } from '@/i18n';
 import { parseKeyPayload } from '@/lib/mobile-key';
 
 export default function ClaimKeyScreen() {
   const router = useRouter();
   const { becomeKeyHolder } = useTiempo();
+  const { t } = useI18n();
   const [permission, requestPermission] = useCameraPermissions();
   const handled = useRef(false);
 
@@ -20,13 +22,11 @@ export default function ClaimKeyScreen() {
     return (
       <Screen tabPadding={false}>
         <BrandMark />
-        <Text style={styles.title}>Convertirme en llave</Text>
-        <Text style={styles.body}>
-          Escanea el QR de emparejar que te muestra el otro móvil en Ajustes → Llave móvil.
-        </Text>
-        <PrimaryButton label="Permitir cámara" onPress={() => void requestPermission()} />
+        <Text style={styles.title}>{t('claimKey.title')}</Text>
+        <Text style={styles.body}>{t('claimKey.body')}</Text>
+        <PrimaryButton label={t('claimKey.camera')} onPress={() => void requestPermission()} />
         <View style={{ height: 10 }} />
-        <PrimaryButton muted label="Cancelar" onPress={() => router.back()} />
+        <PrimaryButton muted label={t('common.cancel')} onPress={() => router.back()} />
       </Screen>
     );
   }
@@ -35,8 +35,8 @@ export default function ClaimKeyScreen() {
     <Screen tabPadding={false} contentStyle={{ paddingHorizontal: 0 }}>
       <View style={styles.header}>
         <BrandMark />
-        <Text style={styles.title}>Emparejar como llave</Text>
-        <Text style={styles.body}>Escanea el QR de emparejar (no el QR que parpadea cada 30s).</Text>
+        <Text style={styles.title}>{t('claimKey.pairTitle')}</Text>
+        <Text style={styles.body}>{t('claimKey.pairBody')}</Text>
       </View>
       <View style={styles.cameraWrap}>
         <CameraView
@@ -54,7 +54,7 @@ export default function ClaimKeyScreen() {
         />
       </View>
       <View style={styles.footer}>
-        <PrimaryButton muted label="Cancelar" onPress={() => router.back()} />
+        <PrimaryButton muted label={t('common.cancel')} onPress={() => router.back()} />
       </View>
     </Screen>
   );

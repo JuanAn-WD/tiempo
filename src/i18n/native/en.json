@@ -1,0 +1,18 @@
+{
+  "shieldTitle": "You're in Apartag",
+  "shieldSubtitle": "{appName} is locked. Go get your key.",
+  "shieldButton": "Back to Apartag",
+  "shieldTempTitle": "Almost there!",
+  "shieldTempSubtitle": "Your free time is loading. Try again in a moment.",
+  "shieldTempButton": "OK",
+  "shieldCount": " You have {count} apps blocked.",
+  "notificationTitle": "Apartag",
+  "notificationBody": "Tap to go back to Apartag.",
+  "overlayTitle": "You're in Apartag",
+  "overlayText": "{appName} is locked. Go get your key.",
+  "overlayNotificationTitle": "Apartag",
+  "overlayNotificationText": "{appName} is locked. Tap your tag.",
+  "fallbackApp": "This app",
+  "fallbackCategory": "This category",
+  "fallbackWebsite": "This website"
+}

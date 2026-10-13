@@ -9,12 +9,14 @@ import { Screen } from '@/components/screen';
 import { BrandMark } from '@/components/ui';
 import { Palette } from '@/constants/theme';
 import { useTiempo } from '@/context/tiempo-store';
+import { useI18n } from '@/i18n';
 
 export default function BlockedScreen() {
   const { app } = useLocalSearchParams<{ app?: string }>();
   const router = useRouter();
   const { toggleLockWithTag, state, refreshEmergencyClock } = useTiempo();
-  const name = app ? decodeURIComponent(String(app)) : 'Esa app';
+  const { t } = useI18n();
+  const name = app ? decodeURIComponent(String(app)) : t('blocked.fallbackApp');
 
   useFocusEffect(
     useCallback(() => {
@@ -27,26 +29,18 @@ export default function BlockedScreen() {
     <Screen tabPadding={false} atmosphere={state.locked ? 'focus' : 'idle'}>
       <BrandMark size={20} />
       <Text style={[styles.kicker, !state.locked && { color: Palette.accentBright }]}>
-        {state.locked ? 'Bloqueada' : 'Desbloqueada'}
+        {state.locked ? t('blocked.locked') : t('blocked.unlocked')}
       </Text>
       <Text style={styles.title}>{name}</Text>
       <Text style={styles.body}>
-        {state.locked
-          ? state.strict
-            ? 'Modo estricto. Acerca el tag NFC o escanea la llave móvil.'
-            : 'Acerca el tag NFC o escanea la llave móvil.'
-          : 'Ya puedes salir. Vuelve a Foco cuando quieras.'}
+        {state.locked ? (state.strict ? t('blocked.strict') : t('blocked.normal')) : t('blocked.done')}
       </Text>
 
       <View style={styles.tag}>
         <FocusOrb
           locked={state.locked}
           hint={
-            state.locked
-              ? __DEV__
-                ? 'Tag NFC · mantén pulsado para simular'
-                : 'Acerca tu tag para volver'
-              : 'Sesión cerrada'
+            state.locked ? (__DEV__ ? t('blocked.hintDev') : t('blocked.hint')) : t('blocked.closed')
           }
           onPress={() => void toggleLockWithTag(false)}
           onLongPress={__DEV__ ? () => void toggleLockWithTag(true) : undefined}
@@ -55,10 +49,10 @@ export default function BlockedScreen() {
 
       <View style={styles.actions}>
         {state.locked ? (
-          <PrimaryButton label="Escanear llave móvil" onPress={() => router.push('/scan-key')} />
+          <PrimaryButton label={t('blocked.scan')} onPress={() => router.push('/scan-key')} />
         ) : null}
         <EmergencyEntry strictNote />
-        <PrimaryButton muted label="Volver a Foco" onPress={() => router.replace('/')} />
+        <PrimaryButton muted label={t('blocked.back')} onPress={() => router.replace('/')} />
       </View>
     </Screen>
   );

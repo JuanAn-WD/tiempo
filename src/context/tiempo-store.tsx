@@ -13,6 +13,7 @@ import { Alert, AppState, Platform } from 'react-native';
 
 import type { AndroidBlockableApp, IOSBlockedItem, PermissionStatus } from 'expo-app-blocker';
 
+import { useI18n, type Translate } from '@/i18n';
 import {
   applyAndroidOverlayTheme,
   getPermissions,
@@ -25,7 +26,7 @@ import {
 } from '@/lib/blocker';
 import {
   INITIAL_MONO_CLOCK,
-  STRICT_CONFIRMATION,
+  acceptsStrictConfirmation,
   advanceEmergencyClock,
   canDropKey,
   consumeEmergency,
@@ -109,13 +110,15 @@ async function clearNativeLock() {
   await stopIosBlock();
 }
 
-function lockedGuard(current: TiempoState, action: string) {
+function lockedGuard(current: TiempoState, action: string, t: Translate) {
   if (!current.locked) return false;
-  Alert.alert('Bloqueado', `Para ${action}, acerca el tag NFC o escanea la llave móvil.`);
+  Alert.alert(t('alerts.locked.title'), t('alerts.locked.body', { action }));
   return true;
 }
 
 export function TiempoProvider({ children }: { children: ReactNode }) {
+  const { locale, t } = useI18n();
+  const tRef = useRef(t);
   const [ready, setReady] = useState(false);
   const [state, setState] = useState<TiempoState>(DEFAULT_STATE);
   const [apps, setApps] = useState<AndroidBlockableApp[]>([]);
@@ -126,6 +129,10 @@ export function TiempoProvider({ children }: { children: ReactNode }) {
   const lockBusy = useRef(false);
   const clockRef = useRef<MonoClock>(INITIAL_MONO_CLOCK);
   const persistQueue = useRef(Promise.resolve());
+
+  useEffect(() => {
+    tRef.current = t;
+  }, [t]);
 
   useEffect(() => {
     stateRef.current = state;
@@ -176,18 +183,8 @@ export function TiempoProvider({ children }: { children: ReactNode }) {
       const loaded = await loadState();
       stateRef.current = loaded;
       setState(loaded);
-      try {
-        await applyAndroidOverlayTheme();
-      } catch {
-        /* web / expo go */
-      }
-      const [perms, installed, nfc] = await Promise.all([
-        getPermissions(),
-        listAndroidApps(),
-        isNfcSupported(),
-      ]);
+      const [perms, nfc] = await Promise.all([getPermissions(), isNfcSupported()]);
       setPermissions(perms);
-      setApps(installed);
       setNfcSupported(nfc);
 
       if (loaded.locked) {
@@ -197,13 +194,20 @@ export function TiempoProvider({ children }: { children: ReactNode }) {
           try {
             await applyNativeLock(loaded);
           } catch {
-            Alert.alert('Bloqueo', 'No se pudo reactivar el bloqueo. Revisa los permisos.');
+            Alert.alert(tRef.current('alerts.relock.title'), tRef.current('alerts.relock.body'));
           }
         }
       }
       setReady(true);
     })();
   }, []);
+
+  useEffect(() => {
+    void applyAndroidOverlayTheme(locale).catch(() => {
+      /* web / expo go */
+    });
+    void listAndroidApps(locale).then(setApps);
+  }, [locale]);
 
   useEffect(() => {
     if (!ready) return;
@@ -248,64 +252,61 @@ export function TiempoProvider({ children }: { children: ReactNode }) {
 
   const pairTag = useCallback(
     async (id?: string) => {
-      if (lockedGuard(stateRef.current, 'cambiar el tag')) return false;
+      if (lockedGuard(stateRef.current, t('alerts.actions.changeTag'), t)) return false;
       if (id && isSimulatedTag(id) && !__DEV__) return false;
       const tagId = id ?? (await readTagId());
       if (!tagId) {
-        Alert.alert('No se leyó el tag', 'Acerca un tag NFC al móvil e inténtalo de nuevo.');
+        Alert.alert(t('alerts.tagUnread.title'), t('alerts.tagUnread.body'));
         return false;
       }
       if (isSimulatedTag(tagId) && !__DEV__) return false;
       if (tagId === stateRef.current.spareTagId) {
-        Alert.alert('Mismo tag', 'Ese tag ya es tu llave de repuesto. Usa otro como principal.');
+        Alert.alert(t('alerts.sameTag.title'), t('alerts.sameTag.bodySpare'));
         return false;
       }
       await persist((prev) => ({ ...prev, tagId }));
       void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       return true;
     },
-    [persist],
+    [persist, t],
   );
 
   const pairSpareTag = useCallback(
     async (id?: string) => {
-      if (lockedGuard(stateRef.current, 'cambiar la llave de repuesto')) return false;
+      if (lockedGuard(stateRef.current, t('alerts.actions.changeSpare'), t)) return false;
       if (!stateRef.current.tagId) {
-        Alert.alert('Primero el tag', 'Empareja tu tag principal y luego la llave de repuesto.');
+        Alert.alert(t('alerts.tagFirst.title'), t('alerts.tagFirst.body'));
         return false;
       }
       if (id && isSimulatedTag(id) && !__DEV__) return false;
       const spareTagId = id ?? (await readTagId());
       if (!spareTagId) {
-        Alert.alert('No se leyó el tag', 'Acerca otro tag NFC al móvil e inténtalo de nuevo.');
+        Alert.alert(t('alerts.tagUnread.title'), t('alerts.tagUnread.bodyOther'));
         return false;
       }
       if (isSimulatedTag(spareTagId) && !__DEV__) return false;
       if (spareTagId === stateRef.current.tagId) {
-        Alert.alert('Mismo tag', 'La llave de repuesto tiene que ser otro tag.');
+        Alert.alert(t('alerts.sameTag.title'), t('alerts.sameTag.bodyDifferent'));
         return false;
       }
       await persist((prev) => ({ ...prev, spareTagId }));
       void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       return true;
     },
-    [persist],
+    [persist, t],
   );
 
   const clearSpareTag = useCallback(async () => {
-    if (lockedGuard(stateRef.current, 'quitar la llave de repuesto')) return;
+    if (lockedGuard(stateRef.current, t('alerts.actions.removeSpare'), t)) return;
     if (!canDropKey(stateRef.current, { spareTagId: null })) {
-      Alert.alert(
-        'Modo estricto',
-        'No puedes quitar esta llave: el modo estricto necesita al menos dos. Añade otra antes.',
-      );
+      Alert.alert(t('alerts.strictRemove.title'), t('alerts.strictRemove.body'));
       return;
     }
     await persist((prev) => {
       if (!canDropKey(prev, { spareTagId: null })) return prev;
       return { ...prev, spareTagId: null };
     });
-  }, [persist]);
+  }, [persist, t]);
 
   const completeOnboarding = useCallback(async () => {
     await persist((prev) => ({ ...prev, onboarded: true }));
@@ -370,7 +371,7 @@ export function TiempoProvider({ children }: { children: ReactNode }) {
     async (current: TiempoState) => {
       if (Platform.OS === 'android') {
         if (current.selectedPackages.length === 0) {
-          Alert.alert('Elige apps', 'Marca al menos una app en la pestaña Apps antes de bloquear.');
+          Alert.alert(t('alerts.chooseApps.title'), t('alerts.chooseApps.android'));
           return;
         }
         await startAndroidBlock(current.selectedPackages);
@@ -379,10 +380,10 @@ export function TiempoProvider({ children }: { children: ReactNode }) {
         const guarded = guardIosSelection(current.iosItems, ownAppIds());
         if (!guarded.items.length) {
           Alert.alert(
-            'Elige apps',
+            t('alerts.chooseApps.title'),
             guarded.ignoredCategories > 0
-              ? 'Las categorías no se bloquean: iOS no dice si esta app va dentro y la emergencia quedaría fuera de alcance. Elige apps una a una, sin incluir Apartag.'
-              : 'En iOS tienes que seleccionar las apps con el selector de Tiempo de uso.',
+              ? t('alerts.chooseApps.iosCategories')
+              : t('alerts.chooseApps.ios'),
           );
           return;
         }
@@ -395,7 +396,7 @@ export function TiempoProvider({ children }: { children: ReactNode }) {
         lockedAt: Date.now(),
       }));
     },
-    [persist],
+    [persist, t],
   );
 
   const toggleWithIdentity = useCallback(
@@ -420,28 +421,25 @@ export function TiempoProvider({ children }: { children: ReactNode }) {
 
         if (simulate) {
           if (!__DEV__) {
-            Alert.alert('Solo con llave', 'El desbloqueo solo funciona con el tag NFC o la llave móvil.');
+            Alert.alert(t('alerts.keyOnly.title'), t('alerts.keyOnly.body'));
             return;
           }
           tagId = current.tagId ?? current.spareTagId ?? 'DEMO-TAG';
         } else if (!nfcSupported) {
-          Alert.alert(
-            'NFC no disponible',
-            'Usa “Escanear llave” con el móvil emparejado, o prueba en un teléfono con NFC.',
-          );
+          Alert.alert(t('alerts.nfcOff.title'), t('alerts.nfcOff.body'));
           return;
         } else {
           tagId = await readTagId();
         }
 
         if (!tagId) {
-          Alert.alert('Tag no detectado', 'Acerca el tag de Apartag a la parte trasera del móvil.');
+          Alert.alert(t('alerts.tagMissing.title'), t('alerts.tagMissing.body'));
           return;
         }
         if (isSimulatedTag(tagId) && !__DEV__) return;
         const known = [current.tagId, current.spareTagId].filter((id): id is string => !!id);
         if (known.length > 0 && !known.includes(tagId) && !simulate) {
-          Alert.alert('Tag distinto', 'Este no es uno de tus tags.');
+          Alert.alert(t('alerts.wrongTag.title'), t('alerts.wrongTag.body'));
           return;
         }
 
@@ -451,7 +449,7 @@ export function TiempoProvider({ children }: { children: ReactNode }) {
         lockBusy.current = false;
       }
     },
-    [nfcSupported, toggleWithIdentity],
+    [nfcSupported, t, toggleWithIdentity],
   );
 
   const toggleLockWithMobileKey = useCallback(
@@ -461,17 +459,17 @@ export function TiempoProvider({ children }: { children: ReactNode }) {
       try {
         const current = stateRef.current;
         if (!current.mobileKeySecret) {
-          Alert.alert('Sin llave móvil', 'Crea una llave móvil en Ajustes y empareja el otro teléfono.');
+          Alert.alert(t('alerts.noPhoneKey.title'), t('alerts.noPhoneKey.body'));
           return false;
         }
         const payload = parseKeyPayload(rawQr);
         if (!payload || payload.t !== 'pulse') {
-          Alert.alert('QR no válido', 'Pide que te muestren el QR de “Soy la llave” (no el de emparejar).');
+          Alert.alert(t('alerts.badQr.title'), t('alerts.badQr.body'));
           return false;
         }
         const ok = await verifyPulse(payload, current.mobileKeySecret);
         if (!ok) {
-          Alert.alert('Llave rechazada', 'El QR expiró o no corresponde a tu llave. Genera uno nuevo.');
+          Alert.alert(t('alerts.rejectedKey.title'), t('alerts.rejectedKey.body'));
           return false;
         }
         await toggleWithIdentity(current);
@@ -480,34 +478,31 @@ export function TiempoProvider({ children }: { children: ReactNode }) {
         lockBusy.current = false;
       }
     },
-    [toggleWithIdentity],
+    [t, toggleWithIdentity],
   );
 
   const ensureMobileKeySecret = useCallback(async () => {
     const current = stateRef.current;
-    if (lockedGuard(current, 'crear o mostrar la llave')) {
+    if (lockedGuard(current, t('alerts.actions.showKey'), t)) {
       return current.mobileKeySecret ?? '';
     }
     if (current.mobileKeySecret) return current.mobileKeySecret;
     const secret = await createMobileKeySecret();
     await persist((prev) => ({ ...prev, mobileKeySecret: secret }));
     return secret;
-  }, [persist]);
+  }, [persist, t]);
 
   const revokeMobileKey = useCallback(async () => {
-    if (lockedGuard(stateRef.current, 'revocar la llave')) return;
+    if (lockedGuard(stateRef.current, t('alerts.actions.revokeKey'), t)) return;
     if (!canDropKey(stateRef.current, { mobileKeySecret: null })) {
-      Alert.alert(
-        'Modo estricto',
-        'No puedes revocar la llave móvil: el modo estricto necesita al menos dos llaves.',
-      );
+      Alert.alert(t('alerts.strictRevoke.title'), t('alerts.strictRevoke.body'));
       return;
     }
     await persist((prev) => {
       if (!canDropKey(prev, { mobileKeySecret: null })) return prev;
       return { ...prev, mobileKeySecret: null };
     });
-  }, [persist]);
+  }, [persist, t]);
 
   const becomeKeyHolder = useCallback(
     async (secret: string, label?: string) => {
@@ -527,15 +522,15 @@ export function TiempoProvider({ children }: { children: ReactNode }) {
 
   const setMode = useCallback(
     (mode: ModeId) => {
-      if (lockedGuard(stateRef.current, 'cambiar de modo')) return;
+      if (lockedGuard(stateRef.current, t('alerts.actions.changeMode'), t)) return;
       void persist((prev) => ({ ...prev, mode }));
     },
-    [persist],
+    [persist, t],
   );
 
   const togglePackage = useCallback(
     (pkg: string) => {
-      if (lockedGuard(stateRef.current, 'cambiar las apps')) return;
+      if (lockedGuard(stateRef.current, t('alerts.actions.changeApps'), t)) return;
       if (withoutOwnPackages([pkg], ownAppIds()).length === 0) return;
       void persist((prev) => {
         const selectedPackages = prev.selectedPackages.includes(pkg)
@@ -544,16 +539,16 @@ export function TiempoProvider({ children }: { children: ReactNode }) {
         return { ...prev, selectedPackages: withoutOwnPackages(selectedPackages, ownAppIds()) };
       });
     },
-    [persist],
+    [persist, t],
   );
 
   const setIosSelection = useCallback(
     (iosSelectionData: string, iosItems: IOSBlockedItem[]) => {
-      if (lockedGuard(stateRef.current, 'cambiar las apps')) return;
+      if (lockedGuard(stateRef.current, t('alerts.actions.changeApps'), t)) return;
       const guarded = guardIosSelection(iosItems, ownAppIds());
       void persist((prev) => ({ ...prev, iosSelectionData, iosItems: guarded.items }));
     },
-    [persist],
+    [persist, t],
   );
 
   const setStrict = useCallback(
@@ -562,14 +557,11 @@ export function TiempoProvider({ children }: { children: ReactNode }) {
       if (value) {
         if (current.strict) return;
         if (!hasBackupKey(current)) {
-          Alert.alert(
-            'Falta una llave de repuesto',
-            'El modo estricto solo se activa si ya tienes dos llaves: un segundo tag o una llave móvil, además de la principal.',
-          );
+          Alert.alert(t('alerts.strictBackup.title'), t('alerts.strictBackup.body'));
           return;
         }
-        if (confirmation?.trim() !== STRICT_CONFIRMATION) {
-          Alert.alert('Confirmación', 'Escribe ESTRICTO, en mayúsculas, para activar el modo estricto.');
+        if (!acceptsStrictConfirmation(confirmation)) {
+          Alert.alert(t('alerts.strictConfirm.title'), t('alerts.strictConfirm.body', { word: t('strict.word') }));
           return;
         }
         void persist((prev) => {
@@ -580,10 +572,7 @@ export function TiempoProvider({ children }: { children: ReactNode }) {
       }
       if (!current.strict) return;
       if (current.locked) {
-        Alert.alert(
-          'Bloqueado',
-          'Durante un bloqueo el modo estricto no se desactiva. Solo sales con tus llaves.',
-        );
+        Alert.alert(t('alerts.strictLocked.title'), t('alerts.strictLocked.body'));
         return;
       }
       void persist((prev) => {
@@ -591,7 +580,7 @@ export function TiempoProvider({ children }: { children: ReactNode }) {
         return { ...prev, strict: false };
       });
     },
-    [persist],
+    [persist, t],
   );
 
   const emergencyUnlock = useCallback(async () => {
@@ -600,17 +589,11 @@ export function TiempoProvider({ children }: { children: ReactNode }) {
     const current = stateRef.current;
     if (!current.locked) return false;
     if (current.strict) {
-      Alert.alert(
-        'Modo estricto',
-        'Con el modo estricto no hay desbloqueos de emergencia. Hace falta una de tus llaves.',
-      );
+      Alert.alert(t('alerts.strictNoEmergency.title'), t('alerts.strictNoEmergency.body'));
       return false;
     }
     if (current.emergencyLeft <= 0) {
-      Alert.alert(
-        'Sin emergencias',
-        'No te queda ninguna. Se recupera una cada 30 días, hasta 3.',
-      );
+      Alert.alert(t('alerts.noEmergencies.title'), t('alerts.noEmergencies.body'));
       return false;
     }
     lockBusy.current = true;
@@ -621,7 +604,7 @@ export function TiempoProvider({ children }: { children: ReactNode }) {
     } finally {
       lockBusy.current = false;
     }
-  }, [refreshEmergencyClock, unlock]);
+  }, [refreshEmergencyClock, t, unlock]);
 
   const value = useMemo(
     () => ({

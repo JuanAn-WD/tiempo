@@ -5,6 +5,7 @@ import { useEffect } from 'react';
 import { ActivityIndicator, StyleSheet, View } from 'react-native';
 
 import { TiempoProvider, useTiempo } from '@/context/tiempo-store';
+import { I18nProvider } from '@/i18n';
 import { Palette } from '@/constants/theme';
 
 SplashScreen.preventAutoHideAsync();
@@ -58,9 +59,11 @@ function Gate() {
 
 export default function RootLayout() {
   return (
-    <TiempoProvider>
-      <Gate />
-    </TiempoProvider>
+    <I18nProvider>
+      <TiempoProvider>
+        <Gate />
+      </TiempoProvider>
+    </I18nProvider>
   );
 }
 

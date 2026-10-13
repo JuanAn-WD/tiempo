@@ -7,17 +7,18 @@ import { Screen } from '@/components/screen';
 import { Badge, BrandMark, Card } from '@/components/ui';
 import { Palette, Radius } from '@/constants/theme';
 import { useTiempo } from '@/context/tiempo-store';
+import { useI18n, type Translate } from '@/i18n';
 import { openAndroidPermissionScreens } from '@/lib/blocker';
-import { STRICT_CONFIRMATION, countKeys, formatRefillDate, hasBackupKey } from '@/lib/emergency';
+import { countKeys, formatRefillDate, hasBackupKey, acceptsStrictConfirmation } from '@/lib/emergency';
 
-function keySummary(tag: boolean, spare: boolean, mobile: boolean) {
+function keySummary(t: Translate, tag: boolean, spare: boolean, mobile: boolean) {
   const parts = [
-    tag ? 'tag' : null,
-    spare ? 'segundo tag' : null,
-    mobile ? 'llave móvil' : null,
+    tag ? t('settings.keys.tag') : null,
+    spare ? t('settings.keys.spare') : null,
+    mobile ? t('settings.keys.phone') : null,
   ].filter((part): part is string => !!part);
-  if (parts.length === 0) return 'Aún no hay ninguna llave.';
-  return `Llaves: ${parts.join(', ')}.`;
+  if (parts.length === 0) return t('settings.keys.none');
+  return t('settings.keys.list', { list: parts.join(', ') });
 }
 
 export default function SettingsScreen() {
@@ -35,6 +36,7 @@ export default function SettingsScreen() {
     refreshEmergencyClock,
     clockSkewed,
   } = useTiempo();
+  const { locale, t } = useI18n();
   const [confirmation, setConfirmation] = useState('');
   const [confirmOff, setConfirmOff] = useState(false);
 
@@ -46,7 +48,8 @@ export default function SettingsScreen() {
 
   const ok = !!permissions?.allGranted;
   const backup = hasBackupKey(state);
-  const confirmed = confirmation.trim() === STRICT_CONFIRMATION;
+  const confirmed = acceptsStrictConfirmation(confirmation);
+  const word = t('strict.word');
 
   return (
     <Screen scroll>
@@ -54,98 +57,90 @@ export default function SettingsScreen() {
         <BrandMark size={20} />
       </View>
 
-      <Text style={styles.title}>Control{'\n'}y seguridad</Text>
+      <Text style={styles.title}>{t('settings.title')}</Text>
       <Text style={styles.sub}>
         {state.strict
-          ? 'Modo estricto. Solo tus llaves. Sin emergencias.'
-          : `Solo tu tag o tu llave móvil. Emergencias: ${state.emergencyLeft}`}
+          ? t('focus.footerStrict')
+          : t('focus.footerNormal', { count: state.emergencyLeft })}
       </Text>
 
       <Card style={styles.card}>
         <View style={styles.rowTop}>
-          <Text style={styles.rowTitle}>Emergencias</Text>
+          <Text style={styles.rowTitle}>{t('settings.emergenciesTitle')}</Text>
           <Badge
-            label={state.strict ? 'Desactivadas' : `${state.emergencyLeft} de 3`}
+            label={state.strict ? t('settings.badgeOff') : t('settings.badgeCount', { count: state.emergencyLeft })}
             tone={state.strict ? 'danger' : state.emergencyLeft > 0 ? 'focus' : 'neutral'}
           />
         </View>
-        <Text style={styles.rowHint}>
-          Tres desbloqueos, gratis. Se recupera uno cada 30 días, hasta 3. Cada uno espera 5 minutos
-          con la app abierta. Si sales, se cancela.
-        </Text>
+        <Text style={styles.rowHint}>{t('settings.emergenciesBody')}</Text>
         {state.strict ? (
           <Text style={styles.rowHint}>
-            El modo estricto no deja usarlas. Si lo desactivas, sigues teniendo {state.emergencyLeft}.
+            {t('settings.emergenciesStrict', { count: state.emergencyLeft })}
           </Text>
         ) : state.emergencyLeft < 3 ? (
           <Text style={styles.rowHint}>
             {clockSkewed
-              ? 'El reloj del móvil va atrás. No se recupera ninguna hasta que marque la hora bien.'
+              ? t('emergency.clockSkew')
               : state.emergencyRefillAt
-                ? `La siguiente vuelve el ${formatRefillDate(state.emergencyRefillAt)}.`
-                : 'La siguiente aún no tiene fecha.'}
+                ? t('settings.emergenciesNext', { date: formatRefillDate(state.emergencyRefillAt, locale) })
+                : t('settings.emergenciesNoDate')}
           </Text>
         ) : null}
       </Card>
 
       <Card style={styles.card}>
         <View style={styles.rowTop}>
-          <Text style={styles.rowTitle}>Modo estricto</Text>
-          <Badge label={state.strict ? 'Estricto' : 'Normal'} tone={state.strict ? 'danger' : 'neutral'} />
+          <Text style={styles.rowTitle}>{t('settings.strictTitle')}</Text>
+          <Badge
+            label={state.strict ? t('settings.badgeStrict') : t('settings.badgeNormal')}
+            tone={state.strict ? 'danger' : 'neutral'}
+          />
         </View>
+        <Text style={styles.rowHint}>{t('settings.strictBody', { word })}</Text>
         <Text style={styles.rowHint}>
-          Opcional. Quita las emergencias: solo sales con tus llaves. Para activarlo hace falta una
-          llave de repuesto (segundo tag o llave móvil) y escribir {STRICT_CONFIRMATION}. Durante un
-          bloqueo no se puede desactivar.
-        </Text>
-        <Text style={styles.rowHint}>
-          {keySummary(!!state.tagId, !!state.spareTagId, !!state.mobileKeySecret)}
+          {keySummary(t, !!state.tagId, !!state.spareTagId, !!state.mobileKeySecret)}
         </Text>
         {state.strict ? (
           <>
             {confirmOff && !state.locked ? (
               <>
-                <Text style={styles.rowHint}>Volverás a tener desbloqueos de emergencia.</Text>
+                <Text style={styles.rowHint}>{t('settings.strictBack')}</Text>
                 <PrimaryButton
                   danger
-                  label="Sí, desactivar"
+                  label={t('settings.strictYes')}
                   onPress={() => {
                     setStrict(false);
                     setConfirmOff(false);
                   }}
                 />
-                <PrimaryButton muted label="Cancelar" onPress={() => setConfirmOff(false)} />
+                <PrimaryButton muted label={t('common.cancel')} onPress={() => setConfirmOff(false)} />
               </>
             ) : (
               <PrimaryButton
                 muted
-                label="Desactivar modo estricto"
+                label={t('settings.strictOff')}
                 disabled={state.locked}
                 onPress={() => setConfirmOff(true)}
               />
             )}
-            {state.locked ? (
-              <Text style={styles.rowHint}>Durante este bloqueo no se puede desactivar.</Text>
-            ) : null}
+            {state.locked ? <Text style={styles.rowHint}>{t('settings.strictLocked')}</Text> : null}
           </>
         ) : backup ? (
           <>
-            <Text style={styles.rowHint}>
-              Si lo activas y luego te bloqueas, la única salida son tus llaves.
-            </Text>
+            <Text style={styles.rowHint}>{t('settings.strictWarn')}</Text>
             <TextInput
               value={confirmation}
               onChangeText={setConfirmation}
               autoCapitalize="characters"
               autoCorrect={false}
-              placeholder={STRICT_CONFIRMATION}
+              placeholder={word}
               placeholderTextColor={Palette.faint}
-              accessibilityLabel="Escribe ESTRICTO para confirmar"
+              accessibilityLabel={t('settings.strictA11y', { word })}
               style={styles.input}
             />
             <PrimaryButton
               danger
-              label="Activar modo estricto"
+              label={t('settings.strictOn')}
               disabled={!confirmed}
               onPress={() => {
                 setStrict(true, confirmation);
@@ -154,52 +149,47 @@ export default function SettingsScreen() {
             />
           </>
         ) : (
-          <Text style={styles.rowHint}>
-            Te falta una llave de repuesto. Empareja un segundo tag o crea una llave móvil, más abajo.
-          </Text>
+          <Text style={styles.rowHint}>{t('settings.strictNeedSpare')}</Text>
         )}
       </Card>
 
       <Card style={styles.card}>
         <View style={styles.rowTop}>
-          <Text style={styles.rowTitle}>Tag NFC</Text>
-          <Badge label={state.tagId ? 'OK' : '—'} tone={state.tagId ? 'focus' : 'neutral'} />
+          <Text style={styles.rowTitle}>{t('settings.tagTitle')}</Text>
+          <Badge
+            label={state.tagId ? t('common.ok') : t('common.dash')}
+            tone={state.tagId ? 'focus' : 'neutral'}
+          />
         </View>
         <Text style={styles.rowHint}>
-          {state.tagId
-            ? state.tagId
-            : __DEV__
-              ? 'Sin tag. Acerca uno o mantén pulsado para simular.'
-              : 'Sin tag. Acerca uno para emparejarlo.'}
+          {state.tagId ? state.tagId : __DEV__ ? t('settings.tagMissingDev') : t('settings.tagMissing')}
         </Text>
         <Text style={styles.rowHint}>
-          {nfcSupported
-            ? 'NFC disponible'
-            : __DEV__
-              ? 'Sin NFC · simulación por pulsación larga'
-              : 'Sin NFC en este dispositivo'}
+          {nfcSupported ? t('settings.nfcOn') : __DEV__ ? t('settings.nfcDev') : t('settings.nfcOff')}
         </Text>
-        <PrimaryButton label={state.tagId ? 'Cambiar tag' : 'Emparejar tag'} onPress={() => void pairTag()} />
+        <PrimaryButton
+          label={state.tagId ? t('settings.tagChange') : t('settings.tagPair')}
+          onPress={() => void pairTag()}
+        />
       </Card>
 
       <Card style={styles.card}>
         <View style={styles.rowTop}>
-          <Text style={styles.rowTitle}>Llave de repuesto</Text>
-          <Badge label={state.spareTagId ? 'OK' : '—'} tone={state.spareTagId ? 'focus' : 'neutral'} />
+          <Text style={styles.rowTitle}>{t('settings.spareTitle')}</Text>
+          <Badge
+            label={state.spareTagId ? t('common.ok') : t('common.dash')}
+            tone={state.spareTagId ? 'focus' : 'neutral'}
+          />
         </View>
-        <Text style={styles.rowHint}>
-          {state.spareTagId
-            ? state.spareTagId
-            : 'Un segundo tag. Con el principal, basta para activar el modo estricto.'}
-        </Text>
+        <Text style={styles.rowHint}>{state.spareTagId ? state.spareTagId : t('settings.spareHint')}</Text>
         <PrimaryButton
           muted
-          label={state.spareTagId ? 'Cambiar segundo tag' : 'Emparejar segundo tag'}
+          label={state.spareTagId ? t('settings.spareChange') : t('settings.sparePair')}
           onPress={() => void pairSpareTag()}
           onLongPress={__DEV__ ? () => void pairSpareTag('DEMO-SPARE') : undefined}
         />
         {__DEV__ && !state.spareTagId ? (
-          <PrimaryButton muted label="Simular segundo tag" onPress={() => void pairSpareTag('DEMO-SPARE')} />
+          <PrimaryButton muted label={t('settings.spareSimulate')} onPress={() => void pairSpareTag('DEMO-SPARE')} />
         ) : null}
         {state.spareTagId ? (
           <>
@@ -207,14 +197,12 @@ export default function SettingsScreen() {
             <PrimaryButton
               muted
               danger
-              label="Quitar llave de repuesto"
+              label={t('settings.spareRemove')}
               disabled={state.strict && countKeys(state) < 3}
               onPress={() => void clearSpareTag()}
             />
             {state.strict && countKeys(state) < 3 ? (
-              <Text style={styles.rowHint}>
-                El modo estricto necesita dos llaves. Añade otra antes de quitar esta.
-              </Text>
+              <Text style={styles.rowHint}>{t('settings.strictCantRemove')}</Text>
             ) : null}
           </>
         ) : null}
@@ -222,43 +210,41 @@ export default function SettingsScreen() {
 
       <Card style={styles.card}>
         <View style={styles.rowTop}>
-          <Text style={styles.rowTitle}>Llave móvil</Text>
+          <Text style={styles.rowTitle}>{t('settings.phoneTitle')}</Text>
           <Badge
-            label={state.mobileKeySecret ? 'Activa' : '—'}
+            label={state.mobileKeySecret ? t('settings.badgeActive') : t('common.dash')}
             tone={state.mobileKeySecret ? 'focus' : 'neutral'}
           />
         </View>
-        <Text style={styles.rowHint}>
-          Empareja el móvil de tu pareja: podrá bloquearte y desbloquearte mostrando un QR que se
-          renueva solo.
-        </Text>
+        <Text style={styles.rowHint}>{t('settings.phoneBody')}</Text>
         <PrimaryButton
-          label={state.mobileKeySecret ? 'Mostrar QR de emparejar' : 'Crear llave móvil'}
+          label={state.mobileKeySecret ? t('settings.phoneShow') : t('settings.phoneCreate')}
           onPress={() => router.push('/pair-key')}
         />
         <View style={{ height: 10 }} />
-        <PrimaryButton muted label="Soy la llave (otro móvil)" onPress={() => router.push('/llave')} />
+        <PrimaryButton muted label={t('settings.phoneHolder')} onPress={() => router.push('/llave')} />
         <View style={{ height: 10 }} />
-        <PrimaryButton muted label="Convertirme en llave" onPress={() => router.push('/claim-key')} />
+        <PrimaryButton muted label={t('settings.phoneClaim')} onPress={() => router.push('/claim-key')} />
       </Card>
 
       <Card style={styles.card}>
         <View style={styles.rowTop}>
-          <Text style={styles.rowTitle}>Permisos</Text>
-          <Badge label={ok ? 'Listos' : 'Faltan'} tone={ok ? 'focus' : 'danger'} />
+          <Text style={styles.rowTitle}>{t('settings.permissionsTitle')}</Text>
+          <Badge
+            label={ok ? t('settings.badgeReady') : t('settings.badgeMissing')}
+            tone={ok ? 'focus' : 'danger'}
+          />
         </View>
         <Text style={styles.rowHint}>
-          {ok
-            ? 'El sistema puede bloquear apps de verdad.'
-            : 'En Android: acceso de uso + mostrar sobre otras apps.'}
+          {ok ? t('settings.permissionsReady') : t('settings.permissionsMissing')}
         </Text>
-        <PrimaryButton label="Refrescar permisos" onPress={() => void requestPermissions()} />
+        <PrimaryButton label={t('settings.permissionsRefresh')} onPress={() => void requestPermissions()} />
         {Platform.OS === 'android' || Platform.OS === 'web' ? (
           <>
             <View style={{ height: 10 }} />
             <PrimaryButton
               muted
-              label="Abrir ajustes Android"
+              label={t('settings.permissionsAndroid')}
               onPress={() => {
                 void openAndroidPermissionScreens();
                 setTimeout(() => void refreshPermissions(), 2500);
@@ -268,10 +254,7 @@ export default function SettingsScreen() {
         ) : null}
       </Card>
 
-      <Text style={styles.legal}>
-        iOS · Family Controls. Android · overlay + usage access. Hace falta esta APK o un development
-        build, no Expo Go.
-      </Text>
+      <Text style={styles.legal}>{t('settings.legal')}</Text>
     </Screen>
   );
 }

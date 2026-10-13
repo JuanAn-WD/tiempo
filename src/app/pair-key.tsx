@@ -8,11 +8,13 @@ import { Screen } from '@/components/screen';
 import { BrandMark } from '@/components/ui';
 import { Palette, Radius } from '@/constants/theme';
 import { useTiempo } from '@/context/tiempo-store';
+import { useI18n } from '@/i18n';
 import { buildPairPayload } from '@/lib/mobile-key';
 
 export default function PairKeyScreen() {
   const router = useRouter();
   const { state, ensureMobileKeySecret, revokeMobileKey } = useTiempo();
+  const { t } = useI18n();
   const [payload, setPayload] = useState('');
 
   useEffect(() => {
@@ -28,13 +30,10 @@ export default function PairKeyScreen() {
     return (
       <Screen tabPadding={false}>
         <BrandMark />
-        <Text style={styles.kicker}>Llave móvil</Text>
-        <Text style={styles.title}>Bloqueado</Text>
-        <Text style={styles.body}>
-          No se puede mostrar el QR de emparejar mientras hay bloqueo. Desbloquea con el tag o la llave
-          móvil ya emparejada.
-        </Text>
-        <PrimaryButton muted label="Volver" onPress={() => router.back()} />
+        <Text style={styles.kicker}>{t('pairKey.kicker')}</Text>
+        <Text style={styles.title}>{t('pairKey.lockedTitle')}</Text>
+        <Text style={styles.body}>{t('pairKey.lockedBody')}</Text>
+        <PrimaryButton muted label={t('common.back')} onPress={() => router.back()} />
       </Screen>
     );
   }
@@ -42,34 +41,29 @@ export default function PairKeyScreen() {
   return (
     <Screen tabPadding={false}>
       <BrandMark />
-      <Text style={styles.kicker}>Llave móvil</Text>
-      <Text style={styles.title}>Empareja otro teléfono</Text>
-      <Text style={styles.body}>
-        En el móvil de tu pareja: Apartag → Ajustes → “Convertirme en llave”, y escanea este QR. Después
-        podrá bloquearte y desbloquearte mostrando su QR vivo.
-      </Text>
+      <Text style={styles.kicker}>{t('pairKey.kicker')}</Text>
+      <Text style={styles.title}>{t('pairKey.title')}</Text>
+      <Text style={styles.body}>{t('pairKey.body')}</Text>
 
       <View style={styles.qrWrap}>
         {payload ? (
           <QRCode value={payload} size={220} backgroundColor={Palette.ink} color={Palette.bg} />
         ) : (
-          <Text style={styles.body}>Preparando llave…</Text>
+          <Text style={styles.body}>{t('pairKey.preparing')}</Text>
         )}
-        <Text style={styles.meta}>
-          {state.mobileKeySecret ? 'Llave activa' : 'Sin llave'}
-        </Text>
+        <Text style={styles.meta}>{state.mobileKeySecret ? t('pairKey.active') : t('pairKey.inactive')}</Text>
       </View>
 
       <PrimaryButton
         danger
-        label="Revocar llave móvil"
+        label={t('pairKey.revoke')}
         onPress={() => {
           void revokeMobileKey();
           router.back();
         }}
       />
       <View style={{ height: 10 }} />
-      <PrimaryButton muted label="Listo" onPress={() => router.back()} />
+      <PrimaryButton muted label={t('pairKey.done')} onPress={() => router.back()} />
     </Screen>
   );
 }

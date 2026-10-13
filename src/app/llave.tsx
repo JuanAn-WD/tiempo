@@ -8,11 +8,13 @@ import { Screen } from '@/components/screen';
 import { BrandMark } from '@/components/ui';
 import { Palette, Radius } from '@/constants/theme';
 import { useTiempo } from '@/context/tiempo-store';
+import { useI18n } from '@/i18n';
 import { buildPulsePayload } from '@/lib/mobile-key';
 
 export default function LlaveScreen() {
   const router = useRouter();
   const { state, clearKeyHolder } = useTiempo();
+  const { t } = useI18n();
   const [payload, setPayload] = useState<string>('');
   const [seconds, setSeconds] = useState(30);
 
@@ -40,14 +42,11 @@ export default function LlaveScreen() {
     return (
       <Screen tabPadding={false}>
         <BrandMark />
-        <Text style={styles.title}>Aún no eres llave</Text>
-        <Text style={styles.body}>
-          En el móvil de tu pareja, ve a Ajustes → Llave móvil y muestra el QR de emparejar. Luego
-          escanéalo aquí.
-        </Text>
-        <PrimaryButton label="Escanear para convertirme en llave" onPress={() => router.push('/claim-key')} />
+        <Text style={styles.title}>{t('llave.emptyTitle')}</Text>
+        <Text style={styles.body}>{t('llave.emptyBody')}</Text>
+        <PrimaryButton label={t('llave.claim')} onPress={() => router.push('/claim-key')} />
         <View style={{ height: 10 }} />
-        <PrimaryButton muted label="Volver" onPress={() => router.back()} />
+        <PrimaryButton muted label={t('common.back')} onPress={() => router.back()} />
       </Screen>
     );
   }
@@ -55,24 +54,22 @@ export default function LlaveScreen() {
   return (
     <Screen tabPadding={false}>
       <BrandMark />
-      <Text style={styles.kicker}>Soy la llave</Text>
+      <Text style={styles.kicker}>{t('llave.kicker')}</Text>
       <Text style={styles.title}>{state.keyHolderLabel ?? 'Apartag'}</Text>
-      <Text style={styles.body}>
-        Enséñale este QR al móvil bloqueado. Sirve para bloquear y desbloquear. Se renueva solo.
-      </Text>
+      <Text style={styles.body}>{t('llave.body')}</Text>
 
       <View style={styles.qrWrap}>
         {payload ? (
           <QRCode value={payload} size={220} backgroundColor={Palette.ink} color={Palette.bg} />
         ) : (
-          <Text style={styles.body}>Generando…</Text>
+          <Text style={styles.body}>{t('llave.generating')}</Text>
         )}
-        <Text style={styles.timer}>Nuevo en {seconds}s</Text>
+        <Text style={styles.timer}>{t('llave.timer', { seconds })}</Text>
       </View>
 
-      <PrimaryButton muted label="Dejar de ser llave" onPress={() => void clearKeyHolder()} />
+      <PrimaryButton muted label={t('llave.stop')} onPress={() => void clearKeyHolder()} />
       <View style={{ height: 10 }} />
-      <PrimaryButton muted label="Cerrar" onPress={() => router.back()} />
+      <PrimaryButton muted label={t('common.close')} onPress={() => router.back()} />
     </Screen>
   );
 }

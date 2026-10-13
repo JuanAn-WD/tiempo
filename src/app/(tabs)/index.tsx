@@ -9,11 +9,13 @@ import { Screen } from '@/components/screen';
 import { Badge, BrandMark, StatTile } from '@/components/ui';
 import { Palette, Radius } from '@/constants/theme';
 import { useTiempo } from '@/context/tiempo-store';
+import { useI18n } from '@/i18n';
 import { formatClock, formatDuration, MODES } from '@/lib/storage';
 
 export default function FocusScreen() {
   const router = useRouter();
   const { state, toggleLockWithTag, setMode, refreshEmergencyClock } = useTiempo();
+  const { locale, t } = useI18n();
   const [clock, setClock] = useState<{ at: number; ms: number } | null>(null);
 
   useEffect(() => {
@@ -36,25 +38,25 @@ export default function FocusScreen() {
   );
 
   const hint = useMemo(() => {
-    const action = state.locked ? 'Acerca tu tag para volver' : 'Acerca tu tag para bloquear';
-    if (__DEV__) return `${action} · mantén pulsado para simular`;
+    const action = state.locked ? t('focus.hintUnlock') : t('focus.hintLock');
+    if (__DEV__) return t('focus.hintDev', { action });
     return action;
-  }, [state.locked]);
+  }, [state.locked, t]);
 
   return (
     <Screen atmosphere={state.locked ? 'focus' : 'idle'}>
       <View style={styles.topBar}>
         <BrandMark size={20} />
         <Badge
-          label={state.locked ? 'EN FOCO' : 'LISTO'}
+          label={state.locked ? t('focus.badgeFocus') : t('focus.badgeReady')}
           tone={state.locked ? 'focus' : 'accent'}
         />
       </View>
 
       <View style={styles.heroCopy}>
-        <Text style={styles.kicker}>{state.locked ? mode?.title ?? 'Sesión' : 'Presencia'}</Text>
+        <Text style={styles.kicker}>{state.locked ? (mode ? t(mode.titleKey) : t('focus.session')) : t('focus.presence')}</Text>
         <Text style={styles.title}>
-          {state.locked ? 'El ruido está fuera' : 'Tu atención,\notra vez tuya.'}
+          {state.locked ? t('focus.titleLocked') : t('focus.titleIdle')}
         </Text>
       </View>
 
@@ -81,7 +83,7 @@ export default function FocusScreen() {
               <View style={[styles.modeMark, on && styles.modeMarkOn]}>
                 <Text style={[styles.modeMarkText, on && styles.modeMarkTextOn]}>{item.mark}</Text>
               </View>
-              <Text style={[styles.modeTitle, on && styles.modeTitleOn]}>{item.title}</Text>
+              <Text style={[styles.modeTitle, on && styles.modeTitleOn]}>{t(item.titleKey)}</Text>
             </Pressable>
           );
         })}
@@ -90,17 +92,17 @@ export default function FocusScreen() {
       <View style={styles.statsRow}>
         <StatTile
           emphasize={!state.locked}
-          value={formatDuration(state.locked ? sessionMs : state.recoveredMs)}
-          label={state.locked ? 'esta sesión' : 'recuperado'}
+          value={formatDuration(state.locked ? sessionMs : state.recoveredMs, locale)}
+          label={state.locked ? t('focus.statSession') : t('focus.statReclaimed')}
         />
         <StatTile
-          value={state.mobileKeySecret ? 'ON' : '—'}
-          label="llave móvil"
+          value={state.mobileKeySecret ? t('common.on') : t('common.dash')}
+          label={t('focus.statPhoneKey')}
         />
       </View>
 
       <PrimaryButton
-        label={state.locked ? 'Escanear llave móvil' : 'Bloquear con llave móvil'}
+        label={state.locked ? t('focus.scanKey') : t('focus.lockWithKey')}
         onPress={() => router.push('/scan-key')}
       />
       {state.locked ? (
@@ -110,8 +112,8 @@ export default function FocusScreen() {
       ) : null}
       <Text style={styles.footer}>
         {state.strict
-          ? 'Modo estricto. Solo tus llaves. Sin emergencias.'
-          : `Solo tu tag o tu llave móvil. Emergencias: ${state.emergencyLeft}`}
+          ? t('focus.footerStrict')
+          : t('focus.footerNormal', { count: state.emergencyLeft })}
       </Text>
     </Screen>
   );
