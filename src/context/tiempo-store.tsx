@@ -14,6 +14,7 @@ import { Alert, AppState, Platform } from 'react-native';
 import type { AndroidBlockableApp, IOSBlockedItem, PermissionStatus } from 'expo-app-blocker';
 
 import { useI18n, type Translate } from '@/i18n';
+import { refreshBlockedAttempts, watchBlockedAttempts } from '@/lib/blocked-attempts-sync';
 import {
   applyAndroidOverlayTheme,
   getPermissions,
@@ -335,6 +336,11 @@ export function TiempoProvider({ children }: { children: ReactNode }) {
   }, [ready, refreshEmergencyClock, refreshNfcStatus]);
 
   useEffect(() => () => cancelActiveNfcSession(), []);
+
+  useEffect(() => {
+    watchBlockedAttempts();
+    void refreshBlockedAttempts();
+  }, []);
 
   useEffect(() => {
     if (Platform.OS !== 'ios') return;

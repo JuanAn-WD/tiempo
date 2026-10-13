@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import { Text } from '@/components/app-text';
+import { BlockedAttemptsCard } from '@/components/blocked-attempts-card';
 import { Screen } from '@/components/screen';
 import { BrandMark, Card } from '@/components/ui';
 import { FontFamily, Palette, Radius, Type } from '@/constants/theme';
@@ -68,6 +69,8 @@ export default function StatsScreen() {
           })}
         </Text>
       </Card>
+
+      <BlockedAttemptsCard />
 
       <Card style={styles.yearsCard}>
         <Text style={styles.cardTitle}>{t('stats.pace')}</Text>
