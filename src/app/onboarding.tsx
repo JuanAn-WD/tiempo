@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
 import { FocusOrb } from '@/components/focus-orb';
+import { NfcNotice } from '@/components/nfc-notice';
 import { PrimaryButton } from '@/components/primary-button';
 import { Screen } from '@/components/screen';
 import { BrandMark } from '@/components/ui';
@@ -70,7 +71,7 @@ function StepVisual({ kind }: { kind: (typeof STEP_ORDER)[number] }) {
 }
 
 export default function Onboarding() {
-  const { pairTag, pairSpareTag, completeOnboarding, requestPermissions, nfcSupported, state } =
+  const { pairTag, pairSpareTag, completeOnboarding, requestPermissions, nfcSupported, nfcNotice, state } =
     useTiempo();
   const { t } = useI18n();
   const [step, setStep] = useState(0);
@@ -112,6 +113,13 @@ export default function Onboarding() {
             }
             onPress={() => void pairTag()}
             onLongPress={__DEV__ ? () => void pairTag('DEMO-TAG') : undefined}
+          />
+          <NfcNotice
+            scope={['pair', 'spare']}
+            onRetry={() => {
+              if (nfcNotice?.scope === 'spare') void pairSpareTag();
+              else void pairTag();
+            }}
           />
           {state.tagId ? (
             <View style={styles.spare}>
