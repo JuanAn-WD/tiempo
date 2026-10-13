@@ -225,9 +225,9 @@ export const en = {
     emptyBody: 'On their phone, open Settings → Phone key and show the pairing QR. Then scan it here.',
     claim: 'Scan to become a key',
     kicker: 'I’m the key',
-    body: 'Show this QR to the locked phone. It locks and unlocks. It refreshes on its own.',
+    body: 'Show this QR to the locked phone. It locks and unlocks. It expires in 60 s and works only once.',
     generating: 'Generating…',
-    timer: 'New in {{seconds}}s',
+    timer: 'Expires in {{seconds}} s',
     stop: 'Stop being the key',
   },
   pairKey: {
@@ -248,7 +248,7 @@ export const en = {
     body: 'Scan the pairing QR the other phone shows in Settings → Phone key.',
     camera: 'Allow camera',
     pairTitle: 'Pair as a key',
-    pairBody: 'Scan the pairing QR (not the one that refreshes every 30s).',
+    pairBody: 'Scan the pairing QR (not the one that expires in 60 s).',
   },
   scanKey: {
     title: 'Camera for the key',
@@ -364,7 +364,15 @@ export const en = {
     },
     rejectedKey: {
       title: 'Key rejected',
-      body: 'That QR expired or doesn’t match your key. Generate a new one.',
+      body: 'That QR expired, the clocks don’t match, or it isn’t your key. Generate a new one.',
+    },
+    replayedKey: {
+      title: 'QR already used',
+      body: 'That code was already scanned. Wait for the next one on the other phone: each expires in 60 s and can’t be reused.',
+    },
+    legacyKey: {
+      title: 'Update the key',
+      body: 'That QR uses the previous format. Update Apartag on the phone that acts as the key. You don’t need to pair again.',
     },
     strictBackup: {
       title: 'Spare key missing',

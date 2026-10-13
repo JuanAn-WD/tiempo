@@ -60,6 +60,8 @@ npx expo run:android
 3. Foco: acerca el tag (o mantén pulsado para simular).
 4. Para desbloquear, el mismo tag o la llave móvil. Si los pierdes: Desbloqueo de emergencia, 3 veces, con la app abierta 5 minutos. Se recupera 1 cada 30 días (máximo 3) y no se paga. El modo estricto, en Ajustes, quita esa salida; solo se activa con una llave de repuesto (segundo tag o llave móvil) y escribiendo `ESTRICTO`.
 
+La llave móvil es otro teléfono emparejado. Muestra un QR firmado con HMAC-SHA256 que caduca a los 60 segundos y solo vale una vez. Un desfase pequeño de reloj entre los dos móviles se tolera. Si la llave ya estaba emparejada, el secreto se conserva: no hay que volver a escanear el QR de emparejar, pero el móvil que hace de llave tiene que estar actualizado para firmar el QR nuevo.
+
 ## Licencia
 
 © 2026 Juan Antonio López. Todos los derechos reservados.

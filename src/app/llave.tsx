@@ -10,31 +10,53 @@ import { BrandMark } from '@/components/ui';
 import { Palette, Radius, Type } from '@/constants/theme';
 import { useTiempo } from '@/context/tiempo-store';
 import { useI18n } from '@/i18n';
-import { buildPulsePayload } from '@/lib/mobile-key';
+import { PULSE_TTL_MS, buildPulsePayload } from '@/lib/mobile-key';
+
+const PULSE_TTL_SEC = PULSE_TTL_MS / 1000;
 
 export default function LlaveScreen() {
   const router = useRouter();
   const { state, clearKeyHolder } = useTiempo();
   const { t } = useI18n();
   const [payload, setPayload] = useState<string>('');
-  const [seconds, setSeconds] = useState(30);
+  const [seconds, setSeconds] = useState(PULSE_TTL_SEC);
 
   useEffect(() => {
     if (!state.keyHolderSecret) return;
+    const secret = state.keyHolderSecret;
     let alive = true;
-    const refresh = async () => {
-      const next = await buildPulsePayload(state.keyHolderSecret!);
-      if (alive) {
+    let issuedAt = 0;
+    let refreshing = false;
+
+    const issue = async () => {
+      if (refreshing) return;
+      refreshing = true;
+      try {
+        const stamped = Date.now();
+        const next = await buildPulsePayload(secret, stamped);
+        if (!alive) return;
+        issuedAt = stamped;
         setPayload(next);
-        setSeconds(30);
+        setSeconds(Math.max(0, Math.ceil((PULSE_TTL_MS - (Date.now() - stamped)) / 1000)));
+      } catch {
+        // Keep the previous code up and try again on the next tick.
+      } finally {
+        refreshing = false;
       }
     };
-    void refresh();
-    const pulse = setInterval(() => void refresh(), 30_000);
-    const tick = setInterval(() => setSeconds((s) => (s > 0 ? s - 1 : 0)), 1000);
+
+    void issue();
+    const tick = setInterval(() => {
+      if (issuedAt === 0) {
+        void issue();
+        return;
+      }
+      const left = Math.max(0, Math.ceil((PULSE_TTL_MS - (Date.now() - issuedAt)) / 1000));
+      setSeconds((current) => (current === left ? current : left));
+      if (left <= 0) void issue();
+    }, 250);
     return () => {
       alive = false;
-      clearInterval(pulse);
       clearInterval(tick);
     };
   }, [state.keyHolderSecret]);

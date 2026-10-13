@@ -90,7 +90,7 @@ Cada permiso sirve para bloquear y desbloquear. Si lo rechazas, esa parte de la 
 
 Si creas una llave móvil, se genera un secreto en tu teléfono. El QR de emparejar contiene ese secreto. Quien lo escanea lo guarda en su teléfono y, a partir de ahí, puede bloquear y desbloquear tus apps mostrando otro QR.
 
-Ese segundo QR caduca a los 60 segundos. Durante ese minuto puede volver a usarse. No pasa por ningún servidor: va de una pantalla a la cámara del otro teléfono.
+Ese segundo QR va firmado con HMAC-SHA256 en el teléfono y caduca a los 60 segundos. Solo vale una vez: si ya se ha escaneado, no vuelve a servir, aunque siga en pantalla. Un desfase pequeño entre los relojes de los dos móviles no lo invalida. No pasa por ningún servidor: va de una pantalla a la cámara del otro teléfono.
 
 Enseña el QR de emparejar solo a alguien de tu confianza. Puedes revocar la llave desde Ajustes cuando no hay una sesión bloqueada. Si tienes activado el modo estricto, solo puedes revocarla si te quedan al menos otras dos llaves (el tag y un segundo tag). Apartag no puede revocarla por ti, porque el secreto no sale de los teléfonos.
 

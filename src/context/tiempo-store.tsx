@@ -40,6 +40,7 @@ import { guardIosSelection, withoutOwnPackages } from '@/lib/self-block';
 import {
   createMobileKeySecret,
   parseKeyPayload,
+  rememberNonce,
   verifyPulse,
 } from '@/lib/mobile-key';
 import {
@@ -488,7 +489,7 @@ export function TiempoProvider({ children }: { children: ReactNode }) {
   }, [persist]);
 
   const unlock = useCallback(
-    async (options?: { emergency?: boolean }) => {
+    async (options?: { emergency?: boolean; pulse?: { nonce: string; ts: number } }) => {
       const latest = stateRef.current;
       if (!latest.locked) return false;
       if (options?.emergency && !consumeEmergency(snapshot(latest), Date.now())) return false;
@@ -508,6 +509,17 @@ export function TiempoProvider({ children }: { children: ReactNode }) {
                 emergencyLeft: consumed.emergencyLeft,
                 emergencyRefillAt: consumed.emergencyRefillAt,
                 lastSeenAt: Math.max(consumed.lastSeenAt, endedAt),
+              }
+            : {}),
+          ...(options?.pulse
+            ? {
+                usedMobileKeyNonces: rememberNonce(
+                  prev.usedMobileKeyNonces,
+                  options.pulse.nonce,
+                  options.pulse.ts,
+                  endedAt,
+                  prev.lastSeenAt,
+                ),
               }
             : {}),
           locked: false,
@@ -543,7 +555,7 @@ export function TiempoProvider({ children }: { children: ReactNode }) {
   );
 
   const lock = useCallback(
-    async (current: TiempoState) => {
+    async (current: TiempoState, pulse?: { nonce: string; ts: number }) => {
       if (Platform.OS === 'android') {
         if (current.selectedPackages.length === 0) {
           Alert.alert(t('alerts.chooseApps.title'), t('alerts.chooseApps.android'));
@@ -564,23 +576,35 @@ export function TiempoProvider({ children }: { children: ReactNode }) {
         }
         await startIosBlock(guarded.items);
       }
+      const lockedAt = Date.now();
       await persist((prev) => ({
         ...prev,
         tagId: current.tagId ?? prev.tagId,
         locked: true,
-        lockedAt: Date.now(),
+        lockedAt,
+        ...(pulse
+          ? {
+              usedMobileKeyNonces: rememberNonce(
+                prev.usedMobileKeyNonces,
+                pulse.nonce,
+                pulse.ts,
+                lockedAt,
+                prev.lastSeenAt,
+              ),
+            }
+          : {}),
       }));
     },
     [persist, t],
   );
 
   const toggleWithIdentity = useCallback(
-    async (next: TiempoState) => {
+    async (next: TiempoState, pulse?: { nonce: string; ts: number }) => {
       void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
       if (next.locked) {
-        await unlock();
+        await unlock(pulse ? { pulse } : undefined);
       } else {
-        await lock(next);
+        await lock(next, pulse);
       }
     },
     [lock, unlock],
@@ -674,12 +698,21 @@ export function TiempoProvider({ children }: { children: ReactNode }) {
           Alert.alert(t('alerts.badQr.title'), t('alerts.badQr.body'));
           return false;
         }
-        const ok = await verifyPulse(payload, current.mobileKeySecret);
-        if (!ok) {
-          Alert.alert(t('alerts.rejectedKey.title'), t('alerts.rejectedKey.body'));
+        const verdict = verifyPulse(payload, current.mobileKeySecret, {
+          now: Date.now(),
+          usedNonces: current.usedMobileKeyNonces,
+        });
+        if (!verdict.ok) {
+          if (verdict.reason === 'replay') {
+            Alert.alert(t('alerts.replayedKey.title'), t('alerts.replayedKey.body'));
+          } else if (verdict.reason === 'legacy') {
+            Alert.alert(t('alerts.legacyKey.title'), t('alerts.legacyKey.body'));
+          } else {
+            Alert.alert(t('alerts.rejectedKey.title'), t('alerts.rejectedKey.body'));
+          }
           return false;
         }
-        await toggleWithIdentity(current);
+        await toggleWithIdentity(current, { nonce: verdict.nonce, ts: verdict.ts });
         return true;
       } finally {
         lockBusy.current = false;
@@ -707,7 +740,7 @@ export function TiempoProvider({ children }: { children: ReactNode }) {
     }
     await persist((prev) => {
       if (!canDropKey(prev, { mobileKeySecret: null })) return prev;
-      return { ...prev, mobileKeySecret: null };
+      return { ...prev, mobileKeySecret: null, usedMobileKeyNonces: [] };
     });
   }, [persist, t]);
 
