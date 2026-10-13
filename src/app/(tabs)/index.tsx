@@ -12,11 +12,21 @@ import { Badge, BrandMark, StatTile } from '@/components/ui';
 import { FontFamily, Palette, Radius, Type } from '@/constants/theme';
 import { useTiempo } from '@/context/tiempo-store';
 import { useI18n } from '@/i18n';
+import { usePermissionRecord } from '@/lib/permission-ack';
 import { formatClock, formatDuration, MODES } from '@/lib/storage';
 
 export default function FocusScreen() {
   const router = useRouter();
   const { state, toggleLockWithTag, setMode, refreshEmergencyClock } = useTiempo();
+  const { record, ready: permissionsReady } = usePermissionRecord();
+  const nfcExplained = permissionsReady && record.seen.includes('nfc');
+  const scanTag = () => {
+    if (!nfcExplained) {
+      router.push('/permissions?scope=nfc');
+      return;
+    }
+    void toggleLockWithTag(false);
+  };
   const { locale, t } = useI18n();
   const [clock, setClock] = useState<{ at: number; ms: number } | null>(null);
 
@@ -67,10 +77,10 @@ export default function FocusScreen() {
           locked={state.locked}
           hint={hint}
           clock={state.locked ? formatClock(sessionMs) : undefined}
-          onPress={() => void toggleLockWithTag(false)}
+          onPress={scanTag}
           onLongPress={__DEV__ ? () => void toggleLockWithTag(true) : undefined}
         />
-        <NfcNotice scope="toggle" onRetry={() => void toggleLockWithTag(false)} />
+        <NfcNotice scope="toggle" onRetry={scanTag} />
       </View>
 
       <View style={styles.modeGrid}>

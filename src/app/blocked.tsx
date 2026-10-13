@@ -12,12 +12,22 @@ import { BrandMark } from '@/components/ui';
 import { Palette, Type } from '@/constants/theme';
 import { useTiempo } from '@/context/tiempo-store';
 import { useI18n } from '@/i18n';
+import { usePermissionRecord } from '@/lib/permission-ack';
 
 export default function BlockedScreen() {
   const { app } = useLocalSearchParams<{ app?: string }>();
   const router = useRouter();
   const { toggleLockWithTag, state, refreshEmergencyClock } = useTiempo();
+  const { record, ready: permissionsReady } = usePermissionRecord();
   const { t } = useI18n();
+  const nfcExplained = permissionsReady && record.seen.includes('nfc');
+  const scanTag = () => {
+    if (!nfcExplained) {
+      router.push('/permissions?scope=nfc');
+      return;
+    }
+    void toggleLockWithTag(false);
+  };
   const name = app ? decodeURIComponent(String(app)) : t('blocked.fallbackApp');
 
   useFocusEffect(
@@ -44,10 +54,10 @@ export default function BlockedScreen() {
           hint={
             state.locked ? (__DEV__ ? t('blocked.hintDev') : t('blocked.hint')) : t('blocked.closed')
           }
-          onPress={() => void toggleLockWithTag(false)}
+          onPress={scanTag}
           onLongPress={__DEV__ ? () => void toggleLockWithTag(true) : undefined}
         />
-        <NfcNotice scope="toggle" onRetry={() => void toggleLockWithTag(false)} />
+        <NfcNotice scope="toggle" onRetry={scanTag} />
       </View>
 
       <View style={styles.actions}>

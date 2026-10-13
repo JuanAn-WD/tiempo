@@ -1,17 +1,21 @@
 import { LinearGradient } from 'expo-linear-gradient';
+import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import { Text } from '@/components/app-text';
 import { FocusOrb } from '@/components/focus-orb';
 import { NfcNotice } from '@/components/nfc-notice';
+import { PermissionExplainer } from '@/components/permission-explainer';
 import { PrimaryButton } from '@/components/primary-button';
 import { Screen } from '@/components/screen';
 import { BrandMark } from '@/components/ui';
 import { Palette, Radius, Type } from '@/constants/theme';
 import { useTiempo } from '@/context/tiempo-store';
 import { useI18n, type TranslationKey } from '@/i18n';
-import { openAndroidPermissionScreens } from '@/lib/blocker';
+import { usePermissionRecord } from '@/lib/permission-ack';
+import { openPermissionSettings } from '@/lib/permission-actions';
+import { outcomeFromNfc } from '@/lib/permission-flow';
 
 const STEP_ORDER = ['cost', 'key', 'pair'] as const;
 
@@ -72,11 +76,15 @@ function StepVisual({ kind }: { kind: (typeof STEP_ORDER)[number] }) {
 }
 
 export default function Onboarding() {
-  const { pairTag, pairSpareTag, completeOnboarding, requestPermissions, nfcSupported, nfcNotice, state } =
-    useTiempo();
+  const router = useRouter();
+  const { pairTag, pairSpareTag, completeOnboarding, nfcSupported, nfcEnabled, nfcNotice, state } = useTiempo();
   const { t } = useI18n();
+  const { record, ready: permissionsReady, markSeen, markAttempted } = usePermissionRecord();
   const [step, setStep] = useState(0);
   const current = STEP_ORDER[step];
+  const holdPair = current === 'pair' && !permissionsReady;
+  const explainNfc = current === 'pair' && permissionsReady && !record.seen.includes('nfc');
+  const nfcSnapshot = outcomeFromNfc({ supported: nfcSupported, enabled: nfcEnabled });
 
   return (
     <Screen tabPadding={false}>
@@ -93,6 +101,30 @@ export default function Onboarding() {
         ))}
       </View>
 
+      {holdPair ? (
+        <View style={styles.tag} />
+      ) : explainNfc ? (
+        <View style={styles.tag}>
+          <PermissionExplainer
+            id="nfc"
+            outcome={nfcSnapshot.outcome}
+            canAskAgain={nfcSnapshot.canAskAgain}
+            onRequest={() => {
+              void markSeen('nfc');
+            }}
+            onContinue={() => {
+              void markSeen('nfc');
+            }}
+            onOpenSettings={() => {
+              void markAttempted('nfc');
+              void openPermissionSettings('nfc');
+            }}
+            onSkip={() => setStep(step - 1)}
+            skipLabel={t('onboarding.back')}
+          />
+        </View>
+      ) : (
+        <>
       <Text style={styles.kicker}>{t(STEP_COPY[current].kicker)}</Text>
       <Text style={styles.title}>{t(STEP_COPY[current].title)}</Text>
       <Text style={styles.body}>{t(STEP_COPY[current].body)}</Text>
@@ -161,17 +193,13 @@ export default function Onboarding() {
           </>
         ) : (
           <>
-            <PrimaryButton
-              label={t('onboarding.permissions')}
-              onPress={() => {
-                void requestPermissions();
-                void openAndroidPermissionScreens();
-              }}
-            />
+            <PrimaryButton label={t('onboarding.permissions')} onPress={() => router.push('/permissions')} />
             <PrimaryButton muted label={t('onboarding.enter')} onPress={() => void completeOnboarding()} />
           </>
         )}
       </View>
+        </>
+      )}
     </Screen>
   );
 }

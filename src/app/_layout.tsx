@@ -23,8 +23,9 @@ function Gate({ fontsReady }: { fontsReady: boolean }) {
     const root = segments[0];
     const inOnboarding = root === 'onboarding';
     const freeKeyFlow = root === 'claim-key' || root === 'llave';
+    const inPermissions = root === 'permissions';
 
-    if (!state.onboarded && !inOnboarding && !freeKeyFlow) {
+    if (!state.onboarded && !inOnboarding && !freeKeyFlow && !inPermissions) {
       router.replace('/onboarding');
       return;
     }
@@ -48,6 +49,7 @@ function Gate({ fontsReady }: { fontsReady: boolean }) {
       <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: Palette.bg } }}>
         <Stack.Screen name="(tabs)" />
         <Stack.Screen name="onboarding" />
+        <Stack.Screen name="permissions" options={{ presentation: 'modal' }} />
         <Stack.Screen name="blocked" options={{ presentation: 'modal' }} />
         <Stack.Screen name="emergency" options={{ presentation: 'modal' }} />
         <Stack.Screen name="scan-key" options={{ presentation: 'modal' }} />

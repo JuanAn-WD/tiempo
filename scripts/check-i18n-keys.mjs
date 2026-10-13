@@ -89,6 +89,21 @@ sameKeys(esFlat, enFlat, 'catalog');
 if (!enFlat['onboarding.cost.body']?.includes('Set your phone apart. Get your time back.')) {
   fail('English onboarding slogan is missing');
 }
+
+const permissionIds = ['nfc', 'screenTime', 'usage', 'overlay', 'accessibility', 'notifications', 'camera'];
+const permissionFields = ['title', 'body', 'denied', 'unavailable', 'allow'];
+for (const id of permissionIds) {
+  for (const field of permissionFields) {
+    const key = `permissions.item.${id}.${field}`;
+    if (!esFlat[key] || !enFlat[key]) fail(`permission copy missing: ${key}`);
+  }
+}
+if (!esFlat['permissions.item.notifications.channel'] || !enFlat['permissions.item.notifications.channel']) {
+  fail('notification channel name missing');
+}
+if (!esFlat['permissions.openSettings'] || !enFlat['permissions.openSettings']) {
+  fail('settings link copy missing');
+}
 if (esFlat['strict.word'] !== 'ESTRICTO' || enFlat['strict.word'] !== 'STRICT') {
   fail('strict confirmation words drifted from ESTRICTO / STRICT');
 }

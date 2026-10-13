@@ -56,11 +56,24 @@ export async function requestNativePermissions(): Promise<PermissionStatus | nul
   }
 }
 
-export async function openAndroidPermissionScreens() {
-  if (Platform.OS !== 'android') return;
-  const blocker = await native();
-  blocker.openOverlaySettings();
-  setTimeout(() => blocker.openUsageStatsSettings(), 600);
+export async function openOverlayPermission(): Promise<boolean> {
+  if (Platform.OS !== 'android') return false;
+  try {
+    (await native()).openOverlaySettings();
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export async function openUsagePermission(): Promise<boolean> {
+  if (Platform.OS !== 'android') return false;
+  try {
+    (await native()).openUsageStatsSettings();
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 export async function listAndroidApps(locale: Locale = 'es'): Promise<AndroidBlockableApp[]> {
