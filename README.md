@@ -1,4 +1,6 @@
-# Tiempo
+# Apartag
+
+Aparta el móvil. Recupera tu tiempo.
 
 App nativa de foco: eliges las apps, acercas un tag NFC, y esas apps se cierran. Para volver, hay que escanear el mismo tag. Tres desbloqueos de emergencia.
 
@@ -44,7 +46,11 @@ npx expo run:android
 ## iOS
 
 1. Pon tu Team ID de Apple en `app.json` → `expo.ios.appleTeamId`.
-2. Crea el App Group `group.com.tiempo.focus` y 4 App IDs (app + DeviceActivityMonitor + ShieldAction + ShieldConfiguration) con Family Controls.
+2. Crea el App Group `group.com.apartag.app` y estos 4 App IDs, con Family Controls:
+   - `com.apartag.app` (app)
+   - `com.apartag.app.DeviceActivityMonitor`
+   - `com.apartag.app.ShieldAction`
+   - `com.apartag.app.ShieldConfiguration`
 3. `npx expo prebuild --platform ios` y `npx expo run:ios --device` (NFC y Screen Time no van en simulador).
 
 ## Uso

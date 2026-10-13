@@ -15,7 +15,7 @@ export type TiempoState = {
   tagId: string | null;
   /** Shared secret that partner phones use as a mobile key. */
   mobileKeySecret: string | null;
-  /** If set, this install acts as a key for someone else's Tiempo. */
+  /** If set, this install acts as a key for someone else's Apartag. */
   keyHolderSecret: string | null;
   keyHolderLabel: string | null;
   locked: boolean;

@@ -6,7 +6,7 @@ import { Palette, Radius, Spacing } from '@/constants/theme';
 export function BrandMark({ size = 22 }: { size?: number }) {
   return (
     <Text style={[styles.brand, { fontSize: size }]}>
-      tiempo<Text style={styles.brandDot}>.</Text>
+      apartag<Text style={styles.brandDot}>.</Text>
     </Text>
   );
 }

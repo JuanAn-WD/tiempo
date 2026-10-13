@@ -56,7 +56,7 @@ export default function LlaveScreen() {
     <Screen tabPadding={false}>
       <BrandMark />
       <Text style={styles.kicker}>Soy la llave</Text>
-      <Text style={styles.title}>{state.keyHolderLabel ?? 'Tiempo'}</Text>
+      <Text style={styles.title}>{state.keyHolderLabel ?? 'Apartag'}</Text>
       <Text style={styles.body}>
         Enséñale este QR al móvil bloqueado. Sirve para bloquear y desbloquear. Se renueva solo.
       </Text>

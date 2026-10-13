@@ -267,7 +267,7 @@ export function TiempoProvider({ children }: { children: ReactNode }) {
         }
 
         if (!tagId) {
-          Alert.alert('Tag no detectado', 'Acerca el tag Tiempo a la parte trasera del móvil.');
+          Alert.alert('Tag no detectado', 'Acerca el tag de Apartag a la parte trasera del móvil.');
           return;
         }
         if (tagId === 'DEMO-TAG' && !__DEV__) return;
@@ -334,7 +334,7 @@ export function TiempoProvider({ children }: { children: ReactNode }) {
       await persist((prev) => ({
         ...prev,
         keyHolderSecret: secret,
-        keyHolderLabel: label ?? 'Tiempo',
+        keyHolderLabel: label ?? 'Apartag',
         onboarded: true,
       }));
     },
