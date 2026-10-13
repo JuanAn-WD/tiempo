@@ -1,4 +1,5 @@
 import * as StoreReview from 'expo-store-review';
+import { Platform } from 'react-native';
 
 /**
  * Opens the system in-app review sheet.
@@ -7,6 +8,7 @@ import * as StoreReview from 'expo-store-review';
  * calling again on every session is the spam the API asks us to avoid.
  */
 export async function requestNativeStoreReview(): Promise<boolean> {
+  if (Platform.OS === 'web') return false;
   try {
     if (!(await StoreReview.isAvailableAsync())) return false;
     if (!(await StoreReview.hasAction())) return false;

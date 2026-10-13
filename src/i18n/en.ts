@@ -542,5 +542,14 @@ export const en = {
     limitUnavailable:
       'This version cannot count attempts. You need the installed app, with blocking on.',
   },
+  deviceOnly: {
+    preview:
+      'Only on a device. NFC, app locking, usage stats, purchases, and store reviews need the phone.',
+    nfc: 'Only on a device. NFC needs the phone.',
+    blocker: 'Only on a device. Locking apps needs the phone.',
+    usage: 'Only on a device. Usage stats need the phone.',
+    purchases: 'Only on a device. The store purchase needs the phone.',
+    review: 'Only on a device. The store review needs the phone.',
+  },
   native: nativeEn,
 } as const satisfies Translations;

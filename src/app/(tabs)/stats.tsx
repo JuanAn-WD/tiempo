@@ -3,6 +3,7 @@ import { AppState, Platform, Pressable, StyleSheet, View } from 'react-native';
 
 import { Text } from '@/components/app-text';
 import { BlockedAttemptsCard } from '@/components/blocked-attempts-card';
+import { DeviceOnlyNotice } from '@/components/device-only-notice';
 import { Screen } from '@/components/screen';
 import { BrandMark, Card } from '@/components/ui';
 import { FontFamily, Palette, Radius, Type } from '@/constants/theme';
@@ -144,6 +145,7 @@ export default function StatsScreen() {
         {sourceKey ? (
           <Text style={styles.source}>{t(sourceKey, { hours: sourceHours })}</Text>
         ) : null}
+        <DeviceOnlyNotice notice="usage" />
         <Stepper
           label={t('stats.age')}
           value={`${age}`}

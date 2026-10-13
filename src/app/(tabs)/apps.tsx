@@ -3,6 +3,7 @@ import { useMemo, useState } from 'react';
 import { Pressable, StyleSheet, TextInput, View } from 'react-native';
 
 import { Text } from '@/components/app-text';
+import { DeviceOnlyNotice } from '@/components/device-only-notice';
 import { Screen } from '@/components/screen';
 import { Badge, BrandMark, Card } from '@/components/ui';
 import { Palette, Radius, Type } from '@/constants/theme';
@@ -39,6 +40,7 @@ export default function AppsScreen() {
 
       <Text style={styles.title}>{t('apps.title')}</Text>
       <Text style={styles.sub}>{t('apps.sub')}</Text>
+      <DeviceOnlyNotice notice="blocker" />
 
       <View style={styles.tools}>
         <TextInput

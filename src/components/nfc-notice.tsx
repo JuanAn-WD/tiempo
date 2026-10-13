@@ -1,4 +1,4 @@
-import { StyleSheet, View } from 'react-native';
+import { Platform, StyleSheet, View } from 'react-native';
 
 import { Text } from '@/components/app-text';
 import { PrimaryButton } from '@/components/primary-button';
@@ -54,7 +54,11 @@ export function NfcNotice({ scope, onRetry }: Props) {
 
   return (
     <View accessibilityRole="alert" accessibilityLiveRegion="polite" style={[styles.box, styles.error]}>
-      <Text style={styles.text}>{t(FAILURE_KEY[notice.error])}</Text>
+      <Text style={styles.text}>
+        {Platform.OS === 'web' && notice.error === 'unsupported'
+          ? t('deviceOnly.nfc')
+          : t(FAILURE_KEY[notice.error])}
+      </Text>
       {notice.error === 'disabled' ? (
         <PrimaryButton muted label={t('nfc.openSettings')} onPress={() => void openNfcSettings()} />
       ) : null}

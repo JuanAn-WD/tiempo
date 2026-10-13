@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import { Text } from '@/components/app-text';
+import { DeviceOnlyNotice } from '@/components/device-only-notice';
 import { FocusOrb } from '@/components/focus-orb';
 import { NfcNotice } from '@/components/nfc-notice';
 import { PermissionExplainer } from '@/components/permission-explainer';
@@ -100,6 +101,7 @@ export default function Onboarding() {
           <View key={id} style={[styles.dot, i <= step && styles.dotOn]} />
         ))}
       </View>
+      <DeviceOnlyNotice notice="preview" />
 
       {holdPair ? (
         <View style={styles.tag} />

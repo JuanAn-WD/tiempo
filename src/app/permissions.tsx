@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AppState, Platform, StyleSheet, View } from 'react-native';
 
 import { Text } from '@/components/app-text';
+import { DeviceOnlyNotice } from '@/components/device-only-notice';
 import { PermissionExplainer } from '@/components/permission-explainer';
 import { PrimaryButton } from '@/components/primary-button';
 import { Screen } from '@/components/screen';
@@ -197,6 +198,7 @@ export default function PermissionsScreen() {
   return (
     <Screen tabPadding={false} scroll>
       <BrandMark />
+      <DeviceOnlyNotice notice="preview" />
       <View style={styles.explainer}>
         <PermissionExplainer
           id={current}

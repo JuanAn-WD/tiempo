@@ -3,6 +3,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import { Text } from '@/components/app-text';
+import { DeviceOnlyNotice } from '@/components/device-only-notice';
 import { EmergencyEntry } from '@/components/emergency-entry';
 import { FocusOrb } from '@/components/focus-orb';
 import { NfcNotice } from '@/components/nfc-notice';
@@ -81,6 +82,7 @@ export default function FocusScreen() {
           onLongPress={__DEV__ ? () => void toggleLockWithTag(true) : undefined}
         />
         <NfcNotice scope="toggle" onRetry={scanTag} />
+        <DeviceOnlyNotice notice="nfc" />
       </View>
 
       <View style={styles.modeGrid}>
