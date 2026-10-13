@@ -1,21 +1,97 @@
-The MIT License (MIT)
+Apartag
+Copyright (c) 2026 Juan Antonio López. All rights reserved.
+Copyright (c) 2026 Juan Antonio López. Todos los derechos reservados.
 
-Copyright (c) 2015-present 650 Industries, Inc. (aka Expo)
+Proprietary license / Licencia propietaria
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
+This file is the license for the Apartag app, its source code, its visual
+design, and the documentation in this repository (the "Software"), except
+for third-party components.
 
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
+The MIT license notice that used to be in this file was the Expo template
+notice, Copyright (c) 2015-present 650 Industries, Inc. (aka Expo). That
+notice has been removed. It is not a license granted by Juan Antonio López.
+No MIT or other open-source license is granted for the Software by this file.
+
+El aviso MIT que había en este archivo era el de la plantilla de Expo,
+Copyright (c) 2015-present 650 Industries, Inc. Ese aviso se ha quitado.
+No es una licencia concedida por Juan Antonio López. Este archivo no
+concede una licencia MIT ni ninguna otra licencia de código abierto sobre
+el Software.
+
+1. Ownership / Titularidad
+
+The Software is the exclusive property of Juan Antonio López. All rights
+not expressly granted in this file are reserved.
+
+El Software es propiedad exclusiva de Juan Antonio López. Todos los
+derechos que este archivo no concede de forma expresa quedan reservados.
+
+2. Use of official binaries / Uso de los binarios oficiales
+
+You may install and use an official binary of Apartag distributed by
+Juan Antonio López through Google Play, the Apple App Store, or another
+channel he authorizes. That use is subject to the Terms of Use
+(docs/es/terminos.md and docs/en/terms.md) and to the terms of the store.
+
+Puedes instalar y usar un binario oficial de Apartag distribuido por
+Juan Antonio López en Google Play, en el App Store o en otro canal que
+él autorice. Ese uso queda sujeto a los Términos de uso
+(docs/es/terminos.md y docs/en/terms.md) y a las condiciones de la tienda.
+
+3. Source code / Código fuente
+
+Except where a law that applies to you gives a right that cannot be
+waived, you may not copy, modify, merge, publish, distribute, sublicense,
+sell, rent, or create derivative works from the source code of the
+Software, in whole or in part, and you may not remove this notice.
+
+Salvo cuando una ley aplicable te reconozca un derecho al que no puedes
+renunciar, no puedes copiar, modificar, fusionar, publicar, distribuir,
+sublicenciar, vender, alquilar ni crear obras derivadas del código fuente
+del Software, total o parcialmente, ni quitar este aviso.
+
+4. Third-party components / Componentes de terceros
+
+Dependencies, including Expo, React Native, and the other packages named
+in package.json, stay under the licenses that ship with those packages.
+This file does not relicense them. Expo and the Expo name are trademarks
+of their owner.
+
+Las dependencias, incluidas Expo, React Native y los demás paquetes que
+figuran en package.json, siguen bajo las licencias de esos paquetes. Este
+archivo no las relicencia. Expo y el nombre Expo son marcas de su titular.
+
+JetBrains Mono, shipped inside the app from #4 as a local font file
+(@expo-google-fonts/jetbrains-mono, required from a .ttf, not downloaded at
+runtime), remains under the SIL Open Font License 1.1. It is not covered by
+the proprietary license above. Copyright of that font belongs to its
+authors. The app has no in-app third-party notices screen.
+
+JetBrains Mono, que #4 mete en la app como archivo de fuente local
+(@expo-google-fonts/jetbrains-mono, con require de un .ttf, sin descarga en
+ejecución), sigue bajo la SIL Open Font License 1.1. No la cubre la licencia
+propietaria de arriba. El copyright de esa fuente es de sus autores. La app
+no tiene una pantalla de avisos de terceros.
+
+5. No warranty / Sin garantía
 
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. TO THE EXTENT
+PERMITTED BY LAW, THE AUTHOR IS NOT LIABLE FOR ANY CLAIM, DAMAGES, OR OTHER
+LIABILITY ARISING FROM THE SOFTWARE OR FROM THE USE OF THE SOFTWARE.
+
+Nothing in this license limits liability that cannot legally be limited,
+including rights that consumers cannot waive under the law of Spain or of
+their country of residence.
+
+EL SOFTWARE SE PROPORCIONA «TAL CUAL», SIN GARANTÍA DE NINGÚN TIPO, EXPRESA
+O IMPLÍCITA, INCLUIDAS, ENTRE OTRAS, LAS GARANTÍAS DE COMERCIABILIDAD,
+IDONEIDAD PARA UN FIN DETERMINADO Y NO INFRACCIÓN. EN LA MEDIDA EN QUE LA
+LEY LO PERMITA, EL AUTOR NO RESPONDE DE RECLAMACIONES, DAÑOS U OTRAS
+RESPONSABILIDADES QUE NAZCAN DEL SOFTWARE O DE SU USO.
+
+Nada en esta licencia limita una responsabilidad que la ley no permita
+limitar, incluidos los derechos de las personas consumidoras a los que no
+se puede renunciar según la ley de España o la del país donde residan.
