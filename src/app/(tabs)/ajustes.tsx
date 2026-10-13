@@ -1,8 +1,9 @@
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
-import { StyleSheet, TextInput, View } from 'react-native';
+import { Platform, StyleSheet, TextInput, View } from 'react-native';
 
 import { Text } from '@/components/app-text';
+import { DeviceOnlyNotice } from '@/components/device-only-notice';
 import { NfcNotice } from '@/components/nfc-notice';
 import { PrimaryButton } from '@/components/primary-button';
 import { Screen } from '@/components/screen';
@@ -175,15 +176,19 @@ export default function SettingsScreen() {
         <Text style={[styles.rowHint, state.tagId ? styles.tagId : null]}>
           {state.tagId ? state.tagId : __DEV__ ? t('settings.tagMissingDev') : t('settings.tagMissing')}
         </Text>
-        <Text style={styles.rowHint}>
-          {!nfcSupported
-            ? __DEV__
-              ? t('nfc.statusUnsupportedDev')
-              : t('nfc.statusUnsupported')
-            : !nfcEnabled
-              ? t('nfc.statusDisabled')
-              : t('nfc.statusReady')}
-        </Text>
+        {Platform.OS === 'web' ? (
+          <DeviceOnlyNotice notice="nfc" />
+        ) : (
+          <Text style={styles.rowHint}>
+            {!nfcSupported
+              ? __DEV__
+                ? t('nfc.statusUnsupportedDev')
+                : t('nfc.statusUnsupported')
+              : !nfcEnabled
+                ? t('nfc.statusDisabled')
+                : t('nfc.statusReady')}
+          </Text>
+        )}
         <Text style={styles.rowHint}>{t('nfc.doubleScanHint')}</Text>
         <NfcNotice
           scope="pair"
@@ -300,6 +305,7 @@ export default function SettingsScreen() {
         />
       </Card>
 
+      <DeviceOnlyNotice notice="review" />
       <Text style={styles.legal}>{t('settings.legal')}</Text>
     </Screen>
   );

@@ -547,6 +547,15 @@ export const es = {
     limitUnavailable:
       'Esta versión no puede contar intentos. Hace falta la app instalada, con el bloqueo activo.',
   },
+  deviceOnly: {
+    preview:
+      'Solo en el dispositivo. El NFC, el bloqueo de apps, las estadísticas de uso, la compra y la valoración necesitan el móvil.',
+    nfc: 'Solo en el dispositivo. El NFC necesita el móvil.',
+    blocker: 'Solo en el dispositivo. Bloquear apps necesita el móvil.',
+    usage: 'Solo en el dispositivo. Las estadísticas de uso necesitan el móvil.',
+    purchases: 'Solo en el dispositivo. La compra en la tienda necesita el móvil.',
+    review: 'Solo en el dispositivo. La valoración de la tienda necesita el móvil.',
+  },
   native: nativeEs,
 } as const;
 

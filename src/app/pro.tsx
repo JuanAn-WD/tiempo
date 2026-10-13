@@ -1,5 +1,5 @@
 import { useRouter } from 'expo-router';
-import { ActivityIndicator, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Platform, StyleSheet, View } from 'react-native';
 
 import { Text } from '@/components/app-text';
 import { PrimaryButton } from '@/components/primary-button';
@@ -140,7 +140,11 @@ export default function ProScreen() {
       <Text style={styles.later}>{t('pro.later')}</Text>
       <FeatureList title={t('pro.freeTitle')} items={FREE_FEATURES} />
 
-      {!pro.storeAvailable ? <Text style={styles.storeNote}>{t('pro.unavailable')}</Text> : null}
+      {!pro.storeAvailable ? (
+        <Text style={styles.storeNote}>
+          {Platform.OS === 'web' ? t('deviceOnly.purchases') : t('pro.unavailable')}
+        </Text>
+      ) : null}
       {pro.notice && (pro.storeAvailable || pro.notice !== 'unavailable') ? (
         <Text style={noticeStyle(pro.notice)}>{noticeCopy(t, pro.notice, pro.priceLabel)}</Text>
       ) : null}
