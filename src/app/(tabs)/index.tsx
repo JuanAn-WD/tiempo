@@ -29,8 +29,9 @@ export default function FocusScreen() {
   const mode = MODES.find((item) => item.id === state.mode);
 
   const hint = useMemo(() => {
-    if (state.locked) return 'Tag NFC o llave móvil · mantén pulsado para simular';
-    return 'Tag NFC o llave móvil · mantén pulsado para simular';
+    const action = state.locked ? 'Acerca tu tag para volver' : 'Acerca tu tag para bloquear';
+    if (__DEV__) return `${action} · mantén pulsado para simular`;
+    return action;
   }, [state.locked]);
 
   return (
@@ -56,7 +57,7 @@ export default function FocusScreen() {
           hint={hint}
           clock={state.locked ? formatClock(sessionMs) : undefined}
           onPress={() => void toggleLockWithTag(false)}
-          onLongPress={() => void toggleLockWithTag(true)}
+          onLongPress={__DEV__ ? () => void toggleLockWithTag(true) : undefined}
         />
       </View>
 

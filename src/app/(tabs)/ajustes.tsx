@@ -41,10 +41,18 @@ export default function SettingsScreen() {
           <Badge label={state.tagId ? 'OK' : '—'} tone={state.tagId ? 'focus' : 'neutral'} />
         </View>
         <Text style={styles.rowHint}>
-          {state.tagId ? state.tagId : 'Sin tag. Acerca uno o mantén pulsado para simular.'}
+          {state.tagId
+            ? state.tagId
+            : __DEV__
+              ? 'Sin tag. Acerca uno o mantén pulsado para simular.'
+              : 'Sin tag. Acerca uno para emparejarlo.'}
         </Text>
         <Text style={styles.rowHint}>
-          {nfcSupported ? 'NFC disponible' : 'Sin NFC · simulación por pulsación larga'}
+          {nfcSupported
+            ? 'NFC disponible'
+            : __DEV__
+              ? 'Sin NFC · simulación por pulsación larga'
+              : 'Sin NFC en este dispositivo'}
         </Text>
         <PrimaryButton label={state.tagId ? 'Cambiar tag' : 'Emparejar tag'} onPress={() => void pairTag()} />
       </Card>
