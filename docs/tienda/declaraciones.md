@@ -2,7 +2,7 @@
 
 Notas internas para Juan Antonio López. No van a la landing. Las páginas públicas están en [`docs/es/`](../es/privacidad.md) y [`docs/en/`](../en/privacy.md).
 
-Describen el binario que junta esta rama (Apartag) con la PR #4 (desbloqueos de emergencia y modo estricto): sin cuenta, sin servidor, sin analítica, sin compras. Los desbloqueos (3, se recupera 1 cada 30 días sin fecha garantizada, cuenta atrás de 5 minutos con la app en pantalla) y el modo estricto opcional funcionan solo en el teléfono y no cambian ninguna respuesta de privacidad. #4, sola, sigue llamándose Tiempo: estos textos valen cuando el binario subido tenga las dos cosas. Si más adelante se añade analítica, `expo-updates`, un SDK de fallos o un pago, hay que rehacer Data safety y la etiqueta de Apple.
+Describen el binario que junta esta rama (Apartag) con la PR #4 (desbloqueos de emergencia y modo estricto): sin cuenta, sin servidor, sin analítica, sin compras. Los desbloqueos (3, se recupera 1 cada 30 días sin fecha garantizada, cuenta atrás de 5 minutos con la pantalla encendida) y el modo estricto opcional funcionan solo en el teléfono y no cambian ninguna respuesta de privacidad. #4, sola, sigue llamándose Tiempo: estos textos valen cuando el binario subido tenga las dos cosas. Si más adelante se añade analítica, `expo-updates`, un SDK de fallos o un pago, hay que rehacer Data safety y la etiqueta de Apple.
 
 Los textos **[PENDIENTE: …]** hay que rellenarlos antes de enviar la ficha.
 
@@ -46,9 +46,10 @@ Nota para el campo de revisión, si hace falta (inglés):
 Apartag is an on-device focus app. It has no account, no backend, and no analytics SDK.
 The installed-app list, NFC tag ids, Screen Time selection, session history, and the
 emergency-unlock counter stay in app-private storage and are never transmitted to the
-developer. On Android, Auto Backup is left on (Expo's default) and can restore that
-local store to the same user. On iPhone, AsyncStorage excludes its directory from
-iCloud backup. Camera frames are used only to decode a QR code and are not saved.
+developer. On Android, this build sets allowBackup to false, so Auto Backup does not
+copy or restore app data. A backup uploaded before this build may still exist.
+On iPhone, AsyncStorage excludes its directory from iCloud backup. Camera frames
+are used only to decode a QR code and are not saved.
 Please treat Data safety as "no data collected".
 ```
 
@@ -77,7 +78,7 @@ Tras el prebuild, el manifiesto fusionado pide más de lo que lista `app.json`. 
 | Administrador del dispositivo | **No** | — | Nada que declarar |
 | `INTERNET` | Lo añade Expo/React Native al generar `android/` | El código de Apartag no abre conexiones | No declares recogida de datos de red |
 
-La PR #4 (desbloqueos de emergencia y modo estricto) no añade permisos: `app.json` no cambia en esa rama y la única dependencia nueva es la fuente `@expo-google-fonts/jetbrains-mono`, empaquetada en el binario (`require` de un `.ttf` local, licencia SIL OFL 1.1; no hay pantalla de avisos de terceros en la app). La cuenta atrás de emergencia usa `AppState` de React Native para saber si la app está en primer plano; no usa el acceso de uso ni el overlay, y no hay `expo-keep-awake`. Cualquier `AppState` distinto de `active` (cambiar de app, segundo plano y, en la práctica, bloquear la pantalla) cancela la cuenta sin gastar un desbloqueo.
+La PR #4 (desbloqueos de emergencia y modo estricto) no añade permisos de Play. Respecto a su base, anterior al renombrado, `app.json` solo gana `android.allowBackup: false`. Frente a `master` el archivo sigue siendo el de Tiempo hasta el rebase. Las dependencias nuevas son `@expo-google-fonts/jetbrains-mono` (un `.ttf` local, licencia SIL OFL 1.1; no hay pantalla de avisos de terceros) y `expo-keep-awake@57.0.2`, que no trae config plugin ni permiso en su `package.json`: pide que la ventana no se apague. La cuenta atrás usa `AppState` y `activateKeepAwakeAsync` mientras corre, está lista o se confirma. El bloqueo automático de pantalla ya no la cancela. Bloquear a mano, cambiar de app o pasar a segundo plano (cualquier `AppState` distinto de `active`) sigue cancelando sin gastar un desbloqueo. Si `activateKeepAwakeAsync` falla, el error se ignora y el bloqueo automático podría cancelarla igual. No usa el acceso de uso ni el overlay.
 
 ### 2.1 Acceso de uso y overlay
 
@@ -234,18 +235,23 @@ Justificación para pegar en el formulario (inglés):
 
 ```
 Apartag (bundle ID com.apartag.app) is a self-control focus app for the
-person who owns the device. They choose the apps or categories to shield,
-then lock that choice with a physical NFC tag or with a short-lived QR code
-shown on a trusted person's phone. To open the shielded apps again, they
-scan one of their own keys (the tag, an optional second tag, or the mobile
-key).
+person who owns the device. They choose apps one by one. Categories are not
+applied: iOS does not say whether Apartag is inside a category, and shielding
+one could hide the emergency screen. The Screen Time picker cannot reliably
+hide Apartag. If the user selects it and iOS does not identify the token, the
+app cannot remove it. They then lock that choice with a physical NFC tag or
+with a short-lived QR code shown on a trusted person's phone. To open the
+shielded apps again, they scan one of their own keys (the tag, an optional
+second tag, or the mobile key).
 
 So that nobody gets stuck if they lose their key, the app also offers a
 limited emergency unlock inside Apartag: 3 at most, one returning every 30
 days on the device (the exact date is not guaranteed), each only after a
-5-minute countdown with Apartag in the foreground. Locking the screen or
-leaving the app cancels that countdown without using a charge. It removes
-the shield the user set, from within the app. Using one is recorded only in
+5-minute countdown with Apartag in the foreground. The screen stays awake
+during that wait, so the automatic lock does not cancel it. Locking the
+screen by hand or leaving the app cancels that countdown without using a
+charge. It removes the shield the user set, from within the app. Using one
+is recorded only in
 the app's local stats, labeled "Emergencia" (the interface is in Spanish).
 The user can turn on an optional strict mode (off by default) that disables
 emergency unlocks; it requires at least two keys and typing ESTRICTO, and it
@@ -283,7 +289,7 @@ a server. We do not sell or share Screen Time data.
 This is not a parental-control product and not an MDM product.
 ```
 
-Ese texto asume el binario ya renombrado. En `feat/3-emergencias` el escudo y los permisos de NFC y cámara todavía dicen «Tiempo» (`com.tiempo.focus`, «Estás en Tiempo», «Tiempo usa NFC…», «Tiempo usa la cámara…»). Apple lee esos textos junto con esta justificación: no los pegues hasta que el binario sea Apartag.
+Ese texto asume el binario ya renombrado. En `feat/3-emergencias` el escudo, los permisos de NFC y cámara y el aviso del selector todavía dicen «Tiempo» (`com.tiempo.focus`, «Estás en Tiempo», «Tiempo usa NFC…», «Tiempo usa la cámara…», «No incluyas Tiempo»). `allowBackup: false` está en ese `app.json`, no en `master`. Apple lee esos textos junto con esta justificación: no los pegues hasta que el binario sea Apartag. #4 entra en conflicto con `master` hasta que se rebase sobre el renombrado.
 
 Cuando Apple lo apruebe, el perfil de distribución tiene que incluir `com.apple.developer.family-controls` en la app y en cada extensión. Si falla la subida, lo habitual es que falte el entitlement de una de las tres extensiones, no el de la app.
 
@@ -294,4 +300,4 @@ Cuando Apple lo apruebe, el perfil de distribución tiene que incluir `com.apple
 - Cuestionario de clasificación por edades (IARC / Apple). Hay que contestarlo en la consola. La app no está dirigida a menores de 14 años y no tiene contenidos de tienda que clasificar más allá de eso; no copies de aquí una edad de PEGI.
 - Publicidad: no hay. En los formularios de anuncios, la respuesta es no.
 - Compras: no hay en esta versión. Cuando exista el pago único, el producto será non-consumable y habrá que actualizar la ficha, no esta política de «no hay compras», el día que el código lo tenga.
-- Desbloqueos de emergencia: el código está en #4 y el nombre Apartag en #2. Hay que fusionar #4 (después de #1, con la base cambiada a `master`) antes que #6, y el binario de tienda tiene que llevar las dos. Si se describen en la ficha, usa 3 desbloqueos, 1 cada 30 días sin prometer la fecha, cuenta atrás de 5 minutos que se cancela al salir o al bloquear la pantalla, etiqueta «Emergencia» y modo estricto opcional. No hay códigos de respaldo ni recuperación remota. No se ha puesto `android.allowBackup: false`: en Android la copia automática puede restaurar el contador; en iPhone AsyncStorage 2.2.0 lo excluye de iCloud. La respuesta de Data safety sigue siendo «no se recogen datos». Si se publica un binario sin #4, estas frases de emergencia no valen.
+- Orden de fusión: #2, #4, #5 y después #6. #2 ya está en `master`. Quedan #4, luego #5, y al final #6. #4 sigue en la marca Tiempo y hoy entra en conflicto con `master`: hay que rebasarla para que el binario sea Apartag antes de fusionarla. El binario de tienda tiene que llevar #4 y el nombre Apartag. Si se describen las emergencias en la ficha, usa 3 desbloqueos, 1 cada 30 días sin prometer la fecha, cuenta atrás de 5 minutos con la pantalla encendida (el bloqueo automático no la cancela; bloquear a mano o salir sí, y no gasta el cargo), etiqueta «Emergencia» y modo estricto opcional. Las categorías de Tiempo de uso no se aplican. Android, en #4, pone `allowBackup` en false: la copia automática no copia ni restaura; una copia anterior puede seguir existiendo. En iPhone AsyncStorage 2.2.0 sigue fuera de iCloud. No hay códigos de respaldo ni recuperación remota. La respuesta de Data safety sigue siendo «no se recogen datos». Si se publica un binario sin #4, estas frases de emergencia no valen.

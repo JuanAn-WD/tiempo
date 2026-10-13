@@ -46,7 +46,7 @@ Las tiendas (Google Play y App Store) tienen su propia cuenta de descarga. Esa r
 
 ## Qué se guarda en el teléfono
 
-Todo lo de esta lista permanece en el almacenamiento privado de la app, en el propio teléfono. Desinstalar la app o borrar sus datos lo quita de esa instalación. En Android, la copia de seguridad automática del sistema puede guardarlo y devolverlo: `app.json` no pone `allowBackup`, y Expo lo deja activado. En el iPhone, AsyncStorage (el contador, los identificadores de los tags, el secreto de la llave y las sesiones) queda fuera de la copia de iCloud. La selección de Tiempo de uso vive aparte, en el grupo que comparten las extensiones. Juan Antonio López no recibe una copia.
+Todo lo de esta lista permanece en el almacenamiento privado de la app, en el propio teléfono. Desinstalar la app o borrar sus datos lo quita de esa instalación. En Android, esta versión pone `allowBackup` en false: la copia automática del sistema no copia ni restaura los datos de la app. Una copia subida antes de esta versión puede seguir existiendo en la cuenta de Google. En el iPhone, AsyncStorage (el contador, los identificadores de los tags, el secreto de la llave y las sesiones) queda fuera de la copia de iCloud. La selección de Tiempo de uso vive aparte, en el grupo que comparten las extensiones. Juan Antonio López no recibe una copia.
 
 | Qué | Para qué |
 |---|---|
@@ -102,7 +102,7 @@ Si no, Apartag tiene **desbloqueos de emergencia**. Funcionan solo dentro de la 
 
 - Empiezas con 3. Son gratis.
 - Se recupera uno cada 30 días, hasta un máximo de 3. Gastar uno no reinicia un plazo que ya estuviera corriendo. Los días se calculan en el teléfono y la fecha no está garantizada. Si el reloj va hacia atrás respecto a la última hora que la app ya registró, no se recupera ninguno hasta que el reloj llegue a esa hora. Si la app sigue en memoria mientras el teléfono duerme, ese tiempo dormido puede no contar y la espera alargarse. Si la app estaba cerrada y el reloj se adelantó, la recarga puede llegar antes.
-- Cada uno exige una cuenta atrás de 5 minutos con Apartag abierta en pantalla. Si cambias de app, bloqueas la pantalla o Apartag pasa a segundo plano, la cuenta atrás se cancela y no se gasta ninguno. Al terminar, confirmas y el bloqueo se abre. La app no mantiene la pantalla encendida durante esos cinco minutos.
+- Cada uno exige una cuenta atrás de 5 minutos con Apartag abierta en pantalla. La app mantiene la pantalla encendida durante esa espera y hasta que confirmas o sales, así que el bloqueo automático del teléfono no la cancela. Si bloqueas la pantalla a mano, cambias de app o Apartag pasa a segundo plano, la cuenta atrás se cancela y no se gasta ninguno. Al terminar, confirmas y el bloqueo se abre.
 - La sesión queda anotada con la etiqueta «Emergencia» en las estadísticas de la app, en tu teléfono. Después puedes emparejar un tag nuevo.
 
 Ni el contador ni esas sesiones salen del teléfono. Nadie, tampoco Juan Antonio López, recibe un aviso de que has usado una emergencia.
@@ -115,9 +115,9 @@ En ese caso, en Android puedes desinstalar Apartag o retirar «mostrar sobre otr
 
 En el iPhone, la autorización es la de Tiempo de uso para el dueño del teléfono. Puedes revocar el permiso de Apartag en Ajustes, dentro de lo que iOS permite, o eliminar la app. Nosotros no tenemos un botón remoto para desbloquearte.
 
-En Android, la lista para elegir qué bloquear no incluye la propia Apartag. En el iPhone, el selector es el de Tiempo de uso y esta versión no quita Apartag de esa selección: si la incluyes, el escudo puede impedir abrir la app y, con ella, la pantalla de emergencia.
+En Android, la lista para elegir qué bloquear no incluye la propia Apartag. En el iPhone, el selector de Tiempo de uso no puede ocultar Apartag de forma fiable. Si la marcas y el sistema no identifica ese elemento, la app no puede quitarlo, y el escudo puede impedir abrir la pantalla de emergencia. Las categorías no se aplican: iOS no dice si Apartag va dentro, así que hay que elegir las apps una a una.
 
-Al desinstalar o al borrar los datos desaparece el contador de esa instalación, y una instalación nueva vuelve a empezar con 3, porque no hay copia en un servidor. En Android, la copia automática del sistema puede devolver el contador anterior, los identificadores de los tags y el secreto de la llave. En el iPhone, ese almacén queda fuera de iCloud. Juan Antonio López no recibe ninguna de esas copias.
+Al desinstalar o al borrar los datos desaparece el contador de esa instalación, y una instalación nueva vuelve a empezar con 3, porque no hay copia en un servidor. En Android, esta versión no deja que la copia automática copie ni restaure esos datos; una copia anterior a esta versión puede seguir existiendo. En el iPhone, ese almacén queda fuera de iCloud. Juan Antonio López no recibe ninguna de esas copias.
 
 ## Menores
 
@@ -125,7 +125,7 @@ Apartag no está dirigida a menores de 14 años. No hay registro, así que no pe
 
 ## Durante cuánto tiempo
 
-Los datos duran lo que dure la instalación, con la salvedad de la copia de seguridad del propio teléfono descrita arriba. Para borrarlos de la instalación: desinstala Apartag o borra los datos de la app en los ajustes del sistema. En Android, si no quieres que vuelvan, desactiva también la copia de seguridad de esa app en los ajustes del sistema. No queda copia en poder del responsable, porque nunca la hubo.
+Los datos duran lo que dure la instalación. Para borrarlos: desinstala Apartag o borra los datos de la app en los ajustes del sistema. Esta versión no los mete en la copia automática de Android. Una copia hecha antes puede seguir en la cuenta de Google. En el iPhone, AsyncStorage no entra en iCloud. No queda copia en poder del responsable, porque nunca la hubo.
 
 ## Tus derechos
 

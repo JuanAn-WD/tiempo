@@ -46,7 +46,7 @@ The stores (Google Play and the App Store) have their own download account. That
 
 ## What is stored on the phone
 
-Everything in this list stays in the app's private storage, on the phone itself. Uninstalling the app or clearing its data removes it from that installation. On Android, the system's automatic backup can keep it and restore it: `app.json` does not set `allowBackup`, and Expo leaves it on. On iPhone, AsyncStorage (the counter, the tag identifiers, the key secret, and the sessions) is left out of the iCloud backup. The Screen Time selection lives separately, in the group shared with the extensions. Juan Antonio López does not receive a copy.
+Everything in this list stays in the app's private storage, on the phone itself. Uninstalling the app or clearing its data removes it from that installation. On Android, this version sets `allowBackup` to false: the system's automatic backup does not copy or restore the app's data. A backup uploaded before this version may still exist in the Google account. On iPhone, AsyncStorage (the counter, the tag identifiers, the key secret, and the sessions) is left out of the iCloud backup. The Screen Time selection lives separately, in the group shared with the extensions. Juan Antonio López does not receive a copy.
 
 | What | Why |
 |---|---|
@@ -102,7 +102,7 @@ If not, Apartag has **emergency unlocks**. They work only inside the app and onl
 
 - You start with 3. They are free.
 - One comes back every 30 days, up to a maximum of 3. Using one does not restart a waiting period that is already running. The days are calculated on the phone, and the date is not guaranteed. If the clock is behind the latest time the app already recorded, none comes back until the clock reaches that time. If the app stays in memory while the phone sleeps, that sleeping time may not count and the wait can run longer. If the app was closed and the clock was set forward, a refill can arrive sooner.
-- Each one takes a 5-minute countdown with Apartag open on screen. If you switch apps, lock the screen, or Apartag goes to the background, the countdown is cancelled and nothing is used up. When it ends, you confirm and the lock opens. The app does not keep the screen awake during those five minutes.
+- Each one takes a 5-minute countdown with Apartag open on screen. The app keeps the screen awake during that wait and until you confirm or leave, so the phone's automatic lock does not cancel it. If you lock the screen yourself, switch apps, or Apartag goes to the background, the countdown is cancelled and nothing is used up. When it ends, you confirm and the lock opens.
 - The session is recorded with the label «Emergencia» in the app's stats, on your phone. The interface is in Spanish. You can then pair a new tag.
 
 Neither the counter nor those sessions leave the phone. Nobody, including Juan Antonio López, is told that you used an emergency unlock.
@@ -115,9 +115,9 @@ In that case, on Android you can uninstall Apartag, or turn off "display over ot
 
 On iPhone, the authorization is Screen Time for the owner of the phone. You can revoke Apartag's permission in Settings, within what iOS allows, or delete the app. We have no remote button that unlocks you.
 
-On Android, the list of apps you can block does not include Apartag itself. On iPhone, the picker is the system Screen Time picker and this version does not remove Apartag from that selection: if you include it, the shield can stop you from opening the app, and with it the emergency screen.
+On Android, the list of apps you can block does not include Apartag itself. On iPhone, the Screen Time picker cannot reliably hide Apartag. If you select it and the system does not identify that item, the app cannot remove it, and the shield can stop you from opening the emergency screen. Categories are not applied: iOS does not say whether Apartag is inside one, so you choose apps one by one.
 
-Uninstalling or clearing data removes the counter from that installation, and a new installation starts again with 3, because there is no copy on a server. On Android, the system's automatic backup can restore the previous counter, the tag identifiers, and the mobile-key secret. On iPhone, that store is left out of iCloud. Juan Antonio López receives none of those copies.
+Uninstalling or clearing data removes the counter from that installation, and a new installation starts again with 3, because there is no copy on a server. On Android, this version does not let automatic backup copy or restore that data; a backup from before this version may still exist. On iPhone, that store is left out of iCloud. Juan Antonio López receives none of those copies.
 
 ## Children
 
@@ -125,7 +125,7 @@ Apartag is not directed at children under 14. There is no sign-up, so we do not 
 
 ## How long it lasts
 
-The data lasts as long as the installation, aside from the phone's own backup described above. To delete it from the installation, uninstall Apartag or clear the app's data in system settings. On Android, if you do not want it to come back, also turn off that app's backup in system settings. No copy remains with the controller, because there never was one.
+The data lasts as long as the installation. To delete it, uninstall Apartag or clear the app's data in system settings. This version does not put it in Android's automatic backup. A backup made earlier may still sit in the Google account. On iPhone, AsyncStorage is not part of iCloud. No copy remains with the controller, because there never was one.
 
 ## Your rights
 

@@ -67,14 +67,14 @@ Si pierdes tus llaves, la app ofrece desbloqueos de emergencia:
 
 - Tienes hasta 3. Son gratuitos y no forman parte de ninguna compra.
 - Se recupera uno cada 30 días, hasta un máximo de 3. Gastar uno no reinicia el plazo que ya estaba corriendo. Esa fecha no está garantizada. Si el reloj va hacia atrás respecto a la última hora que la app ya registró, no se recupera ninguno hasta que el reloj llegue a esa hora. Si la app sigue en memoria mientras el teléfono duerme, el tiempo dormido puede no contar y la espera alargarse. Si la app estaba cerrada y el reloj se adelantó, la recarga puede llegar antes.
-- Cada uno exige una cuenta atrás de 5 minutos con Apartag abierta en pantalla. Si la app pasa a segundo plano, cambias de app o se bloquea la pantalla, la cuenta atrás se cancela y no se gasta ninguno. Al terminar tienes que confirmar. La app no impide que la pantalla se apague.
+- Cada uno exige una cuenta atrás de 5 minutos con Apartag abierta en pantalla. La app mantiene la pantalla encendida durante esa espera y hasta que confirmas o sales, así que el bloqueo automático no la cancela. Si la app pasa a segundo plano, cambias de app o bloqueas la pantalla a mano, la cuenta atrás se cancela y no se gasta ninguno. Al terminar tienes que confirmar.
 - La sesión queda marcada como «Emergencia» en las estadísticas, solo en tu teléfono.
 
-El contador se guarda y se calcula solo en tu teléfono. El autor no puede consultar, reponer ni regalar desbloqueos. Desinstalar y volver a instalar empieza otra vez con 3, salvo que Android devuelva la copia de seguridad del sistema. En el iPhone ese almacén no entra en iCloud.
+El contador se guarda y se calcula solo en tu teléfono. El autor no puede consultar, reponer ni regalar desbloqueos. Desinstalar y volver a instalar empieza otra vez con 3. En Android esta versión no deja que la copia automática copie ni restaure esos datos; una copia anterior puede seguir existiendo. En el iPhone ese almacén no entra en iCloud.
 
 El modo estricto es opcional y viene desactivado. Mientras está activo no hay desbloqueos de emergencia: solo tus llaves desbloquean. Para activarlo necesitas al menos dos llaves (el tag principal más un segundo tag o una llave móvil) y escribir «ESTRICTO». No se puede desactivar durante un bloqueo, y mientras siga activo no puedes quitar una llave si te quedarías con menos de dos. Actívalo solo si aceptas que, si pierdes todas tus llaves, la app no podrá abrir el bloqueo desde dentro.
 
-En Android no puedes marcar la propia Apartag en la lista. En el iPhone el selector de Tiempo de uso no filtra esta app: si la incluyes, puedes quedarte sin poder abrir la pantalla de emergencia.
+En Android no puedes marcar la propia Apartag en la lista. En el iPhone el selector de Tiempo de uso no puede ocultar Apartag de forma fiable: si la marcas y el sistema no identifica ese elemento, la app no puede quitarlo y puedes quedarte sin poder abrir la pantalla de emergencia. Las categorías no se bloquean. Hay que elegir las apps una a una.
 
 ## Si no puedes desbloquear
 
@@ -98,7 +98,7 @@ Si descargas Apartag en Google Play o en el App Store, también aceptas las cond
 
 ## Garantía y responsabilidad
 
-La app se ofrece tal cual, sin una promesa de que el bloqueo sea imposible de saltar, de que funcione en todos los modelos de teléfono, ni de que un tag concreto sirva. El NFC y Tiempo de uso dependen del sistema y del aparato. Los desbloqueos de emergencia dependen del reloj del teléfono y de que la app siga abierta durante la cuenta atrás; el sistema puede interrumpirla (por ejemplo, una llamada o el bloqueo de pantalla), y entonces hay que empezarla de nuevo. No se promete que cada desbloqueo vuelva a los 30 días exactos.
+La app se ofrece tal cual, sin una promesa de que el bloqueo sea imposible de saltar, de que funcione en todos los modelos de teléfono, ni de que un tag concreto sirva. El NFC y Tiempo de uso dependen del sistema y del aparato. Los desbloqueos de emergencia dependen del reloj del teléfono y de que la app siga abierta durante la cuenta atrás. La pantalla se mantiene encendida para que el bloqueo automático no la corte. Una llamada, salir de la app o bloquear la pantalla a mano sí la interrumpe, y entonces hay que empezarla de nuevo. No se promete que cada desbloqueo vuelva a los 30 días exactos.
 
 Nada de esto limita los derechos que la ley de consumo no permite excluir. Si eres consumidor en la Unión Europea, conservas esos derechos.
 
