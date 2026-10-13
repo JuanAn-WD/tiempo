@@ -8,6 +8,7 @@ import { PrimaryButton } from '@/components/primary-button';
 import { Screen } from '@/components/screen';
 import { Badge, BrandMark, Card } from '@/components/ui';
 import { Palette, Radius, Type } from '@/constants/theme';
+import { usePro } from '@/context/pro-store';
 import { useTiempo } from '@/context/tiempo-store';
 import { useI18n, type Translate } from '@/i18n';
 import { usePermissionRecord } from '@/lib/permission-ack';
@@ -43,6 +44,7 @@ export default function SettingsScreen() {
   const { record, ready: permissionsReady } = usePermissionRecord();
   const nfcExplained = permissionsReady && record.seen.includes('nfc');
   const explainNfc = () => router.push('/permissions?scope=nfc');
+  const pro = usePro();
   const [confirmation, setConfirmation] = useState('');
   const [confirmOff, setConfirmOff] = useState(false);
 
@@ -277,6 +279,25 @@ export default function SettingsScreen() {
           {ok ? t('settings.permissionsReady') : t('permissions.reviewHint')}
         </Text>
         <PrimaryButton label={t('permissions.review')} onPress={() => router.push('/permissions')} />
+      </Card>
+
+      <Card style={styles.card}>
+        <View style={styles.rowTop}>
+          <Text style={styles.rowTitle}>{t('pro.settingsTitle')}</Text>
+          <Badge
+            label={pro.isPro ? t('pro.settingsBadgePro') : t('pro.settingsBadgeFree')}
+            tone={pro.isPro ? 'accent' : 'neutral'}
+          />
+        </View>
+        <Text style={styles.rowHint}>{pro.isPro ? t('pro.settingsOwned') : t('pro.settingsBody')}</Text>
+        <PrimaryButton
+          muted
+          label={t('pro.settingsOpen')}
+          disabled={!pro.ready}
+          onPress={() => {
+            pro.openPro();
+          }}
+        />
       </Card>
 
       <Text style={styles.legal}>{t('settings.legal')}</Text>

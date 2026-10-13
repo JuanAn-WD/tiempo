@@ -29,7 +29,7 @@ If the app is published in the name of a company, replace this section with that
 
 Apartag locks the apps you choose. You tap an NFC tag, or you scan a QR code shown on a trusted person's phone, and those apps are blocked. Opening them again takes one of your keys: that tag, a second tag you paired as a spare, or the mobile key. If you lose them, and strict mode is off, you can use one of the emergency unlocks described below.
 
-This version of the app is free and has no purchases.
+Locking, the key, and emergency unlocks are free. Apartag Pro is an optional one-time purchase. Apple or Google charges it: Apartag does not receive the card, the name, or the store account. The phone only stores that Pro is active (the product id and, when the store provides one, the transaction id). That does not leave the phone.
 
 ## What does not happen to your data
 
@@ -62,6 +62,7 @@ Everything in this list stays in the app's private storage, on the phone itself.
 | Time from Apartag sessions, and up to 40 sessions (mode, start, end, and whether it ended with an emergency unlock) | The stats screen. Those sessions show the label «Emergencia» or “Emergency”, matching the interface language. The app is available in Spanish and English and follows the device language (English when that is the primary language, Spanish otherwise) |
 | Emergency unlocks you have left, when the next one comes back, and the latest time the app has seen on the phone's clock | To keep count (one comes back every 30 days, up to 3, with no guaranteed date) and not to refill if the clock is behind that time |
 | Whether strict mode is on | To hide and turn off emergency unlocks while it is on |
+| Whether Apartag Pro is active, plus the product id and the store transaction id | To remember that the one-time purchase is done, without asking for the card or the account |
 | Android block settings (list, overlay copy) | The service that covers a blocked app |
 
 The age and hours in the "years on screen" calculator exist only while that screen is open. They are not saved. The calculation does not read your real phone use: it uses the numbers you type there.
