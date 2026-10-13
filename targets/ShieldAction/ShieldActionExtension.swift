@@ -14,8 +14,8 @@ class ShieldActionExtension: ShieldActionDelegate {
   // Notification copy + behavior — configurable via plugin options so apps
   // can localize without forking. Defaults preserve the original English
   // copy and the icon attachment.
-  private let notificationTitle = "App Blocker"
-  private let notificationBody = "Tap to return to the app and complete the unlock challenge."
+  private let notificationTitle = "Apartag"
+  private let notificationBody = "Toca para volver a Apartag."
   private let notificationAttachIcon = true
 
   override func handle(action: ShieldAction, for application: ApplicationToken, completionHandler: @escaping (ShieldActionResponse) -> Void) {
@@ -106,12 +106,23 @@ class ShieldActionExtension: ShieldActionDelegate {
     )
   }
 
+
+  // apartag-i18n: device language, Spanish fallback.
+  private func apartagPrefersEnglish() -> Bool {
+    let code = Locale.preferredLanguages.first?.lowercased() ?? "es"
+    return code.hasPrefix("en")
+  }
+
+  private func apartagText(_ spanish: String, _ english: String) -> String {
+    apartagPrefersEnglish() ? english : spanish
+  }
+
   private func schedulePendingUnlockNotification(completion: @escaping (Bool) -> Void) {
     let center = UNUserNotificationCenter.current()
 
     let content = UNMutableNotificationContent()
-    content.title = notificationTitle
-    content.body = notificationBody
+    content.title = apartagText(notificationTitle, "Apartag")
+    content.body = apartagText(notificationBody, "Tap to go back to Apartag.")
     content.sound = .default
     content.userInfo = ["link": "/unlock"]
 

@@ -9,8 +9,9 @@ import { AppState, Platform, Pressable, StyleSheet, Text, View } from 'react-nat
 import { PrimaryButton } from '@/components/primary-button';
 import { Screen } from '@/components/screen';
 import { BrandMark } from '@/components/ui';
-import { Fonts, Palette } from '@/constants/theme';
+import { Palette } from '@/constants/theme';
 import { useTiempo } from '@/context/tiempo-store';
+import { useI18n } from '@/i18n';
 import { EMERGENCY_COUNTDOWN_MS, formatCountdown, formatRefillDate } from '@/lib/emergency';
 
 const HOLD_MS = 500;
@@ -22,6 +23,7 @@ type Phase = 'idle' | 'running' | 'ready' | 'confirming' | 'cancelled' | 'done';
 export default function EmergencyScreen() {
   const router = useRouter();
   const { state, emergencyUnlock, pairTag, clockSkewed } = useTiempo();
+  const { locale, t } = useI18n();
   const [fontsLoaded] = useFonts({ JetBrainsMono_500Medium });
   const [phase, setPhase] = useState<Phase>('idle');
   const [remain, setRemain] = useState(EMERGENCY_COUNTDOWN_MS);
@@ -150,71 +152,67 @@ export default function EmergencyScreen() {
   return (
     <Screen tabPadding={false} atmosphere="idle">
       <BrandMark size={20} />
-      <Text style={styles.kicker}>Emergencia</Text>
-      <Text style={styles.title}>Cinco minutos,{'\n'}con la app abierta.</Text>
-      <Text style={styles.body}>
-        {state.strict
-          ? 'El modo estricto no tiene esta salida. Solo tus llaves desbloquean.'
-          : 'Si sales, la cuenta atrás se cancela y no se gasta ninguna. La pantalla se queda encendida mientras esperas. No se paga: es una salida, no un atajo.'}
-      </Text>
+      <Text style={styles.kicker}>{t('emergency.kicker')}</Text>
+      <Text style={styles.title}>{t('emergency.title')}</Text>
+      <Text style={styles.body}>{state.strict ? t('emergency.strict') : t('emergency.body')}</Text>
 
       <View style={styles.clockWrap}>
         <Text
           style={[styles.clock, fontsLoaded && styles.clockFont]}
-          accessibilityLabel={`Cuenta atrás ${formatCountdown(phase === 'idle' || phase === 'cancelled' ? EMERGENCY_COUNTDOWN_MS : remain)}`}>
+          accessibilityLabel={t('emergency.countdown', {
+            time: formatCountdown(phase === 'idle' || phase === 'cancelled' ? EMERGENCY_COUNTDOWN_MS : remain),
+          })}>
           {formatCountdown(phase === 'idle' || phase === 'cancelled' ? EMERGENCY_COUNTDOWN_MS : remain)}
         </Text>
         <Text style={styles.clockHint}>
           {phase === 'running'
-            ? 'Sigue aquí. Si cambias de app, vuelve a empezar.'
+            ? t('emergency.stay')
             : phase === 'ready'
-              ? 'Listo. Confirma para salir.'
+              ? t('emergency.ready')
               : phase === 'cancelled'
-                ? 'Se canceló porque la app no estaba abierta.'
+                ? t('emergency.cancelled')
                 : phase === 'confirming'
-                  ? 'Desbloqueando…'
+                  ? t('emergency.unlocking')
                   : phase === 'done'
-                    ? 'Sesión registrada como emergencia.'
-                    : `Quedan ${state.emergencyLeft} de 3.`}
+                    ? t('emergency.saved')
+                    : t('emergency.left', { count: state.emergencyLeft })}
         </Text>
       </View>
 
       <View style={styles.actions}>
         {phase === 'done' ? (
           <>
-            <Text style={styles.note}>¿Has perdido el tag? Puedes emparejar uno nuevo ahora.</Text>
-            {pairError ? (
-              <Text style={styles.note}>No se leyó un tag. Acércalo e inténtalo otra vez.</Text>
-            ) : null}
-            <PrimaryButton label="Emparejar uno nuevo" onPress={() => void pairReplacement()} />
-            <PrimaryButton muted label="Ahora no" onPress={() => router.replace('/')} />
+            <Text style={styles.note}>{t('emergency.lost')}</Text>
+            {pairError ? <Text style={styles.note}>{t('emergency.pairFail')}</Text> : null}
+            <PrimaryButton label={t('emergency.pair')} onPress={() => void pairReplacement()} />
+            <PrimaryButton muted label={t('emergency.notNow')} onPress={() => router.replace('/')} />
           </>
         ) : blocked ? (
-          <Text style={styles.note}>No hay un bloqueo activo.</Text>
+          <Text style={styles.note}>{t('emergency.noLock')}</Text>
         ) : unavailable ? (
           <Text style={styles.note}>
             {state.strict
-              ? 'Emergencias desactivadas.'
+              ? t('emergency.off')
               : clockSkewed
-                ? 'El reloj del móvil va atrás. No se recupera ninguna hasta que marque la hora bien.'
+                ? t('emergency.clockSkew')
                 : state.emergencyRefillAt
-                  ? `Se recupera una el ${formatRefillDate(state.emergencyRefillAt)}.`
-                  : 'Ahora mismo no queda ninguna.'}
+                  ? t('emergency.refill', { date: formatRefillDate(state.emergencyRefillAt, locale) })
+                  : t('emergency.none')}
           </Text>
         ) : phase === 'ready' || phase === 'confirming' ? (
           <PrimaryButton
             danger
-            label="Confirmar desbloqueo"
-            accessibilityHint="Gasta un desbloqueo de emergencia y abre las apps."
+            label={t('emergency.confirm')}
+            accessibilityHint={t('emergency.confirmHint')}
             disabled={phase === 'confirming'}
             onPress={() => void confirm()}
           />
         ) : phase === 'running' ? null : (
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel="Mantén pulsado para empezar"
-            accessibilityHint="Empieza la cuenta atrás de 5 minutos. Hay que dejar la app abierta."
-            accessibilityActions={[{ name: 'longpress', label: 'Empezar cuenta atrás' }]}
+            accessibilityLabel={t('emergency.hold')}
+            accessibilityHint={t('emergency.holdHint')}
+            accessibilityActions={[{ name: 'longpress', label: t('emergency.holdAction') }]}
             onAccessibilityAction={(event) => {
               if (event.nativeEvent.actionName === 'longpress') start();
             }}
@@ -227,14 +225,14 @@ export default function EmergencyScreen() {
             onPressOut={clearHold}
             style={({ pressed }) => [styles.hold, pressed && styles.holdPressed]}>
             <View style={styles.holdDot} />
-            <Text style={styles.holdLabel}>Mantén pulsado para empezar</Text>
+            <Text style={styles.holdLabel}>{t('emergency.hold')}</Text>
           </Pressable>
         )}
 
         {phase === 'done' ? null : phase === 'running' ? (
-          <PrimaryButton muted label="Cancelar" onPress={cancel} />
+          <PrimaryButton muted label={t('common.cancel')} onPress={cancel} />
         ) : (
-          <PrimaryButton muted label="Volver" onPress={leave} />
+          <PrimaryButton muted label={t('common.back')} onPress={leave} />
         )}
       </View>
     </Screen>
@@ -277,7 +275,7 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   clock: {
-    fontFamily: Fonts.mono,
+    fontFamily: Platform.select({ ios: 'Menlo', android: 'monospace', default: 'monospace' }),
     fontVariant: ['tabular-nums'],
     fontSize: 72,
     lineHeight: 80,

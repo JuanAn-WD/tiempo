@@ -13,8 +13,8 @@ class ShieldConfigurationExtension: ShieldConfigurationDataSource {
   private let shieldSecondaryButtonLabel = "none"
   // Temporary-unlock state copy — shown briefly while ManagedSettings clears
   // after a successful unlock. Configurable via plugin options.
-  private let shieldTempUnlockTitle = "Almost there!"
-  private let shieldTempUnlockSubtitle = "Your free time is loading. Try again in a moment."
+  private let shieldTempUnlockTitle = "Ya casi"
+  private let shieldTempUnlockSubtitle = "Se está abriendo. Prueba otra vez en un momento."
   private let shieldTempUnlockButtonLabel = "OK"
   private let shieldPrimaryButtonColor = UIColor(red: 0.831, green: 0.573, blue: 0.227, alpha: 1.0)
   private let shieldBackgroundColor: UIColor? = UIColor(red: 0.043, green: 0.039, blue: 0.035, alpha: 1.0)
@@ -83,15 +83,26 @@ class ShieldConfigurationExtension: ShieldConfigurationDataSource {
     defaults.synchronize()
   }
 
+
+  // apartag-i18n: device language, Spanish fallback.
+  private func apartagPrefersEnglish() -> Bool {
+    let code = Locale.preferredLanguages.first?.lowercased() ?? "es"
+    return code.hasPrefix("en")
+  }
+
+  private func apartagText(_ spanish: String, _ english: String) -> String {
+    apartagPrefersEnglish() ? english : spanish
+  }
+
   private func makeConfig(appName: String) -> ShieldConfiguration {
     if isTemporarilyUnlocked() {
       return ShieldConfiguration(
         backgroundBlurStyle: shieldBlurStyle,
         backgroundColor: shieldBackgroundColor,
         icon: mascotIcon,
-        title: ShieldConfiguration.Label(text: shieldTempUnlockTitle, color: shieldTitleColor),
-        subtitle: ShieldConfiguration.Label(text: shieldTempUnlockSubtitle, color: shieldSubtitleColor),
-        primaryButtonLabel: ShieldConfiguration.Label(text: shieldTempUnlockButtonLabel, color: .white),
+        title: ShieldConfiguration.Label(text: apartagText(shieldTempUnlockTitle, "Almost there!"), color: shieldTitleColor),
+        subtitle: ShieldConfiguration.Label(text: apartagText(shieldTempUnlockSubtitle, "Your free time is loading. Try again in a moment."), color: shieldSubtitleColor),
+        primaryButtonLabel: ShieldConfiguration.Label(text: apartagText(shieldTempUnlockButtonLabel, "OK"), color: .white),
         primaryButtonBackgroundColor: shieldPrimaryButtonColor,
         secondaryButtonLabel: nil
       )
@@ -104,8 +115,8 @@ class ShieldConfigurationExtension: ShieldConfigurationDataSource {
     let count = getBlockedAppCount()
     // The plugin replaces this placeholder with a Swift string literal
     // containing `\(count)` interpolation, or `""` when the user opted out.
-    let context = count > 1 ? " You have \(count) apps blocked." : ""
-    let subtitle = shieldSubtitle.replacingOccurrences(of: "{appName}", with: appName) + context
+    let context = count > 1 ? apartagText(" Tienes \(count) apps bloqueadas.", " You have \(count) apps blocked.") : ""
+    let subtitle = apartagText(shieldSubtitle, "{appName} is locked. Go get your key.").replacingOccurrences(of: "{appName}", with: appName) + context
 
     let hasSecondary = !shieldSecondaryButtonLabel.isEmpty && shieldSecondaryButtonLabel != "none"
 
@@ -113,27 +124,27 @@ class ShieldConfigurationExtension: ShieldConfigurationDataSource {
       backgroundBlurStyle: shieldBlurStyle,
       backgroundColor: shieldBackgroundColor,
       icon: mascotIcon,
-      title: ShieldConfiguration.Label(text: shieldTitle, color: shieldTitleColor),
+      title: ShieldConfiguration.Label(text: apartagText(shieldTitle, "You're in Apartag"), color: shieldTitleColor),
       subtitle: ShieldConfiguration.Label(text: subtitle, color: shieldSubtitleColor),
-      primaryButtonLabel: ShieldConfiguration.Label(text: shieldPrimaryButtonLabel, color: .white),
+      primaryButtonLabel: ShieldConfiguration.Label(text: apartagText(shieldPrimaryButtonLabel, "Back to Apartag"), color: .white),
       primaryButtonBackgroundColor: shieldPrimaryButtonColor,
       secondaryButtonLabel: hasSecondary ? ShieldConfiguration.Label(text: shieldSecondaryButtonLabel, color: shieldSubtitleColor) : nil
     )
   }
 
   override func configuration(shielding application: Application) -> ShieldConfiguration {
-    makeConfig(appName: application.localizedDisplayName ?? "This app")
+    makeConfig(appName: application.localizedDisplayName ?? apartagText("Esta app", "This app"))
   }
 
   override func configuration(shielding application: Application, in category: ActivityCategory) -> ShieldConfiguration {
-    makeConfig(appName: category.localizedDisplayName ?? "This category")
+    makeConfig(appName: category.localizedDisplayName ?? apartagText("Esta categoría", "This category"))
   }
 
   override func configuration(shielding webDomain: WebDomain) -> ShieldConfiguration {
-    makeConfig(appName: webDomain.domain ?? "This website")
+    makeConfig(appName: webDomain.domain ?? apartagText("Este sitio", "This website"))
   }
 
   override func configuration(shielding webDomain: WebDomain, in category: ActivityCategory) -> ShieldConfiguration {
-    makeConfig(appName: webDomain.domain ?? "This website")
+    makeConfig(appName: webDomain.domain ?? apartagText("Este sitio", "This website"))
   }
 }

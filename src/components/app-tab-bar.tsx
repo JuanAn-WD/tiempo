@@ -5,37 +5,38 @@ import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Palette, Radius } from '@/constants/theme';
+import { useI18n, type TranslationKey } from '@/i18n';
 import { useTiempo } from '@/context/tiempo-store';
 
 const TABS: Record<
   string,
   {
-    label: string;
+    label: TranslationKey;
     ios: string;
     android: string;
     web: string;
   }
 > = {
   index: {
-    label: 'Foco',
+    label: 'tabs.focus',
     ios: 'circle.inset.filled',
     android: 'radio_button_checked',
     web: 'target',
   },
   apps: {
-    label: 'Apps',
+    label: 'tabs.apps',
     ios: 'square.grid.2x2.fill',
     android: 'apps',
     web: 'apps',
   },
   stats: {
-    label: 'Tiempo',
+    label: 'tabs.time',
     ios: 'clock.fill',
     android: 'schedule',
     web: 'schedule',
   },
   ajustes: {
-    label: 'Ajustes',
+    label: 'tabs.settings',
     ios: 'gearshape.fill',
     android: 'settings',
     web: 'settings',
@@ -47,6 +48,7 @@ export const TAB_BAR_HEIGHT = 64;
 export function AppTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
   const insets = useSafeAreaInsets();
   const { state: appState } = useTiempo();
+  const { t } = useI18n();
   const bottomPad = Math.max(insets.bottom, 10);
 
   return (
@@ -54,12 +56,8 @@ export function AppTabBar({ state, descriptors, navigation }: BottomTabBarProps)
       <View style={styles.bar}>
         {state.routes.map((route, index) => {
           const focused = state.index === index;
-          const meta = TABS[route.name] ?? {
-            label: descriptors[route.key]?.options.title ?? route.name,
-            ios: 'circle',
-            android: 'circle',
-            web: 'circle',
-          };
+          const meta = TABS[route.name];
+          const label = meta ? t(meta.label) : (descriptors[route.key]?.options.title ?? route.name);
           const showLockDot = route.name === 'index' && appState.locked;
 
           const onPress = () => {
@@ -79,7 +77,7 @@ export function AppTabBar({ state, descriptors, navigation }: BottomTabBarProps)
               key={route.key}
               accessibilityRole="button"
               accessibilityState={{ selected: focused }}
-              accessibilityLabel={meta.label}
+              accessibilityLabel={label}
               onPress={onPress}
               style={({ pressed }) => [
                 styles.item,
@@ -89,7 +87,11 @@ export function AppTabBar({ state, descriptors, navigation }: BottomTabBarProps)
               ]}>
               <View style={styles.iconWrap}>
                 <SymbolView
-                  name={{ ios: meta.ios as never, android: meta.android as never, web: meta.web as never }}
+                  name={{
+                    ios: (meta?.ios ?? 'circle') as never,
+                    android: (meta?.android ?? 'circle') as never,
+                    web: (meta?.web ?? 'circle') as never,
+                  }}
                   size={20}
                   weight={focused ? 'bold' : 'regular'}
                   tintColor={
@@ -108,7 +110,7 @@ export function AppTabBar({ state, descriptors, navigation }: BottomTabBarProps)
                   focused && styles.labelOn,
                   focused && route.name === 'index' && appState.locked && styles.labelFocus,
                 ]}>
-                {meta.label}
+                {label}
               </Text>
             </Pressable>
           );

@@ -8,10 +8,12 @@ import { Screen } from '@/components/screen';
 import { BrandMark } from '@/components/ui';
 import { Palette, Radius } from '@/constants/theme';
 import { useTiempo } from '@/context/tiempo-store';
+import { useI18n } from '@/i18n';
 
 export default function ScanKeyScreen() {
   const router = useRouter();
   const { toggleLockWithMobileKey, state } = useTiempo();
+  const { t } = useI18n();
   const [permission, requestPermission] = useCameraPermissions();
   const [busy, setBusy] = useState(false);
   const handled = useRef(false);
@@ -20,13 +22,11 @@ export default function ScanKeyScreen() {
     return (
       <Screen tabPadding={false}>
         <BrandMark />
-        <Text style={styles.title}>Cámara para la llave</Text>
-        <Text style={styles.body}>
-          Necesitamos la cámara para leer el QR del otro móvil. No se guarda ninguna foto.
-        </Text>
-        <PrimaryButton label="Permitir cámara" onPress={() => void requestPermission()} />
+        <Text style={styles.title}>{t('scanKey.title')}</Text>
+        <Text style={styles.body}>{t('scanKey.body')}</Text>
+        <PrimaryButton label={t('scanKey.camera')} onPress={() => void requestPermission()} />
         <View style={{ height: 10 }} />
-        <PrimaryButton muted label="Cancelar" onPress={() => router.back()} />
+        <PrimaryButton muted label={t('common.cancel')} onPress={() => router.back()} />
       </Screen>
     );
   }
@@ -35,12 +35,8 @@ export default function ScanKeyScreen() {
     <Screen tabPadding={false} contentStyle={{ paddingHorizontal: 0 }}>
       <View style={styles.header}>
         <BrandMark />
-        <Text style={styles.title}>Escanear llave</Text>
-        <Text style={styles.body}>
-          {state.locked
-            ? 'Apunta al QR de “Soy la llave” para desbloquear.'
-            : 'Apunta al QR de “Soy la llave” para bloquear.'}
-        </Text>
+        <Text style={styles.title}>{t('scanKey.scanTitle')}</Text>
+        <Text style={styles.body}>{state.locked ? t('scanKey.unlock') : t('scanKey.lock')}</Text>
       </View>
 
       <View style={styles.cameraWrap}>
@@ -65,7 +61,7 @@ export default function ScanKeyScreen() {
       </View>
 
       <View style={styles.footer}>
-        <PrimaryButton muted label="Cancelar" onPress={() => router.back()} />
+        <PrimaryButton muted label={t('common.cancel')} onPress={() => router.back()} />
       </View>
     </Screen>
   );

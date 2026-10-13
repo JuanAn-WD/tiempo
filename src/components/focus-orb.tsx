@@ -11,6 +11,7 @@ import Animated, {
 } from 'react-native-reanimated';
 
 import { Palette, Radius } from '@/constants/theme';
+import { useI18n } from '@/i18n';
 
 type Props = {
   locked: boolean;
@@ -21,6 +22,7 @@ type Props = {
 };
 
 export function FocusOrb({ locked, onPress, onLongPress, hint, clock }: Props) {
+  const { t } = useI18n();
   const pulse = useSharedValue(0);
 
   useEffect(() => {
@@ -48,7 +50,7 @@ export function FocusOrb({ locked, onPress, onLongPress, hint, clock }: Props) {
         <Animated.View style={[styles.haloMid, locked ? styles.haloFocus : styles.haloIdle, ringMid]} />
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel={locked ? 'Desbloquear con tag' : 'Bloquear con tag'}
+          accessibilityLabel={locked ? t('orb.a11yUnlock') : t('orb.a11yLock')}
           onPress={onPress}
           onLongPress={onLongPress}
           delayLongPress={380}
@@ -72,7 +74,7 @@ export function FocusOrb({ locked, onPress, onLongPress, hint, clock }: Props) {
                 <View style={[styles.pill, locked && styles.pillLock]}>
                   <View style={[styles.dot, locked && styles.dotLock]} />
                   <Text style={[styles.status, locked && styles.statusLock]}>
-                    {locked ? 'en foco' : 'tocar · tag'}
+                    {locked ? t('orb.statusFocus') : t('orb.statusIdle')}
                   </Text>
                 </View>
               )}

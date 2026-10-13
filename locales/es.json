@@ -1,0 +1,10 @@
+{
+  "ios": {
+    "CFBundleDisplayName": "Apartag",
+    "NSCameraUsageDescription": "Apartag usa la cámara para leer el QR de la llave móvil.",
+    "NFCReaderUsageDescription": "Apartag usa NFC para bloquear y desbloquear las apps que elijas al acercar tu tag."
+  },
+  "android": {
+    "app_name": "Apartag"
+  }
+}

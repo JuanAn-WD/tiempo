@@ -1,0 +1,10 @@
+{
+  "ios": {
+    "CFBundleDisplayName": "Apartag",
+    "NSCameraUsageDescription": "Apartag uses the camera to read the phone-key QR code.",
+    "NFCReaderUsageDescription": "Apartag uses NFC to lock and unlock the apps you choose when you tap your tag."
+  },
+  "android": {
+    "app_name": "Apartag"
+  }
+}

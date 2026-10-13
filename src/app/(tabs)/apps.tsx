@@ -6,9 +6,11 @@ import { Screen } from '@/components/screen';
 import { Badge, BrandMark, Card } from '@/components/ui';
 import { Palette, Radius } from '@/constants/theme';
 import { useTiempo } from '@/context/tiempo-store';
+import { useI18n } from '@/i18n';
 
 export default function AppsScreen() {
   const { apps, state, togglePackage } = useTiempo();
+  const { t } = useI18n();
   const [query, setQuery] = useState('');
   const [onlyOn, setOnlyOn] = useState(false);
 
@@ -26,24 +28,29 @@ export default function AppsScreen() {
     <Screen scroll>
       <View style={styles.topBar}>
         <BrandMark size={20} />
-        <Badge label={`${state.selectedPackages.length} activas`} tone="accent" />
+        <Badge
+          label={t(state.selectedPackages.length === 1 ? 'apps.activeOne' : 'apps.active', {
+            count: state.selectedPackages.length,
+          })}
+          tone="accent"
+        />
       </View>
 
-      <Text style={styles.title}>Qué se cierra{'\n'}al escanear</Text>
-      <Text style={styles.sub}>Redes fuera. Cámara, llamadas y mapas pueden quedarse.</Text>
+      <Text style={styles.title}>{t('apps.title')}</Text>
+      <Text style={styles.sub}>{t('apps.sub')}</Text>
 
       <View style={styles.tools}>
         <TextInput
           value={query}
           onChangeText={setQuery}
-          placeholder="Buscar…"
+          placeholder={t('apps.search')}
           placeholderTextColor={Palette.faint}
           style={styles.search}
         />
         <Pressable
           onPress={() => setOnlyOn((v) => !v)}
           style={[styles.filter, onlyOn && styles.filterOn]}>
-          <Text style={[styles.filterText, onlyOn && styles.filterTextOn]}>ON</Text>
+          <Text style={[styles.filterText, onlyOn && styles.filterTextOn]}>{t('common.on')}</Text>
         </Pressable>
       </View>
 
@@ -74,7 +81,7 @@ export default function AppsScreen() {
             </Pressable>
           );
         })}
-        {filtered.length === 0 ? <Text style={styles.empty}>Nada con ese filtro.</Text> : null}
+        {filtered.length === 0 ? <Text style={styles.empty}>{t('apps.empty')}</Text> : null}
       </View>
     </Screen>
   );

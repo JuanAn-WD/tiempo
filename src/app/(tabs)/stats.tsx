@@ -5,7 +5,8 @@ import { Screen } from '@/components/screen';
 import { BrandMark, Card } from '@/components/ui';
 import { Palette, Radius } from '@/constants/theme';
 import { useTiempo } from '@/context/tiempo-store';
-import { formatDuration, yearsFromDailyHours } from '@/lib/storage';
+import { useI18n } from '@/i18n';
+import { formatDuration, MODES, yearsFromDailyHours } from '@/lib/storage';
 
 function Stepper({
   label,
@@ -43,6 +44,7 @@ function Stepper({
 
 export default function StatsScreen() {
   const { state } = useTiempo();
+  const { locale, t } = useI18n();
   const last = state.sessions.slice(0, 8);
   const [age, setAge] = useState(30);
   const [hours, setHours] = useState(5);
@@ -54,21 +56,25 @@ export default function StatsScreen() {
         <BrandMark size={20} />
       </View>
 
-      <Text style={styles.title}>Lo que ya{'\n'}no se pierde</Text>
+      <Text style={styles.title}>{t('stats.title')}</Text>
 
       <Card style={styles.hero}>
-        <Text style={styles.heroLabel}>Recuperado</Text>
-        <Text style={styles.heroValue}>{formatDuration(state.recoveredMs)}</Text>
-        <Text style={styles.heroMeta}>{state.sessions.length} sesiones</Text>
+        <Text style={styles.heroLabel}>{t('stats.reclaimed')}</Text>
+        <Text style={styles.heroValue}>{formatDuration(state.recoveredMs, locale)}</Text>
+        <Text style={styles.heroMeta}>
+          {t(state.sessions.length === 1 ? 'stats.sessionsOne' : 'stats.sessions', {
+            count: state.sessions.length,
+          })}
+        </Text>
       </Card>
 
       <Card style={styles.yearsCard}>
-        <Text style={styles.cardTitle}>Si sigues al ritmo actual</Text>
+        <Text style={styles.cardTitle}>{t('stats.pace')}</Text>
         <Text style={styles.years}>{years.toFixed(1)}</Text>
-        <Text style={styles.yearsUnit}>años de vida en la pantalla hasta los 80</Text>
-        <Stepper label="Edad" value={age} display={`${age}`} min={14} max={70} step={1} onChange={setAge} />
+        <Text style={styles.yearsUnit}>{t('stats.years')}</Text>
+        <Stepper label={t('stats.age')} value={age} display={`${age}`} min={14} max={70} step={1} onChange={setAge} />
         <Stepper
-          label="Horas / día"
+          label={t('stats.hours')}
           value={hours}
           display={hours.toFixed(1)}
           min={0.5}
@@ -78,21 +84,23 @@ export default function StatsScreen() {
         />
       </Card>
 
-      <Text style={styles.section}>Sesiones</Text>
+      <Text style={styles.section}>{t('stats.section')}</Text>
       {last.length === 0 ? (
         <Card>
-          <Text style={styles.emptyTitle}>Aún vacío</Text>
-          <Text style={styles.empty}>Escanea el tag en Foco. La primera sesión empieza ahí.</Text>
+          <Text style={styles.emptyTitle}>{t('stats.emptyTitle')}</Text>
+          <Text style={styles.empty}>{t('stats.emptyBody')}</Text>
         </Card>
       ) : (
         <View style={styles.sessionList}>
-          {last.map((session) => (
+          {last.map((session) => {
+            const mode = MODES.find((item) => item.id === session.mode);
+            return (
             <Card key={session.startedAt} style={styles.sessionRow}>
               <View>
-                <Text style={styles.rowTitle}>{session.mode}</Text>
-                {session.emergency ? <Text style={styles.emergencyLabel}>Emergencia</Text> : null}
+                <Text style={styles.rowTitle}>{mode ? t(mode.titleKey) : session.mode}</Text>
+                {session.emergency ? <Text style={styles.emergencyLabel}>{t('stats.emergency')}</Text> : null}
                 <Text style={styles.rowDate}>
-                  {new Date(session.startedAt).toLocaleDateString('es', {
+                  {new Date(session.startedAt).toLocaleDateString(locale, {
                     day: 'numeric',
                     month: 'short',
                     hour: '2-digit',
@@ -100,9 +108,10 @@ export default function StatsScreen() {
                   })}
                 </Text>
               </View>
-              <Text style={styles.rowMeta}>{formatDuration(session.endedAt - session.startedAt)}</Text>
+              <Text style={styles.rowMeta}>{formatDuration(session.endedAt - session.startedAt, locale)}</Text>
             </Card>
-          ))}
+            );
+          })}
         </View>
       )}
     </Screen>

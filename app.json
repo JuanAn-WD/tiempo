@@ -10,6 +10,8 @@
     "ios": {
       "bundleIdentifier": "com.apartag.app",
       "infoPlist": {
+        "CFBundleAllowMixedLocalizations": true,
+        "CFBundleDevelopmentRegion": "es",
         "NFCReaderUsageDescription": "Apartag usa NFC para bloquear y desbloquear las apps que elijas al acercar tu tag."
       },
       "entitlements": {
@@ -78,7 +80,15 @@
               "titleColor": "#F7F1E8",
               "subtitleColor": "#9C8F7E",
               "backgroundColor": "#0B0A09",
-              "backgroundBlurStyle": "systemThickMaterialDark"
+              "backgroundBlurStyle": "systemThickMaterialDark",
+              "tempUnlockTitle": "Ya casi",
+              "tempUnlockSubtitle": "Se está abriendo. Prueba otra vez en un momento.",
+              "tempUnlockButtonLabel": "OK",
+              "countSuffix": " Tienes {count} apps bloqueadas."
+            },
+            "notification": {
+              "title": "Apartag",
+              "body": "Toca para volver a Apartag."
             }
           },
           "android": {
@@ -89,11 +99,25 @@
             "overlayTitleColor": "#F7F1E8",
             "overlayTextColor": "#9C8F7E",
             "notificationTitle": "Apartag",
-            "notificationText": "{appName} está bloqueada."
+            "notificationText": "{appName} está bloqueada. Acerca el tag."
           }
         }
-      ]
+      ],
+      [
+        "expo-localization",
+        {
+          "supportedLocales": {
+            "ios": ["es", "en"],
+            "android": ["es", "en"]
+          }
+        }
+      ],
+      "./plugins/with-shield-locales"
     ],
+    "locales": {
+      "es": "./locales/es.json",
+      "en": "./locales/en.json"
+    },
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true

@@ -2,6 +2,9 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import type { IOSBlockedItem } from 'expo-app-blocker';
 
+import type { Locale } from '@/i18n/locale';
+import { translate, type TranslationKey } from '@/i18n/translate';
+
 import { normalizeEmergencyFields } from '@/lib/emergency';
 import { ownAppIds } from '@/lib/own-app';
 import { guardIosSelection, withoutOwnPackages } from '@/lib/self-block';
@@ -43,11 +46,11 @@ export type TiempoState = {
   strict: boolean;
 };
 
-export const MODES: { id: ModeId; title: string; subtitle: string; mark: string }[] = [
-  { id: 'trabajo', title: 'Trabajo', subtitle: 'Deep work sin redes', mark: 'W' },
-  { id: 'estudio', title: 'Estudio', subtitle: 'Apuntes y exámenes', mark: 'E' },
-  { id: 'casa', title: 'Casa', subtitle: 'Cena y presencia', mark: 'H' },
-  { id: 'gym', title: 'Deporte', subtitle: 'Entrena sin el feed', mark: 'D' },
+export const MODES: { id: ModeId; titleKey: TranslationKey; subtitleKey: TranslationKey; mark: string }[] = [
+  { id: 'trabajo', titleKey: 'modes.trabajo.title', subtitleKey: 'modes.trabajo.subtitle', mark: 'W' },
+  { id: 'estudio', titleKey: 'modes.estudio.title', subtitleKey: 'modes.estudio.subtitle', mark: 'E' },
+  { id: 'casa', titleKey: 'modes.casa.title', subtitleKey: 'modes.casa.subtitle', mark: 'H' },
+  { id: 'gym', titleKey: 'modes.gym.title', subtitleKey: 'modes.gym.subtitle', mark: 'D' },
 ];
 
 export const DEFAULT_STATE: TiempoState = {
@@ -182,12 +185,12 @@ export async function saveState(state: TiempoState) {
   await AsyncStorage.multiRemove(LEGACY_KEYS);
 }
 
-export function formatDuration(ms: number) {
+export function formatDuration(ms: number, locale: Locale = 'es') {
   const totalMin = Math.max(0, Math.floor(ms / 60000));
   const hours = Math.floor(totalMin / 60);
   const minutes = totalMin % 60;
-  if (hours <= 0) return `${minutes} min`;
-  return `${hours} h ${minutes} min`;
+  if (hours <= 0) return translate(locale, 'duration.minutes', { count: minutes });
+  return translate(locale, 'duration.hoursMinutes', { hours, minutes });
 }
 
 export function formatClock(ms: number) {

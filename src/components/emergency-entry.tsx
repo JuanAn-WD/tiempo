@@ -4,17 +4,19 @@ import { StyleSheet, Text, View } from 'react-native';
 import { PrimaryButton } from '@/components/primary-button';
 import { Palette } from '@/constants/theme';
 import { useTiempo } from '@/context/tiempo-store';
+import { useI18n } from '@/i18n';
 import { formatRefillDate } from '@/lib/emergency';
 
 export function EmergencyEntry({ strictNote = false }: { strictNote?: boolean }) {
   const router = useRouter();
   const { state, clockSkewed } = useTiempo();
+  const { locale, t } = useI18n();
 
   if (!state.locked) return null;
 
   if (state.strict) {
     if (!strictNote) return null;
-    return <Text style={styles.note}>Modo estricto. Solo tus llaves.</Text>;
+    return <Text style={styles.note}>{t('blocked.strictNote')}</Text>;
   }
 
   const left = state.emergencyLeft;
@@ -25,17 +27,17 @@ export function EmergencyEntry({ strictNote = false }: { strictNote?: boolean })
         muted
         danger
         disabled={left <= 0}
-        label={`Desbloqueo de emergencia (quedan ${left})`}
-        accessibilityHint="Abre una cuenta atrás de 5 minutos. Si sales de la app, se cancela."
+        label={t('emergency.button', { count: left })}
+        accessibilityHint={t('emergency.buttonHint')}
         onPress={() => router.push('/emergency')}
       />
       {left <= 0 ? (
         <Text style={styles.note}>
           {clockSkewed
-            ? 'El reloj del móvil va atrás. No se recupera ninguna hasta que marque la hora bien.'
+            ? t('emergency.clockSkew')
             : state.emergencyRefillAt
-              ? `Se recupera una el ${formatRefillDate(state.emergencyRefillAt)}. Máximo 3.`
-              : 'Ahora mismo no queda ninguna.'}
+              ? t('emergency.refill', { date: formatRefillDate(state.emergencyRefillAt, locale) })
+              : t('emergency.none')}
         </Text>
       ) : null}
     </View>

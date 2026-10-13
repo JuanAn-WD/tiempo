@@ -1,0 +1,18 @@
+{
+  "shieldTitle": "Estás en Apartag",
+  "shieldSubtitle": "{appName} está bloqueada. Ve a por tu llave.",
+  "shieldButton": "Volver a Apartag",
+  "shieldTempTitle": "Ya casi",
+  "shieldTempSubtitle": "Se está abriendo. Prueba otra vez en un momento.",
+  "shieldTempButton": "OK",
+  "shieldCount": " Tienes {count} apps bloqueadas.",
+  "notificationTitle": "Apartag",
+  "notificationBody": "Toca para volver a Apartag.",
+  "overlayTitle": "Estás en Apartag",
+  "overlayText": "{appName} está bloqueada. Ve a por tu llave.",
+  "overlayNotificationTitle": "Apartag",
+  "overlayNotificationText": "{appName} está bloqueada. Acerca el tag.",
+  "fallbackApp": "Esta app",
+  "fallbackCategory": "Esta categoría",
+  "fallbackWebsite": "Este sitio"
+}

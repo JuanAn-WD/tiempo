@@ -8,35 +8,39 @@ import { Screen } from '@/components/screen';
 import { BrandMark } from '@/components/ui';
 import { Palette, Radius } from '@/constants/theme';
 import { useTiempo } from '@/context/tiempo-store';
+import { useI18n, type TranslationKey } from '@/i18n';
 import { openAndroidPermissionScreens } from '@/lib/blocker';
 
-const STEPS = [
-  {
-    kicker: '01 · El coste',
-    title: 'Cinco horas al día\nno son “un rato”.',
-    body: 'Son presencia, ideas y conversaciones que no vuelven. Aparta el móvil. Recupera tu tiempo.',
-    visual: 'cost',
-  },
-  {
-    kicker: '02 · La llave',
-    title: 'Una barrera física,\nno otra app más.',
-    body: 'Eliges. Escaneas. Se cierran. Para volver: tag NFC o el móvil de alguien de confianza.',
-    visual: 'key',
-  },
-  {
-    kicker: '03 · Emparejar',
-    title: 'Tu tag.\nTu ritmo.',
-    body: 'Solo tu tag o tu llave móvil. Emergencias: 3, con cinco minutos de espera. El modo estricto las quita, y pide una llave de repuesto.',
-    visual: 'pair',
-  },
-] as const;
+const STEP_ORDER = ['cost', 'key', 'pair'] as const;
 
-function StepVisual({ kind }: { kind: (typeof STEPS)[number]['visual'] }) {
+const STEP_COPY = {
+  cost: {
+    kicker: 'onboarding.cost.kicker',
+    title: 'onboarding.cost.title',
+    body: 'onboarding.cost.body',
+  },
+  key: {
+    kicker: 'onboarding.key.kicker',
+    title: 'onboarding.key.title',
+    body: 'onboarding.key.body',
+  },
+  pair: {
+    kicker: 'onboarding.pair.kicker',
+    title: 'onboarding.pair.title',
+    body: 'onboarding.pair.body',
+  },
+} as const satisfies Record<
+  (typeof STEP_ORDER)[number],
+  { kicker: TranslationKey; title: TranslationKey; body: TranslationKey }
+>;
+
+function StepVisual({ kind }: { kind: (typeof STEP_ORDER)[number] }) {
+  const { t } = useI18n();
   if (kind === 'cost') {
     return (
       <View style={styles.visualCard}>
-        <Text style={styles.bigNum}>5h</Text>
-        <Text style={styles.bigLabel}>media diaria en pantalla</Text>
+        <Text style={styles.bigNum}>{t('onboarding.hours')}</Text>
+        <Text style={styles.bigLabel}>{t('onboarding.daily')}</Text>
         <View style={styles.bars}>
           {[0.35, 0.55, 0.7, 0.9, 0.65, 0.8, 0.45].map((h, i) => (
             <View key={i} style={[styles.bar, { height: 18 + h * 54 }]} />
@@ -46,9 +50,10 @@ function StepVisual({ kind }: { kind: (typeof STEPS)[number]['visual'] }) {
     );
   }
   if (kind === 'key') {
+    const lines = [t('onboarding.stepChoose'), t('onboarding.stepScan'), t('onboarding.stepPresent')];
     return (
       <View style={styles.visualCard}>
-        {['Eliges las apps', 'Escaneas el tag', 'Entras en presencia'].map((line, i) => (
+        {lines.map((line, i) => (
           <View key={line} style={styles.stepRow}>
             <LinearGradient
               colors={[Palette.accent, Palette.accentBright]}
@@ -67,27 +72,28 @@ function StepVisual({ kind }: { kind: (typeof STEPS)[number]['visual'] }) {
 export default function Onboarding() {
   const { pairTag, pairSpareTag, completeOnboarding, requestPermissions, nfcSupported, state } =
     useTiempo();
+  const { t } = useI18n();
   const [step, setStep] = useState(0);
-  const current = STEPS[step];
+  const current = STEP_ORDER[step];
 
   return (
     <Screen tabPadding={false}>
       <View style={styles.top}>
         <BrandMark />
         <Text style={styles.stepCount}>
-          {step + 1} / {STEPS.length}
+          {step + 1} / {STEP_ORDER.length}
         </Text>
       </View>
 
       <View style={styles.dots}>
-        {STEPS.map((_, i) => (
-          <View key={i} style={[styles.dot, i <= step && styles.dotOn]} />
+        {STEP_ORDER.map((id, i) => (
+          <View key={id} style={[styles.dot, i <= step && styles.dotOn]} />
         ))}
       </View>
 
-      <Text style={styles.kicker}>{current.kicker}</Text>
-      <Text style={styles.title}>{current.title}</Text>
-      <Text style={styles.body}>{current.body}</Text>
+      <Text style={styles.kicker}>{t(STEP_COPY[current].kicker)}</Text>
+      <Text style={styles.title}>{t(STEP_COPY[current].title)}</Text>
+      <Text style={styles.body}>{t(STEP_COPY[current].body)}</Text>
 
       {step === 2 ? (
         <View style={styles.tag}>
@@ -95,14 +101,14 @@ export default function Onboarding() {
             locked={false}
             hint={
               state.tagId
-                ? `Listo · ${state.tagId.slice(0, 12)}`
+                ? t('onboarding.ready', { id: state.tagId.slice(0, 12) })
                 : __DEV__
                   ? nfcSupported
-                    ? 'Toca el tag NFC o mantén pulsado para simular'
-                    : 'Mantén pulsado para simular el tag'
+                    ? t('onboarding.hintDevNfc')
+                    : t('onboarding.hintDev')
                   : nfcSupported
-                    ? 'Toca y acerca tu tag NFC'
-                    : 'Este móvil no tiene NFC'
+                    ? t('onboarding.hintNfc')
+                    : t('onboarding.hintNoNfc')
             }
             onPress={() => void pairTag()}
             onLongPress={__DEV__ ? () => void pairTag('DEMO-TAG') : undefined}
@@ -110,22 +116,20 @@ export default function Onboarding() {
           {state.tagId ? (
             <View style={styles.spare}>
               <Text style={styles.spareHint}>
-                {state.spareTagId
-                  ? 'Llave de repuesto lista. El modo estricto ya se puede activar en Ajustes.'
-                  : '¿Añades una llave de repuesto? Hace falta para el modo estricto.'}
+                {state.spareTagId ? t('onboarding.spareReady') : t('onboarding.spareAsk')}
               </Text>
               {state.spareTagId ? null : (
                 <>
                   <PrimaryButton
                     muted
-                    label="Añadir llave de repuesto"
+                    label={t('onboarding.spareAdd')}
                     onPress={() => void pairSpareTag()}
                     onLongPress={__DEV__ ? () => void pairSpareTag('DEMO-SPARE') : undefined}
                   />
                   {__DEV__ ? (
                     <PrimaryButton
                       muted
-                      label="Simular llave de repuesto"
+                      label={t('onboarding.spareSimulate')}
                       onPress={() => void pairSpareTag('DEMO-SPARE')}
                     />
                   ) : null}
@@ -136,26 +140,26 @@ export default function Onboarding() {
         </View>
       ) : (
         <View style={styles.visualWrap}>
-          <StepVisual kind={current.visual} />
+          <StepVisual kind={current} />
         </View>
       )}
 
       <View style={styles.actions}>
         {step < 2 ? (
           <>
-            <PrimaryButton label="Continuar" onPress={() => setStep(step + 1)} />
-            {step > 0 ? <PrimaryButton muted label="Atrás" onPress={() => setStep(step - 1)} /> : null}
+            <PrimaryButton label={t('onboarding.continue')} onPress={() => setStep(step + 1)} />
+            {step > 0 ? <PrimaryButton muted label={t('onboarding.back')} onPress={() => setStep(step - 1)} /> : null}
           </>
         ) : (
           <>
             <PrimaryButton
-              label="Activar permisos"
+              label={t('onboarding.permissions')}
               onPress={() => {
                 void requestPermissions();
                 void openAndroidPermissionScreens();
               }}
             />
-            <PrimaryButton muted label="Entrar en Apartag" onPress={() => void completeOnboarding()} />
+            <PrimaryButton muted label={t('onboarding.enter')} onPress={() => void completeOnboarding()} />
           </>
         )}
       </View>

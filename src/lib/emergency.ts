@@ -6,6 +6,17 @@ export const EMERGENCY_COUNTDOWN_MS = 5 * 60 * 1000;
 /** Wall-clock jitter we still treat as the same moment. */
 export const CLOCK_SLOP_MS = 15_000;
 export const STRICT_CONFIRMATION = 'ESTRICTO';
+/** English confirmation word. Both are accepted so an existing ESTRICTO still works. */
+export const STRICT_CONFIRMATION_EN = 'STRICT';
+
+export function acceptsStrictConfirmation(value: string | null | undefined): boolean {
+  const word = value?.trim();
+  return word === STRICT_CONFIRMATION || word === STRICT_CONFIRMATION_EN;
+}
+
+export function strictConfirmationWord(locale: 'es' | 'en'): string {
+  return locale === 'en' ? STRICT_CONFIRMATION_EN : STRICT_CONFIRMATION;
+}
 
 export type EmergencySnapshot = {
   emergencyLeft: number;
@@ -188,8 +199,8 @@ export function formatCountdown(ms: number) {
   return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
 }
 
-export function formatRefillDate(ts: number) {
-  return new Date(ts).toLocaleString('es', {
+export function formatRefillDate(ts: number, locale: string = 'es') {
+  return new Date(ts).toLocaleString(locale, {
     day: 'numeric',
     month: 'short',
     hour: '2-digit',
