@@ -1,6 +1,6 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { useEffect } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 import Animated, {
   Easing,
   interpolate,
@@ -10,7 +10,8 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 
-import { Palette, Radius } from '@/constants/theme';
+import { Text } from '@/components/app-text';
+import { FontFamily, Palette, Radius, Type } from '@/constants/theme';
 import { useI18n } from '@/i18n';
 
 type Props = {
@@ -66,7 +67,7 @@ export function FocusOrb({ locked, onPress, onLongPress, hint, clock }: Props) {
             style={styles.ring}>
             <View style={styles.inner}>
               <Text style={styles.wordmark}>
-                apartag<Text style={{ color: locked ? Palette.focus : Palette.accent }}>.</Text>
+                apartag<Text style={[styles.wordmarkDot, { color: locked ? Palette.focus : Palette.accent }]}>.</Text>
               </Text>
               {clock ? (
                 <Text style={[styles.clock, locked && styles.clockLock]}>{clock}</Text>
@@ -145,15 +146,19 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   wordmark: {
+    fontFamily: FontFamily.uiSemibold,
     fontSize: 36,
-    fontWeight: '700',
-    letterSpacing: -1.4,
+    lineHeight: 42,
+    letterSpacing: -0.72,
     color: Palette.ink,
   },
+  wordmarkDot: {
+    fontFamily: FontFamily.uiSemibold,
+  },
   clock: {
+    ...Type.mono,
     fontSize: 28,
-    fontWeight: '600',
-    fontVariant: ['tabular-nums'],
+    lineHeight: 34,
     letterSpacing: 1,
     color: Palette.accent,
   },
@@ -182,19 +187,15 @@ const styles = StyleSheet.create({
     backgroundColor: Palette.focus,
   },
   status: {
-    fontSize: 11,
-    letterSpacing: 1.6,
-    textTransform: 'uppercase',
-    fontWeight: '700',
+    ...Type.kicker,
     color: Palette.accent,
   },
   statusLock: {
     color: Palette.focus,
   },
   hint: {
+    ...Type.body,
     color: Palette.muted,
-    fontSize: 14,
-    lineHeight: 20,
     textAlign: 'center',
     maxWidth: 280,
   },

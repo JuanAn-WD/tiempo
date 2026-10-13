@@ -1,13 +1,14 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 
+import { Text } from '@/components/app-text';
 import { FocusOrb } from '@/components/focus-orb';
 import { NfcNotice } from '@/components/nfc-notice';
 import { PrimaryButton } from '@/components/primary-button';
 import { Screen } from '@/components/screen';
 import { BrandMark } from '@/components/ui';
-import { Palette, Radius } from '@/constants/theme';
+import { Palette, Radius, Type } from '@/constants/theme';
 import { useTiempo } from '@/context/tiempo-store';
 import { useI18n, type TranslationKey } from '@/i18n';
 import { openAndroidPermissionScreens } from '@/lib/blocker';
@@ -183,9 +184,8 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   stepCount: {
-    color: Palette.faint,
-    fontWeight: '700',
-    fontSize: 12,
+    ...Type.captionBold,
+    color: Palette.faintText,
     letterSpacing: 1,
   },
   dots: {
@@ -203,24 +203,18 @@ const styles = StyleSheet.create({
     backgroundColor: Palette.accent,
   },
   kicker: {
+    ...Type.kicker,
     color: Palette.accentBright,
     letterSpacing: 1.4,
-    textTransform: 'uppercase',
-    fontSize: 11,
-    fontWeight: '800',
   },
   title: {
+    ...Type.displayL,
     marginTop: 12,
-    fontSize: 34,
-    lineHeight: 40,
     color: Palette.ink,
-    fontWeight: '600',
-    letterSpacing: -1,
   },
   body: {
+    ...Type.bodyL,
     marginTop: 12,
-    fontSize: 16,
-    lineHeight: 24,
     color: Palette.muted,
   },
   visualWrap: {
@@ -236,14 +230,12 @@ const styles = StyleSheet.create({
     gap: 14,
   },
   bigNum: {
-    fontSize: 64,
-    fontWeight: '700',
+    ...Type.displayXl,
     color: Palette.accentBright,
-    letterSpacing: -2,
   },
   bigLabel: {
+    ...Type.body,
     color: Palette.muted,
-    fontSize: 15,
     marginTop: -8,
   },
   bars: {
@@ -274,13 +266,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   stepNumText: {
+    ...Type.labelBold,
     color: Palette.accentText,
-    fontWeight: '800',
   },
   stepLine: {
+    ...Type.label,
     color: Palette.ink,
-    fontSize: 16,
-    fontWeight: '600',
   },
   tag: {
     flex: 1,
@@ -291,9 +282,9 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   spareHint: {
+    ...Type.body,
     color: Palette.muted,
     textAlign: 'center',
-    lineHeight: 20,
   },
   actions: {
     gap: 10,

@@ -1,11 +1,16 @@
 import { type ReactNode } from 'react';
-import { StyleSheet, Text, View, type StyleProp, type TextStyle, type ViewStyle } from 'react-native';
+import { StyleSheet, View, type StyleProp, type TextStyle, type ViewStyle } from 'react-native';
 
-import { Palette, Radius, Spacing } from '@/constants/theme';
+import { Text } from '@/components/app-text';
+import { FontFamily, Palette, Radius, Spacing, Type } from '@/constants/theme';
 
 export function BrandMark({ size = 22 }: { size?: number }) {
   return (
-    <Text style={[styles.brand, { fontSize: size }]}>
+    <Text
+      style={[
+        styles.brand,
+        { fontSize: size, lineHeight: Math.round(size * 1.2), letterSpacing: size * -0.02 },
+      ]}>
       apartag<Text style={styles.brandDot}>.</Text>
     </Text>
   );
@@ -97,32 +102,25 @@ export function StatTile({
 
 const styles = StyleSheet.create({
   brand: {
-    fontWeight: '700',
-    letterSpacing: -1,
-    color: Palette.ink,
+    ...Type.wordmark,
   },
   brandDot: {
+    fontFamily: FontFamily.uiSemibold,
     color: Palette.accent,
   },
   kicker: {
+    ...Type.kicker,
     color: Palette.muted,
     letterSpacing: 2,
-    textTransform: 'uppercase',
-    fontSize: 11,
-    fontWeight: '700',
   },
   heading: {
+    ...Type.displayL,
     marginTop: 10,
-    fontSize: 32,
-    lineHeight: 38,
     color: Palette.ink,
-    fontWeight: '600',
-    letterSpacing: -0.9,
   },
   body: {
+    ...Type.bodyL,
     marginTop: 10,
-    fontSize: 16,
-    lineHeight: 24,
     color: Palette.muted,
   },
   card: {
@@ -163,8 +161,9 @@ const styles = StyleSheet.create({
     backgroundColor: Palette.faint,
   },
   badgeText: {
+    fontFamily: FontFamily.uiBold,
     fontSize: 11,
-    fontWeight: '800',
+    lineHeight: 14,
     color: Palette.muted,
     letterSpacing: 0.8,
   },
@@ -178,19 +177,17 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(212,146,58,0.25)',
   },
   statValue: {
+    ...Type.mono,
     fontSize: 24,
-    fontWeight: '700',
+    lineHeight: 30,
     color: Palette.ink,
-    letterSpacing: -0.6,
-    fontVariant: ['tabular-nums'],
   },
   statValueEmph: {
     color: Palette.accentBright,
   },
   statLabel: {
+    ...Type.caption,
     marginTop: 6,
     color: Palette.muted,
-    fontSize: 12,
-    fontWeight: '600',
   },
 });

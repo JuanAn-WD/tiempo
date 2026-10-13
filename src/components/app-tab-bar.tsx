@@ -1,10 +1,11 @@
 import type { BottomTabBarProps } from 'expo-router/build/react-navigation/bottom-tabs';
 import * as Haptics from 'expo-haptics';
 import { SymbolView } from 'expo-symbols';
-import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Platform, Pressable, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { Palette, Radius } from '@/constants/theme';
+import { Text } from '@/components/app-text';
+import { Palette, Radius, Type } from '@/constants/theme';
 import { useI18n, type TranslationKey } from '@/i18n';
 import { useTiempo } from '@/context/tiempo-store';
 
@@ -185,9 +186,9 @@ const styles = StyleSheet.create({
     borderColor: Palette.surface,
   },
   label: {
-    fontSize: 10,
-    fontWeight: '700',
+    ...Type.kicker,
     letterSpacing: 0.2,
+    textTransform: 'none',
     color: Palette.muted,
   },
   labelOn: {

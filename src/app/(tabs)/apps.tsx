@@ -1,10 +1,11 @@
 import { Image } from 'expo-image';
 import { useMemo, useState } from 'react';
-import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Pressable, StyleSheet, TextInput, View } from 'react-native';
 
+import { Text } from '@/components/app-text';
 import { Screen } from '@/components/screen';
 import { Badge, BrandMark, Card } from '@/components/ui';
-import { Palette, Radius } from '@/constants/theme';
+import { Palette, Radius, Type } from '@/constants/theme';
 import { useTiempo } from '@/context/tiempo-store';
 import { useI18n } from '@/i18n';
 
@@ -44,7 +45,8 @@ export default function AppsScreen() {
           value={query}
           onChangeText={setQuery}
           placeholder={t('apps.search')}
-          placeholderTextColor={Palette.faint}
+          placeholderTextColor={Palette.faintText}
+          maxFontSizeMultiplier={2}
           style={styles.search}
         />
         <Pressable
@@ -95,18 +97,14 @@ const styles = StyleSheet.create({
     marginBottom: 18,
   },
   title: {
-    fontSize: 32,
-    lineHeight: 38,
+    ...Type.displayL,
     color: Palette.ink,
-    fontWeight: '600',
-    letterSpacing: -0.9,
   },
   sub: {
+    ...Type.body,
     marginTop: 10,
     marginBottom: 18,
     color: Palette.muted,
-    fontSize: 15,
-    lineHeight: 22,
   },
   tools: {
     flexDirection: 'row',
@@ -114,6 +112,7 @@ const styles = StyleSheet.create({
     marginBottom: 14,
   },
   search: {
+    ...Type.body,
     flex: 1,
     backgroundColor: Palette.surface,
     borderWidth: 1,
@@ -122,7 +121,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 13,
     color: Palette.ink,
-    fontSize: 15,
   },
   filter: {
     width: 56,
@@ -138,9 +136,8 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(212,146,58,0.4)',
   },
   filterText: {
+    ...Type.captionBold,
     color: Palette.muted,
-    fontWeight: '800',
-    fontSize: 12,
   },
   filterTextOn: {
     color: Palette.accentBright,
@@ -177,16 +174,15 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(212,146,58,0.25)',
   },
   iconLetter: {
-    fontWeight: '800',
+    ...Type.labelBold,
     color: Palette.ink,
   },
   meta: {
     flex: 1,
   },
   name: {
+    ...Type.labelBold,
     color: Palette.ink,
-    fontWeight: '700',
-    fontSize: 16,
   },
   toggle: {
     width: 46,
@@ -213,6 +209,7 @@ const styles = StyleSheet.create({
     backgroundColor: Palette.accentText,
   },
   empty: {
+    ...Type.body,
     color: Palette.muted,
     textAlign: 'center',
     marginTop: 28,

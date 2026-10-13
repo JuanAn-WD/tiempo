@@ -1,14 +1,15 @@
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 
+import { Text } from '@/components/app-text';
 import { EmergencyEntry } from '@/components/emergency-entry';
 import { FocusOrb } from '@/components/focus-orb';
 import { NfcNotice } from '@/components/nfc-notice';
 import { PrimaryButton } from '@/components/primary-button';
 import { Screen } from '@/components/screen';
 import { Badge, BrandMark, StatTile } from '@/components/ui';
-import { Palette, Radius } from '@/constants/theme';
+import { FontFamily, Palette, Radius, Type } from '@/constants/theme';
 import { useTiempo } from '@/context/tiempo-store';
 import { useI18n } from '@/i18n';
 import { formatClock, formatDuration, MODES } from '@/lib/storage';
@@ -132,19 +133,14 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   kicker: {
+    ...Type.kicker,
     color: Palette.muted,
-    fontSize: 12,
-    fontWeight: '700',
     letterSpacing: 1.8,
-    textTransform: 'uppercase',
   },
   title: {
+    ...Type.displayL,
     marginTop: 8,
-    fontSize: 34,
-    lineHeight: 40,
     color: Palette.ink,
-    fontWeight: '600',
-    letterSpacing: -1,
   },
   orbArea: {
     flex: 1,
@@ -191,17 +187,19 @@ const styles = StyleSheet.create({
     backgroundColor: Palette.accent,
   },
   modeMarkText: {
+    fontFamily: FontFamily.uiBold,
     fontSize: 12,
-    fontWeight: '800',
-    color: Palette.faint,
+    lineHeight: 16,
+    color: Palette.faintText,
   },
   modeMarkTextOn: {
     color: Palette.accentText,
   },
   modeTitle: {
-    color: Palette.muted,
-    fontWeight: '700',
+    fontFamily: FontFamily.uiBold,
     fontSize: 14,
+    lineHeight: 18,
+    color: Palette.muted,
   },
   modeTitleOn: {
     color: Palette.ink,
@@ -215,10 +213,9 @@ const styles = StyleSheet.create({
     marginTop: 10,
   },
   footer: {
+    ...Type.caption,
     textAlign: 'center',
-    color: Palette.faint,
-    fontSize: 13,
-    fontWeight: '600',
+    color: Palette.faintText,
     letterSpacing: 0.2,
     paddingVertical: 10,
   },

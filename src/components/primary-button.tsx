@@ -1,7 +1,8 @@
 import * as Haptics from 'expo-haptics';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 
-import { Palette, Radius } from '@/constants/theme';
+import { Text } from '@/components/app-text';
+import { Palette, Radius, Type } from '@/constants/theme';
 
 type Props = {
   label: string;
@@ -90,9 +91,8 @@ const styles = StyleSheet.create({
     opacity: 0.35,
   },
   label: {
+    ...Type.labelBold,
     color: Palette.accentText,
-    fontSize: 16,
-    fontWeight: '700',
     letterSpacing: -0.2,
   },
   mutedLabel: {

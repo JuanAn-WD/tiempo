@@ -1,8 +1,9 @@
 import { useRouter } from 'expo-router';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 
+import { Text } from '@/components/app-text';
 import { PrimaryButton } from '@/components/primary-button';
-import { Palette } from '@/constants/theme';
+import { Palette, Type } from '@/constants/theme';
 import { useTiempo } from '@/context/tiempo-store';
 import { useI18n } from '@/i18n';
 import { formatRefillDate } from '@/lib/emergency';
@@ -49,10 +50,8 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   note: {
+    ...Type.caption,
     textAlign: 'center',
     color: Palette.danger,
-    fontSize: 13,
-    fontWeight: '600',
-    lineHeight: 18,
   },
 });

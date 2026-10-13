@@ -1,9 +1,10 @@
 import { useMemo, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 
+import { Text } from '@/components/app-text';
 import { Screen } from '@/components/screen';
 import { BrandMark, Card } from '@/components/ui';
-import { Palette, Radius } from '@/constants/theme';
+import { FontFamily, Palette, Radius, Type } from '@/constants/theme';
 import { useTiempo } from '@/context/tiempo-store';
 import { useI18n } from '@/i18n';
 import { formatDuration, MODES, yearsFromDailyHours } from '@/lib/storage';
@@ -123,11 +124,8 @@ const styles = StyleSheet.create({
     marginBottom: 18,
   },
   title: {
-    fontSize: 32,
-    lineHeight: 38,
+    ...Type.displayL,
     color: Palette.ink,
-    fontWeight: '600',
-    letterSpacing: -0.9,
     marginBottom: 20,
   },
   hero: {
@@ -136,20 +134,16 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(212,146,58,0.28)',
   },
   heroLabel: {
+    ...Type.kicker,
     color: Palette.accentBright,
-    fontWeight: '800',
-    fontSize: 11,
-    letterSpacing: 1.6,
-    textTransform: 'uppercase',
   },
   heroValue: {
+    ...Type.displayXl,
     marginTop: 10,
-    fontSize: 44,
-    fontWeight: '700',
     color: Palette.ink,
-    letterSpacing: -1.4,
   },
   heroMeta: {
+    ...Type.body,
     marginTop: 6,
     color: Palette.muted,
   },
@@ -157,31 +151,31 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   cardTitle: {
+    ...Type.labelBold,
     color: Palette.ink,
-    fontWeight: '700',
-    fontSize: 16,
   },
   years: {
+    ...Type.displayXl,
     marginTop: 12,
-    fontSize: 48,
-    fontWeight: '700',
     color: Palette.accentBright,
-    letterSpacing: -1.6,
   },
   yearsUnit: {
+    ...Type.body,
     color: Palette.muted,
     marginBottom: 16,
-    lineHeight: 20,
   },
   stepper: {
     marginTop: 10,
   },
   sliderLabel: {
+    ...Type.body,
     color: Palette.muted,
   },
   sliderValue: {
+    ...Type.mono,
+    fontSize: 15,
+    lineHeight: 22,
     color: Palette.ink,
-    fontWeight: '700',
   },
   stepRow: {
     flexDirection: 'row',
@@ -199,24 +193,24 @@ const styles = StyleSheet.create({
     borderColor: Palette.line,
   },
   stepTxt: {
+    fontFamily: FontFamily.uiSemibold,
     fontSize: 22,
+    lineHeight: 26,
     color: Palette.ink,
-    fontWeight: '600',
   },
   section: {
+    ...Type.labelBold,
     color: Palette.ink,
-    fontWeight: '700',
     marginBottom: 10,
-    fontSize: 16,
   },
   emptyTitle: {
+    ...Type.labelBold,
     color: Palette.ink,
-    fontWeight: '700',
     marginBottom: 4,
   },
   empty: {
+    ...Type.body,
     color: Palette.muted,
-    lineHeight: 20,
   },
   sessionList: {
     gap: 8,
@@ -229,23 +223,24 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
   },
   rowTitle: {
+    ...Type.labelBold,
     textTransform: 'capitalize',
     color: Palette.ink,
-    fontWeight: '700',
   },
   emergencyLabel: {
+    ...Type.captionBold,
     color: Palette.danger,
-    fontSize: 12,
-    fontWeight: '700',
     marginTop: 2,
   },
   rowDate: {
-    color: Palette.faint,
+    ...Type.caption,
+    color: Palette.faintText,
     marginTop: 3,
-    fontSize: 12,
   },
   rowMeta: {
+    ...Type.mono,
+    fontSize: 15,
+    lineHeight: 20,
     color: Palette.accentBright,
-    fontWeight: '700',
   },
 });

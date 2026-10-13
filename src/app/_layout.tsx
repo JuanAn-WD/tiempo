@@ -1,22 +1,24 @@
+import { useFonts } from 'expo-font';
 import { Stack, useRouter, useSegments } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 import { ActivityIndicator, StyleSheet, View } from 'react-native';
 
+import { brandFonts } from '@/constants/fonts';
+import { Palette } from '@/constants/theme';
 import { TiempoProvider, useTiempo } from '@/context/tiempo-store';
 import { I18nProvider } from '@/i18n';
-import { Palette } from '@/constants/theme';
 
 SplashScreen.preventAutoHideAsync();
 
-function Gate() {
+function Gate({ fontsReady }: { fontsReady: boolean }) {
   const { ready, state } = useTiempo();
   const router = useRouter();
   const segments = useSegments();
 
   useEffect(() => {
-    if (!ready) return;
+    if (!ready || !fontsReady) return;
     void SplashScreen.hideAsync();
     const root = segments[0];
     const inOnboarding = root === 'onboarding';
@@ -29,9 +31,9 @@ function Gate() {
     if (state.onboarded && inOnboarding) {
       router.replace('/');
     }
-  }, [ready, router, segments, state.onboarded]);
+  }, [fontsReady, ready, router, segments, state.onboarded]);
 
-  if (!ready) {
+  if (!ready || !fontsReady) {
     return (
       <View style={styles.boot}>
         <StatusBar style="light" />
@@ -58,10 +60,13 @@ function Gate() {
 }
 
 export default function RootLayout() {
+  const [fontsLoaded, fontError] = useFonts(brandFonts);
+  const fontsReady = fontsLoaded || fontError != null;
+
   return (
     <I18nProvider>
       <TiempoProvider>
-        <Gate />
+        <Gate fontsReady={fontsReady} />
       </TiempoProvider>
     </I18nProvider>
   );
