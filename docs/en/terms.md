@@ -57,7 +57,7 @@ Pair a tag you control. If you want, also pair a second tag as a spare key: it l
 
 If you create a mobile key, the pairing QR code contains the secret that can lock and unlock. Anyone who scans it, or who gets a photo of that QR code, can act as the key until you revoke the secret in Settings (when a session is not locked and, if strict mode is on, only if you still have two other keys). Show it only to someone who understands what they are accepting.
 
-The QR code that person shows afterward expires after 60 seconds and can be used again during that minute.
+The QR code that person shows afterward is signed on their phone, expires after 60 seconds, and can be used only once. A small clock difference between the two phones is tolerated.
 
 Do not use Apartag to lock another person's phone unless they know and agree. The person who acts as the key has to want that role as well.
 

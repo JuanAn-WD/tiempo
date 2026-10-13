@@ -228,9 +228,9 @@ export const es = {
       'En el móvil de tu pareja, ve a Ajustes → Llave móvil y muestra el QR de emparejar. Luego escanéalo aquí.',
     claim: 'Escanear para convertirme en llave',
     kicker: 'Soy la llave',
-    body: 'Enséñale este QR al móvil bloqueado. Sirve para bloquear y desbloquear. Se renueva solo.',
+    body: 'Enséñale este QR al móvil bloqueado. Sirve para bloquear y desbloquear. Caduca a los 60 s y solo vale una vez.',
     generating: 'Generando…',
-    timer: 'Nuevo en {{seconds}}s',
+    timer: 'Caduca en {{seconds}} s',
     stop: 'Dejar de ser llave',
   },
   pairKey: {
@@ -251,7 +251,7 @@ export const es = {
     body: 'Escanea el QR de emparejar que te muestra el otro móvil en Ajustes → Llave móvil.',
     camera: 'Permitir cámara',
     pairTitle: 'Emparejar como llave',
-    pairBody: 'Escanea el QR de emparejar (no el QR que parpadea cada 30s).',
+    pairBody: 'Escanea el QR de emparejar (no el QR que caduca a los 60 s).',
   },
   scanKey: {
     title: 'Cámara para la llave',
@@ -367,7 +367,15 @@ export const es = {
     },
     rejectedKey: {
       title: 'Llave rechazada',
-      body: 'El QR expiró o no corresponde a tu llave. Genera uno nuevo.',
+      body: 'El QR caducó, el reloj no coincide o no es tu llave. Genera uno nuevo.',
+    },
+    replayedKey: {
+      title: 'QR ya usado',
+      body: 'Ese código ya se ha escaneado. Espera al siguiente en el otro móvil: cada uno caduca a los 60 s y no se repite.',
+    },
+    legacyKey: {
+      title: 'Actualiza la llave',
+      body: 'Ese QR es del formato anterior. Actualiza Apartag en el móvil que hace de llave. No hace falta volver a emparejar.',
     },
     strictBackup: {
       title: 'Falta una llave de repuesto',

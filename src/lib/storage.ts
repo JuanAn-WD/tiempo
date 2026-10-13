@@ -6,6 +6,7 @@ import type { Locale } from '@/i18n/locale';
 import { translate, type TranslationKey } from '@/i18n/translate';
 
 import { normalizeEmergencyFields } from '@/lib/emergency';
+import { sanitizeUsedNonces, type UsedPulseNonce } from '@/lib/mobile-key-mac';
 import { ownAppIds } from '@/lib/own-app';
 import { guardIosSelection, withoutOwnPackages } from '@/lib/self-block';
 
@@ -24,6 +25,8 @@ export type TiempoState = {
   tagId: string | null;
   /** Shared secret that partner phones use as a mobile key. */
   mobileKeySecret: string | null;
+  /** Nonces of mobile-key QRs already accepted, so one code cannot be scanned twice. */
+  usedMobileKeyNonces: UsedPulseNonce[];
   /** If set, this install acts as a key for someone else's Apartag. */
   keyHolderSecret: string | null;
   keyHolderLabel: string | null;
@@ -57,6 +60,7 @@ export const DEFAULT_STATE: TiempoState = {
   onboarded: false,
   tagId: null,
   mobileKeySecret: null,
+  usedMobileKeyNonces: [],
   keyHolderSecret: null,
   keyHolderLabel: null,
   spareTagId: null,
@@ -143,6 +147,7 @@ export function sanitizeState(
     mode,
     tagId: nullableString(data.tagId, DEFAULT_STATE.tagId),
     mobileKeySecret: nullableString(data.mobileKeySecret, DEFAULT_STATE.mobileKeySecret),
+    usedMobileKeyNonces: sanitizeUsedNonces(data.usedMobileKeyNonces, now, emergency.lastSeenAt),
     keyHolderSecret: nullableString(data.keyHolderSecret, DEFAULT_STATE.keyHolderSecret),
     keyHolderLabel: nullableString(data.keyHolderLabel, DEFAULT_STATE.keyHolderLabel),
     spareTagId: nullableString(data.spareTagId, null),

@@ -57,7 +57,7 @@ Empareja un tag que controles. Si quieres, empareja también un segundo tag como
 
 Si creas una llave móvil, el QR de emparejar contiene el secreto que permite bloquear y desbloquear. Quien lo escanea, o quien obtiene una foto de ese QR, puede actuar como llave hasta que revoques el secreto en Ajustes (cuando no haya una sesión bloqueada y, si el modo estricto está activo, solo si te quedan otras dos llaves). Enséñalo solo a alguien que sepa lo que está aceptando.
 
-El QR que esa persona muestra después caduca a los 60 segundos y, durante ese minuto, puede volver a usarse.
+El QR que esa persona muestra después va firmado en su teléfono, caduca a los 60 segundos y solo puede usarse una vez. Un desfase pequeño de reloj entre los dos móviles se tolera.
 
 No uses Apartag para bloquear el teléfono de otra persona sin que lo sepa y lo acepte. La persona que actúa como llave también tiene que querer ese papel.
 

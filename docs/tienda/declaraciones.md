@@ -78,6 +78,8 @@ Tras el prebuild, el manifiesto fusionado pide más de lo que lista `app.json`. 
 | Administrador del dispositivo | **No** | — | Nada que declarar |
 | `INTERNET` | Lo añade Expo/React Native al generar `android/` | El código de Apartag no abre conexiones | No declares recogida de datos de red |
 
+La llave móvil firma cada QR con HMAC-SHA256 (`@noble/hashes@1.8.0`, MIT, sin red ni permisos). Caduca a los 60 s, vale una vez y tolera un desfase pequeño de reloj. El secreto ya emparejado se conserva.
+
 La PR #4 (desbloqueos de emergencia y modo estricto) no añade permisos de Play. En `app.json` de Apartag (`com.apartag.app`) deja `android.allowBackup: false`. Las dependencias nuevas son `@expo-google-fonts/jetbrains-mono` (un `.ttf` local, licencia SIL OFL 1.1; no hay pantalla de avisos de terceros) y `expo-keep-awake@57.0.2`, que no trae config plugin ni permiso en su `package.json`: pide que la ventana no se apague. La cuenta atrás usa `AppState` y `activateKeepAwakeAsync` mientras corre, está lista o se confirma. El bloqueo automático de pantalla ya no la cancela. Bloquear a mano, cambiar de app o pasar a segundo plano (cualquier `AppState` distinto de `active`) sigue cancelando sin gastar un desbloqueo. Si `activateKeepAwakeAsync` falla, el error se ignora y el bloqueo automático podría cancelarla igual. No usa el acceso de uso ni el overlay.
 
 ### 2.1 Acceso de uso y overlay
@@ -240,7 +242,7 @@ applied: iOS does not say whether Apartag is inside a category, and shielding
 one could hide the emergency screen. The Screen Time picker cannot reliably
 hide Apartag. If the user selects it and iOS does not identify the token, the
 app cannot remove it. They then lock that choice with a physical NFC tag or
-with a short-lived QR code shown on a trusted person's phone. To open the
+with a short-lived, single-use QR code shown on a trusted person's phone. To open the
 shielded apps again, they scan one of their own keys (the tag, an optional
 second tag, or the mobile key).
 

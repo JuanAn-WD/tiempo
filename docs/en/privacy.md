@@ -90,7 +90,7 @@ Each permission is there to lock and unlock. If you refuse it, that part of the 
 
 If you create a mobile key, a secret is generated on your phone. The pairing QR code contains that secret. Whoever scans it stores it on their phone and can then lock and unlock your apps by showing another QR code.
 
-That second QR code expires after 60 seconds. It can be used again during that minute. It does not pass through a server: it goes from one screen to the other phone's camera.
+That second QR code is signed on the phone with HMAC-SHA256 and expires after 60 seconds. It works only once: after it has been scanned, it will not work again, even if it is still on screen. A small clock difference between the two phones does not invalidate it. It does not pass through a server: it goes from one screen to the other phone's camera.
 
 Show the pairing QR code only to someone you trust. You can revoke the key in Settings when a session is not locked. If strict mode is on, you can revoke it only if you still have two other keys (the tag and a second tag). Apartag cannot revoke it for you, because the secret never leaves the phones.
 
