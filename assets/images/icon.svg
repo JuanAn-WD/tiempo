@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024" role="img" aria-labelledby="t d">
+  <title id="t">Apartag — icono de app</title>
+  <desc id="d">Anillo ámbar abierto (la onda NFC) con una separación: el disco-tag se queda aparte. Fondo tinta.</desc>
+  <defs>
+    <radialGradient id="bg" cx="50%" cy="38%" r="75%">
+      <stop offset="0" stop-color="#1B1815"/>
+      <stop offset="1" stop-color="#0B0A09"/>
+    </radialGradient>
+    <linearGradient id="amber" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#F0B15A"/>
+      <stop offset="1" stop-color="#C47F2A"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="50%" cy="50%" r="50%">
+      <stop offset="0" stop-color="#F0B15A" stop-opacity="0.28"/>
+      <stop offset="1" stop-color="#F0B15A" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <!-- Fondo a sangre (las tiendas aplican su propia máscara). Motivo dentro de la zona segura del icono adaptativo Android (círculo central de 66%). -->
+  <rect width="1024" height="1024" fill="url(#bg)"/>
+  <!-- Halo suave -->
+  <circle cx="500" cy="512" r="380" fill="url(#glow)"/>
+  <!-- Anillo abierto: arco de ~300º, hueco a la derecha = "aparte" -->
+  <path d="M 669.1 364.2 A 240 240 0 1 0 669.1 659.8"
+        fill="none" stroke="url(#amber)" stroke-width="56" stroke-linecap="round"/>
+  <!-- El tag: disco sólido desplazado hacia el hueco -->
+  <circle cx="782" cy="512" r="50" fill="#F7F1E8"/>
+  <!-- Núcleo: punto ámbar = tu atención -->
+  <circle cx="480" cy="512" r="76" fill="url(#amber)"/>
+</svg>

@@ -1,5 +1,3 @@
-import '@/global.css';
-
 import { Platform } from 'react-native';
 
 /** Ritual studio — deep ink, copper ember, soft mint. Not Monk blue. */
@@ -25,46 +23,6 @@ export const Palette = {
   black: '#000000',
 } as const;
 
-export const Colors = {
-  light: {
-    text: Palette.ink,
-    background: Palette.bg,
-    backgroundElement: Palette.surface,
-    backgroundSelected: Palette.surfaceHigh,
-    textSecondary: Palette.muted,
-  },
-  dark: {
-    text: Palette.ink,
-    background: Palette.bg,
-    backgroundElement: Palette.surface,
-    backgroundSelected: Palette.surfaceHigh,
-    textSecondary: Palette.muted,
-  },
-} as const;
-
-export type ThemeColor = keyof typeof Colors.light & keyof typeof Colors.dark;
-
-export const Fonts = Platform.select({
-  ios: {
-    sans: 'System',
-    serif: 'Georgia',
-    rounded: 'ui-rounded',
-    mono: 'ui-monospace',
-  },
-  default: {
-    sans: 'sans-serif',
-    serif: 'serif',
-    rounded: 'sans-serif',
-    mono: 'monospace',
-  },
-  web: {
-    sans: 'var(--font-display)',
-    serif: 'var(--font-serif)',
-    rounded: 'var(--font-rounded)',
-    mono: 'var(--font-mono)',
-  },
-});
-
 export const Spacing = {
   half: 2,
   one: 4,
@@ -85,4 +43,3 @@ export const Radius = {
 
 /** Floating custom tab bar (~64) + safe-area cushion used by Screen padding. */
 export const BottomTabInset = Platform.select({ ios: 88, android: 96, default: 96 }) ?? 96;
-export const MaxContentWidth = 800;
