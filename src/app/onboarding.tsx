@@ -95,12 +95,16 @@ export default function Onboarding() {
             hint={
               state.tagId
                 ? `Listo · ${state.tagId.slice(0, 12)}`
-                : nfcSupported
-                  ? 'Toca el tag NFC o mantén pulsado'
-                  : 'Mantén pulsado para simular el tag'
+                : __DEV__
+                  ? nfcSupported
+                    ? 'Toca el tag NFC o mantén pulsado para simular'
+                    : 'Mantén pulsado para simular el tag'
+                  : nfcSupported
+                    ? 'Toca y acerca tu tag NFC'
+                    : 'Este móvil no tiene NFC'
             }
             onPress={() => void pairTag()}
-            onLongPress={() => void pairTag('DEMO-TAG')}
+            onLongPress={__DEV__ ? () => void pairTag('DEMO-TAG') : undefined}
           />
         </View>
       ) : (
