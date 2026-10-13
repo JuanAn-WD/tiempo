@@ -531,6 +531,22 @@ export const es = {
     settingsBadgeFree: 'Gratis',
     settingsBadgePro: 'Pro',
   },
+  attempts: {
+    title: 'Intentos bloqueados',
+    body: 'Veces que has ido a abrir una app bloqueada.',
+    empty: 'Todavía ninguno. Cuando una app bloqueada intente abrirse, se suma aquí.',
+    recent: 'Los últimos',
+    unnamed: 'Una app',
+    share: 'Compartir',
+    shareMessageOne: 'Apartag ha parado {{count}} intento de abrir una app bloqueada.',
+    shareMessage: 'Apartag ha parado {{count}} intentos de abrir apps bloqueadas.',
+    limitAndroid:
+      'En Android cuenta cuando el bloqueo tapa la app. Varias seguidas, en menos de 2 segundos, cuentan como una.',
+    limitIos:
+      'En iPhone cuenta cuando tocas el escudo. Apple no avisa de cada apertura: si no lo tocas, puede que esa vez no cuente.',
+    limitUnavailable:
+      'Esta versión no puede contar intentos. Hace falta la app instalada, con el bloqueo activo.',
+  },
   native: nativeEs,
 } as const;
 

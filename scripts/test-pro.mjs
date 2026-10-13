@@ -3,6 +3,7 @@
  * The purchase rules are pure TypeScript; this transpiles them the same way
  * as scripts/check-i18n-keys.mjs so the native store module is not required.
  */
+import { spawnSync } from 'node:child_process';
 import fs from 'fs';
 import path from 'path';
 import { createRequire } from 'module';
@@ -47,3 +48,9 @@ function loadTs(rel) {
 const { testPurchases } = loadTs('src/lib/purchases.test.ts');
 testPurchases();
 console.log('pro entitlement tests ok');
+
+// Chained here so `npm test` runs the counter without editing package.json.
+const blocked = spawnSync(process.execPath, [path.join(root, 'scripts/test-blocked-attempts.mjs')], {
+  stdio: 'inherit',
+});
+if (blocked.status !== 0) process.exit(blocked.status ?? 1);

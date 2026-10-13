@@ -526,5 +526,21 @@ export const en = {
     settingsBadgeFree: 'Free',
     settingsBadgePro: 'Pro',
   },
+  attempts: {
+    title: 'Blocked attempts',
+    body: 'Times you tried to open a blocked app.',
+    empty: 'None yet. When a blocked app tries to open, it shows up here.',
+    recent: 'Latest',
+    unnamed: 'An app',
+    share: 'Share',
+    shareMessageOne: 'Apartag stopped {{count}} attempt to open a blocked app.',
+    shareMessage: 'Apartag stopped {{count}} attempts to open blocked apps.',
+    limitAndroid:
+      'On Android this counts when the block covers the app. Several in a row, under 2 seconds, count as one.',
+    limitIos:
+      'On iPhone this counts when you tap the shield. Apple does not report every open: if you do not tap it, that time may not count.',
+    limitUnavailable:
+      'This version cannot count attempts. You need the installed app, with blocking on.',
+  },
   native: nativeEn,
 } as const satisfies Translations;
