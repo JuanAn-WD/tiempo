@@ -4,7 +4,7 @@ Aparta el móvil. Recupera tu tiempo.
 
 App nativa de foco: eliges las apps, acercas un tag NFC, y esas apps se cierran. Para volver, hay que escanear el mismo tag o la llave móvil. Hay 3 desbloqueos de emergencia (se recupera 1 cada 30 días, máximo 3), cada uno con 5 minutos de espera. El modo estricto es opcional y las desactiva.
 
-UI propia (noche + ámbar), no copia los colores de Monk.
+UI propia (noche + ámbar).
 
 ## Qué hace de verdad
 
