@@ -1,7 +1,7 @@
 ---
 title: Política de privacidad
 lang: es
-updated: 2026-10-12
+updated: 2026-10-13
 description: Apartag no tiene cuenta, ni servidor, ni analítica. Lo que la app guarda se queda en el teléfono.
 ---
 
@@ -11,7 +11,7 @@ description: Apartag no tiene cuenta, ni servidor, ni analítica. Lo que la app 
 
 > Antes de publicar esta página, sustituye cada **[PENDIENTE: …]**. Esos huecos identifican al responsable. Sin ellos, la página no sirve para las tiendas ni para informar a quien usa la app.
 
-**Última actualización: 12 de octubre de 2026**
+**Última actualización: 13 de octubre de 2026**
 
 Apartag no tiene cuenta, ni servidor, ni anuncios, ni analítica. Lo que la app guarda se queda en tu teléfono. Juan Antonio López no lo recibe y no puede verlo.
 
@@ -59,7 +59,7 @@ Todo lo de esta lista permanece en el almacenamiento privado de la app, en el pr
 | Apps que marcas en Android (nombre de paquete) | Saber qué hay que bloquear |
 | En iPhone: la selección de Tiempo de uso | Aplicar el escudo del sistema a lo que elegiste |
 | Modo elegido (Trabajo, Estudio, Casa o Deporte) | Una etiqueta de la sesión. En esta versión los cuatro modos comparten la misma lista de apps |
-| Tiempo de las sesiones de Apartag y hasta 40 sesiones (modo, inicio, fin y si terminó con un desbloqueo de emergencia) | La pantalla de estadísticas. Esas sesiones aparecen con la etiqueta «Emergencia». La interfaz está en español |
+| Tiempo de las sesiones de Apartag y hasta 40 sesiones (modo, inicio, fin y si terminó con un desbloqueo de emergencia) | La pantalla de estadísticas. Esas sesiones aparecen con la etiqueta «Emergencia» o «Emergency», según el idioma de la interfaz. La app está en español y en inglés: sigue el idioma del dispositivo (inglés si es el principal; si no, español) |
 | Desbloqueos de emergencia que te quedan, fecha en que vuelve el siguiente y la hora más reciente que la app ha visto en el reloj del teléfono | Llevar la cuenta (se recupera una cada 30 días, hasta 3, sin fecha garantizada) y no recargar si el reloj va hacia atrás respecto a esa hora |
 | Si tienes activado el modo estricto | Ocultar y desactivar los desbloqueos de emergencia mientras lo esté |
 | Ajustes del bloqueo en Android (lista, textos del aviso) | El servicio que tapa la app bloqueada |
@@ -103,11 +103,11 @@ Si no, Apartag tiene **desbloqueos de emergencia**. Funcionan solo dentro de la 
 - Empiezas con 3. Son gratis.
 - Se recupera uno cada 30 días, hasta un máximo de 3. Gastar uno no reinicia un plazo que ya estuviera corriendo. Los días se calculan en el teléfono y la fecha no está garantizada. Si el reloj va hacia atrás respecto a la última hora que la app ya registró, no se recupera ninguno hasta que el reloj llegue a esa hora. Si la app sigue en memoria mientras el teléfono duerme, ese tiempo dormido puede no contar y la espera alargarse. Si la app estaba cerrada y el reloj se adelantó, la recarga puede llegar antes.
 - Cada uno exige una cuenta atrás de 5 minutos con Apartag abierta en pantalla. La app mantiene la pantalla encendida durante esa espera y hasta que confirmas o sales, así que el bloqueo automático del teléfono no la cancela. Si bloqueas la pantalla a mano, cambias de app o Apartag pasa a segundo plano, la cuenta atrás se cancela y no se gasta ninguno. Al terminar, confirmas y el bloqueo se abre.
-- La sesión queda anotada con la etiqueta «Emergencia» en las estadísticas de la app, en tu teléfono. Después puedes emparejar un tag nuevo.
+- La sesión queda anotada con la etiqueta «Emergencia» o «Emergency», según el idioma de la interfaz, en las estadísticas de la app, en tu teléfono. Después puedes emparejar un tag nuevo.
 
 Ni el contador ni esas sesiones salen del teléfono. Nadie, tampoco Juan Antonio López, recibe un aviso de que has usado una emergencia.
 
-El **modo estricto** es opcional y viene desactivado. Si lo activas, no hay desbloqueos de emergencia: solo desbloquean tus llaves. Para activarlo necesitas al menos dos llaves (el tag más un segundo tag o una llave móvil) y escribir «ESTRICTO». No se puede desactivar durante un bloqueo. Mientras siga activo, no puedes quitar una llave si te quedarías con menos de dos.
+El **modo estricto** es opcional y viene desactivado. Si lo activas, no hay desbloqueos de emergencia: solo desbloquean tus llaves. Para activarlo necesitas al menos dos llaves (el tag más un segundo tag o una llave móvil) y escribir «ESTRICTO» o «STRICT». Valen las dos palabras. No se puede desactivar durante un bloqueo. Mientras siga activo, no puedes quitar una llave si te quedarías con menos de dos.
 
 Esta versión no tiene códigos de respaldo. Si no te queda ninguna llave ni ninguna emergencia, o tienes el modo estricto activo y has perdido todas tus llaves, la app no puede abrir la sesión desde dentro.
 
