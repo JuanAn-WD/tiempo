@@ -30,6 +30,7 @@
     "expo-router": "~57.0.25",
     "expo-splash-screen": "~57.0.9",
     "expo-status-bar": "~57.0.1",
+    "expo-store-review": "~57.0.3",
     "expo-symbols": "~57.0.3",
     "expo-system-ui": "~57.0.4",
     "react": "19.2.3",
@@ -60,7 +61,7 @@
     "lint": "expo lint",
     "i18n:check": "node scripts/check-i18n-keys.mjs",
     "contrast:check": "node scripts/check-contrast.mjs",
-    "test": "node scripts/test-mobile-key.mjs && node scripts/test-permission-flow.mjs && node scripts/test-pro.mjs && node scripts/test-screen-years.mjs",
+    "test": "node scripts/test-mobile-key.mjs && node scripts/test-permission-flow.mjs && node scripts/test-pro.mjs && node scripts/test-screen-years.mjs && node scripts/test-store-review.mjs",
     "build:apk": "eas build --platform android --profile preview --non-interactive"
   },
   "private": true
