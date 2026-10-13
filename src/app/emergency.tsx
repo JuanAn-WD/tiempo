@@ -1,4 +1,5 @@
 import { useFonts } from 'expo-font';
+import { activateKeepAwakeAsync, deactivateKeepAwake } from 'expo-keep-awake';
 import { JetBrainsMono_500Medium } from '@expo-google-fonts/jetbrains-mono';
 import * as Haptics from 'expo-haptics';
 import { useRouter } from 'expo-router';
@@ -14,6 +15,7 @@ import { EMERGENCY_COUNTDOWN_MS, formatCountdown, formatRefillDate } from '@/lib
 
 const HOLD_MS = 500;
 const MAX_TICK_MS = 2_000;
+const EMERGENCY_KEEP_AWAKE = 'apartag-emergency-countdown';
 
 type Phase = 'idle' | 'running' | 'ready' | 'confirming' | 'cancelled' | 'done';
 
@@ -57,6 +59,17 @@ export default function EmergencyScreen() {
       if (holdRef.current) clearTimeout(holdRef.current);
     };
   }, [cancel]);
+
+  useEffect(() => {
+    const awake = phase === 'running' || phase === 'ready' || phase === 'confirming';
+    if (!awake) return;
+    // Stops the OS auto-lock from moving AppState off `active` and cancelling the wait.
+    // Leaving the app still cancels: keep-awake does not hold a background session.
+    void activateKeepAwakeAsync(EMERGENCY_KEEP_AWAKE).catch(() => {});
+    return () => {
+      void deactivateKeepAwake(EMERGENCY_KEEP_AWAKE).catch(() => {});
+    };
+  }, [phase]);
 
   useEffect(() => {
     if (phase !== 'running') return;
@@ -142,7 +155,7 @@ export default function EmergencyScreen() {
       <Text style={styles.body}>
         {state.strict
           ? 'El modo estricto no tiene esta salida. Solo tus llaves desbloquean.'
-          : 'Si sales, la cuenta atrás se cancela y no se gasta ninguna. No se paga: es una salida, no un atajo.'}
+          : 'Si sales, la cuenta atrás se cancela y no se gasta ninguna. La pantalla se queda encendida mientras esperas. No se paga: es una salida, no un atajo.'}
       </Text>
 
       <View style={styles.clockWrap}>

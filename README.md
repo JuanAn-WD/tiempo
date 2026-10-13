@@ -8,8 +8,8 @@ UI propia (noche + ámbar), no copia los colores de Monk.
 
 ## Qué hace de verdad
 
-- **Android (Windows o Mac):** bloqueo real con overlay + acceso de uso (`expo-app-blocker`) y lectura NFC del tag.
-- **iOS (hace falta Mac):** bloqueo real con Tiempo de uso / Family Controls. Apple tiene que aprobar el entitlement para TestFlight y App Store. Mientras tanto, en Xcode usa *Family Controls (Development)*.
+- **Android (Windows o Mac):** bloqueo real con overlay + acceso de uso (`expo-app-blocker`) y lectura NFC del tag. `android.allowBackup` es `false`: Auto Backup no copia ni restaura el estado local (contador de emergencias, plazo y secreto de la llave móvil).
+- **iOS (hace falta Mac):** bloqueo real con Tiempo de uso / Family Controls. Apple tiene que aprobar el entitlement para TestFlight y App Store. Mientras tanto, en Xcode usa *Family Controls (Development)*. No incluyas Apartag ni una categoría: las categorías no se aplican, porque iOS no dice si Apartag va dentro y el selector no deja ocultarla.
 - **Expo Go no vale.** Hay que generar un development build.
 
 ## Generar APK (recomendado)
@@ -56,7 +56,7 @@ npx expo run:android
 ## Uso
 
 1. Onboarding: empareja el tag.
-2. Apps: marca las que quieres cerrar.
+2. Apps: marca las que quieres cerrar. En Android, Apartag no sale en la lista. En iOS, elige apps una a una; una categoría no se bloquea.
 3. Foco: acerca el tag (o mantén pulsado para simular).
 4. Para desbloquear, el mismo tag o la llave móvil. Si los pierdes: Desbloqueo de emergencia, 3 veces, con la app abierta 5 minutos. Se recupera 1 cada 30 días (máximo 3) y no se paga. El modo estricto, en Ajustes, quita esa salida; solo se activa con una llave de repuesto (segundo tag o llave móvil) y escribiendo `ESTRICTO`.
 

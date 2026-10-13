@@ -3,6 +3,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { IOSBlockedItem } from 'expo-app-blocker';
 
 import { normalizeEmergencyFields } from '@/lib/emergency';
+import { ownAppIds } from '@/lib/own-app';
+import { guardIosSelection, withoutOwnPackages } from '@/lib/self-block';
 
 export type ModeId = 'trabajo' | 'estudio' | 'casa' | 'gym';
 
@@ -83,6 +85,24 @@ function nullableString(value: unknown, fallback: string | null) {
   return fallback;
 }
 
+function sanitizeIosItems(raw: unknown): IOSBlockedItem[] {
+  if (!Array.isArray(raw)) return [];
+  const items: IOSBlockedItem[] = [];
+  for (const item of raw) {
+    if (!item || typeof item !== 'object') continue;
+    const row = item as Partial<IOSBlockedItem>;
+    if (typeof row.token !== 'string' || !row.token) continue;
+    const type = row.type === 'category' || row.type === 'webDomain' || row.type === 'app' ? row.type : 'app';
+    const next: IOSBlockedItem = { type, token: row.token };
+    if (typeof row.bundleIdentifier === 'string') next.bundleIdentifier = row.bundleIdentifier;
+    if (typeof row.displayName === 'string') next.displayName = row.displayName;
+    if (typeof row.categoryName === 'string') next.categoryName = row.categoryName;
+    if (typeof row.domain === 'string') next.domain = row.domain;
+    items.push(next);
+  }
+  return items;
+}
+
 function sanitizeSessions(raw: unknown): SessionRecord[] {
   if (!Array.isArray(raw)) return [];
   const sessions: SessionRecord[] = [];
@@ -125,11 +145,14 @@ export function sanitizeState(
     spareTagId: nullableString(data.spareTagId, null),
     locked: Boolean(data.locked),
     lockedAt: typeof data.lockedAt === 'number' ? data.lockedAt : null,
-    selectedPackages: Array.isArray(data.selectedPackages)
-      ? data.selectedPackages.filter((p): p is string => typeof p === 'string')
-      : DEFAULT_STATE.selectedPackages,
+    selectedPackages: withoutOwnPackages(
+      Array.isArray(data.selectedPackages)
+        ? data.selectedPackages.filter((p): p is string => typeof p === 'string')
+        : DEFAULT_STATE.selectedPackages,
+      ownAppIds(),
+    ),
     iosSelectionData: typeof data.iosSelectionData === 'string' ? data.iosSelectionData : '',
-    iosItems: Array.isArray(data.iosItems) ? data.iosItems : [],
+    iosItems: guardIosSelection(sanitizeIosItems(data.iosItems), ownAppIds()).items,
     recoveredMs: typeof data.recoveredMs === 'number' ? Math.max(0, data.recoveredMs) : 0,
     sessions: sanitizeSessions(data.sessions),
     onboarded: Boolean(data.onboarded),

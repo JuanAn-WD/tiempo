@@ -34,6 +34,8 @@ import {
   type EmergencySnapshot,
   type MonoClock,
 } from '@/lib/emergency';
+import { ownAppIds } from '@/lib/own-app';
+import { guardIosSelection, withoutOwnPackages } from '@/lib/self-block';
 import {
   createMobileKeySecret,
   parseKeyPayload,
@@ -374,14 +376,17 @@ export function TiempoProvider({ children }: { children: ReactNode }) {
         await startAndroidBlock(current.selectedPackages);
       }
       if (Platform.OS === 'ios') {
-        if (!current.iosItems.length) {
+        const guarded = guardIosSelection(current.iosItems, ownAppIds());
+        if (!guarded.items.length) {
           Alert.alert(
             'Elige apps',
-            'En iOS tienes que seleccionar las apps con el selector de Tiempo de uso.',
+            guarded.ignoredCategories > 0
+              ? 'Las categorías no se bloquean: iOS no dice si esta app va dentro y la emergencia quedaría fuera de alcance. Elige apps una a una, sin incluir Apartag.'
+              : 'En iOS tienes que seleccionar las apps con el selector de Tiempo de uso.',
           );
           return;
         }
-        await startIosBlock(current.iosItems);
+        await startIosBlock(guarded.items);
       }
       await persist((prev) => ({
         ...prev,
@@ -531,11 +536,12 @@ export function TiempoProvider({ children }: { children: ReactNode }) {
   const togglePackage = useCallback(
     (pkg: string) => {
       if (lockedGuard(stateRef.current, 'cambiar las apps')) return;
+      if (withoutOwnPackages([pkg], ownAppIds()).length === 0) return;
       void persist((prev) => {
         const selectedPackages = prev.selectedPackages.includes(pkg)
           ? prev.selectedPackages.filter((item) => item !== pkg)
           : [...prev.selectedPackages, pkg];
-        return { ...prev, selectedPackages };
+        return { ...prev, selectedPackages: withoutOwnPackages(selectedPackages, ownAppIds()) };
       });
     },
     [persist],
@@ -544,7 +550,8 @@ export function TiempoProvider({ children }: { children: ReactNode }) {
   const setIosSelection = useCallback(
     (iosSelectionData: string, iosItems: IOSBlockedItem[]) => {
       if (lockedGuard(stateRef.current, 'cambiar las apps')) return;
-      void persist((prev) => ({ ...prev, iosSelectionData, iosItems }));
+      const guarded = guardIosSelection(iosItems, ownAppIds());
+      void persist((prev) => ({ ...prev, iosSelectionData, iosItems: guarded.items }));
     },
     [persist],
   );
