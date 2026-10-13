@@ -56,11 +56,10 @@
     "ios": "expo run:ios",
     "web": "expo start --web",
     "prebuild": "expo prebuild",
-    "test": "node scripts/test-permission-flow.mjs",
     "lint": "expo lint",
     "i18n:check": "node scripts/check-i18n-keys.mjs",
     "contrast:check": "node scripts/check-contrast.mjs",
-    "test": "node scripts/test-mobile-key.mjs",
+    "test": "node scripts/test-mobile-key.mjs && node scripts/test-permission-flow.mjs",
     "build:apk": "eas build --platform android --profile preview --non-interactive"
   },
   "private": true
