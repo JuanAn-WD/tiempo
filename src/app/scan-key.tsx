@@ -1,9 +1,10 @@
-import { CameraView, useCameraPermissions } from 'expo-camera';
+import { CameraView } from 'expo-camera';
 import { useRouter } from 'expo-router';
 import { useRef, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import { Text } from '@/components/app-text';
+import { CameraPermissionGate } from '@/components/camera-permission';
 import { PrimaryButton } from '@/components/primary-button';
 import { Screen } from '@/components/screen';
 import { BrandMark } from '@/components/ui';
@@ -15,24 +16,11 @@ export default function ScanKeyScreen() {
   const router = useRouter();
   const { toggleLockWithMobileKey, state } = useTiempo();
   const { t } = useI18n();
-  const [permission, requestPermission] = useCameraPermissions();
   const [busy, setBusy] = useState(false);
   const handled = useRef(false);
 
-  if (!permission?.granted) {
-    return (
-      <Screen tabPadding={false}>
-        <BrandMark />
-        <Text style={styles.title}>{t('scanKey.title')}</Text>
-        <Text style={styles.body}>{t('scanKey.body')}</Text>
-        <PrimaryButton label={t('scanKey.camera')} onPress={() => void requestPermission()} />
-        <View style={{ height: 10 }} />
-        <PrimaryButton muted label={t('common.cancel')} onPress={() => router.back()} />
-      </Screen>
-    );
-  }
-
   return (
+    <CameraPermissionGate onCancel={() => router.back()}>
     <Screen tabPadding={false} contentStyle={{ paddingHorizontal: 0 }}>
       <View style={styles.header}>
         <BrandMark />
@@ -65,6 +53,7 @@ export default function ScanKeyScreen() {
         <PrimaryButton muted label={t('common.cancel')} onPress={() => router.back()} />
       </View>
     </Screen>
+    </CameraPermissionGate>
   );
 }
 

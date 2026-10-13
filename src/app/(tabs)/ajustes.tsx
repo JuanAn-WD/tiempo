@@ -1,6 +1,6 @@
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
-import { Platform, StyleSheet, TextInput, View } from 'react-native';
+import { StyleSheet, TextInput, View } from 'react-native';
 
 import { Text } from '@/components/app-text';
 import { NfcNotice } from '@/components/nfc-notice';
@@ -10,7 +10,7 @@ import { Badge, BrandMark, Card } from '@/components/ui';
 import { Palette, Radius, Type } from '@/constants/theme';
 import { useTiempo } from '@/context/tiempo-store';
 import { useI18n, type Translate } from '@/i18n';
-import { openAndroidPermissionScreens } from '@/lib/blocker';
+import { usePermissionRecord } from '@/lib/permission-ack';
 import { countKeys, formatRefillDate, hasBackupKey, acceptsStrictConfirmation } from '@/lib/emergency';
 
 function keySummary(t: Translate, tag: boolean, spare: boolean, mobile: boolean) {
@@ -34,13 +34,15 @@ export default function SettingsScreen() {
     nfcSupported,
     nfcEnabled,
     permissions,
-    requestPermissions,
     refreshPermissions,
     refreshEmergencyClock,
     refreshNfcStatus,
     clockSkewed,
   } = useTiempo();
   const { locale, t } = useI18n();
+  const { record, ready: permissionsReady } = usePermissionRecord();
+  const nfcExplained = permissionsReady && record.seen.includes('nfc');
+  const explainNfc = () => router.push('/permissions?scope=nfc');
   const [confirmation, setConfirmation] = useState('');
   const [confirmOff, setConfirmOff] = useState(false);
 
@@ -48,7 +50,8 @@ export default function SettingsScreen() {
     useCallback(() => {
       void refreshEmergencyClock();
       void refreshNfcStatus();
-    }, [refreshEmergencyClock, refreshNfcStatus]),
+      void refreshPermissions();
+    }, [refreshEmergencyClock, refreshNfcStatus, refreshPermissions]),
   );
 
   const ok = !!permissions?.allGranted;
@@ -180,10 +183,19 @@ export default function SettingsScreen() {
               : t('nfc.statusReady')}
         </Text>
         <Text style={styles.rowHint}>{t('nfc.doubleScanHint')}</Text>
-        <NfcNotice scope="pair" onRetry={() => void pairTag()} />
+        <NfcNotice
+          scope="pair"
+          onRetry={() => {
+            if (!nfcExplained) explainNfc();
+            else void pairTag();
+          }}
+        />
         <PrimaryButton
           label={state.tagId ? t('settings.tagChange') : t('settings.tagPair')}
-          onPress={() => void pairTag()}
+          onPress={() => {
+            if (!nfcExplained) explainNfc();
+            else void pairTag();
+          }}
         />
       </Card>
 
@@ -198,11 +210,20 @@ export default function SettingsScreen() {
         <Text style={[styles.rowHint, state.spareTagId ? styles.tagId : null]}>
           {state.spareTagId ? state.spareTagId : t('settings.spareHint')}
         </Text>
-        <NfcNotice scope="spare" onRetry={() => void pairSpareTag()} />
+        <NfcNotice
+          scope="spare"
+          onRetry={() => {
+            if (!nfcExplained) explainNfc();
+            else void pairSpareTag();
+          }}
+        />
         <PrimaryButton
           muted
           label={state.spareTagId ? t('settings.spareChange') : t('settings.sparePair')}
-          onPress={() => void pairSpareTag()}
+          onPress={() => {
+            if (!nfcExplained) explainNfc();
+            else void pairSpareTag();
+          }}
           onLongPress={__DEV__ ? () => void pairSpareTag('DEMO-SPARE') : undefined}
         />
         {__DEV__ && !state.spareTagId ? (
@@ -253,22 +274,9 @@ export default function SettingsScreen() {
           />
         </View>
         <Text style={styles.rowHint}>
-          {ok ? t('settings.permissionsReady') : t('settings.permissionsMissing')}
+          {ok ? t('settings.permissionsReady') : t('permissions.reviewHint')}
         </Text>
-        <PrimaryButton label={t('settings.permissionsRefresh')} onPress={() => void requestPermissions()} />
-        {Platform.OS === 'android' || Platform.OS === 'web' ? (
-          <>
-            <View style={{ height: 10 }} />
-            <PrimaryButton
-              muted
-              label={t('settings.permissionsAndroid')}
-              onPress={() => {
-                void openAndroidPermissionScreens();
-                setTimeout(() => void refreshPermissions(), 2500);
-              }}
-            />
-          </>
-        ) : null}
+        <PrimaryButton label={t('permissions.review')} onPress={() => router.push('/permissions')} />
       </Card>
 
       <Text style={styles.legal}>{t('settings.legal')}</Text>
