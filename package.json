@@ -60,7 +60,7 @@
     "lint": "expo lint",
     "i18n:check": "node scripts/check-i18n-keys.mjs",
     "contrast:check": "node scripts/check-contrast.mjs",
-    "test": "node scripts/test-mobile-key.mjs && node scripts/test-permission-flow.mjs && node scripts/test-pro.mjs",
+    "test": "node scripts/test-mobile-key.mjs && node scripts/test-permission-flow.mjs && node scripts/test-pro.mjs && node scripts/test-screen-years.mjs",
     "build:apk": "eas build --platform android --profile preview --non-interactive"
   },
   "private": true

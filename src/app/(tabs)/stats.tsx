@@ -1,5 +1,5 @@
-import { useMemo, useState } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { useEffect, useMemo, useState } from 'react';
+import { AppState, Platform, Pressable, StyleSheet, View } from 'react-native';
 
 import { Text } from '@/components/app-text';
 import { Screen } from '@/components/screen';
@@ -7,35 +7,63 @@ import { BrandMark, Card } from '@/components/ui';
 import { FontFamily, Palette, Radius, Type } from '@/constants/theme';
 import { useTiempo } from '@/context/tiempo-store';
 import { useI18n } from '@/i18n';
-import { formatDuration, MODES, yearsFromDailyHours } from '@/lib/storage';
+import type { TranslationKey } from '@/i18n/translate';
+import { openUsagePermission } from '@/lib/blocker';
+import {
+  formatOneDecimal,
+  resolveCalculator,
+  stepHours,
+  yearsFromDailyHours,
+  type CalculatorSource,
+} from '@/lib/screen-years';
+import { formatDuration, MODES } from '@/lib/storage';
+import { readTodayUsage, type UsageReading } from '@/lib/usage-today';
+
+const MANUAL_HOURS = 5;
+
+const SOURCE_KEY: Record<Exclude<CalculatorSource, 'pending'>, TranslationKey> = {
+  ios: 'stats.sourceIos',
+  manual: 'stats.sourceManual',
+  unavailable: 'stats.sourceUnavailable',
+  denied: 'stats.sourceDenied',
+  empty: 'stats.sourceEmpty',
+  measured: 'stats.sourceMeasured',
+  capped: 'stats.sourceCapped',
+};
 
 function Stepper({
   label,
   value,
-  display,
-  min,
-  max,
-  step,
-  onChange,
+  decreaseLabel,
+  increaseLabel,
+  onDecrease,
+  onIncrease,
 }: {
   label: string;
-  value: number;
-  display: string;
-  min: number;
-  max: number;
-  step: number;
-  onChange: (value: number) => void;
+  value: string;
+  decreaseLabel: string;
+  increaseLabel: string;
+  onDecrease: () => void;
+  onIncrease: () => void;
 }) {
   return (
     <View style={styles.stepper}>
       <Text style={styles.sliderLabel}>
-        {label} <Text style={styles.sliderValue}>{display}</Text>
+        {label} <Text style={styles.sliderValue}>{value}</Text>
       </Text>
       <View style={styles.stepRow}>
-        <Pressable style={styles.stepBtn} onPress={() => onChange(Math.max(min, +(value - step).toFixed(1)))}>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={decreaseLabel}
+          style={styles.stepBtn}
+          onPress={onDecrease}>
           <Text style={styles.stepTxt}>−</Text>
         </Pressable>
-        <Pressable style={styles.stepBtn} onPress={() => onChange(Math.min(max, +(value + step).toFixed(1)))}>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={increaseLabel}
+          style={styles.stepBtn}
+          onPress={onIncrease}>
           <Text style={styles.stepTxt}>+</Text>
         </Pressable>
       </View>
@@ -48,8 +76,44 @@ export default function StatsScreen() {
   const { locale, t } = useI18n();
   const last = state.sessions.slice(0, 8);
   const [age, setAge] = useState(30);
-  const [hours, setHours] = useState(5);
-  const years = useMemo(() => yearsFromDailyHours(hours, age), [age, hours]);
+  const [overrideHours, setOverrideHours] = useState<number | null>(null);
+  const [reading, setReading] = useState<UsageReading>({ status: 'pending' });
+
+  useEffect(() => {
+    let alive = true;
+    const load = () => {
+      void readTodayUsage().then((next) => {
+        if (alive) setReading(next);
+      });
+    };
+    load();
+    const subscription = AppState.addEventListener('change', (next) => {
+      if (next === 'active') load();
+    });
+    return () => {
+      alive = false;
+      subscription.remove();
+    };
+  }, []);
+
+  const platform = Platform.OS === 'ios' || Platform.OS === 'android' ? Platform.OS : 'web';
+  const resolved = useMemo(
+    () =>
+      resolveCalculator({
+        platform,
+        reading: reading.status,
+        totalMs: reading.status === 'ready' ? reading.totalMs : 0,
+        overrideHours,
+        manualHours: MANUAL_HOURS,
+      }),
+    [overrideHours, platform, reading],
+  );
+  const years = yearsFromDailyHours(resolved.hours, age);
+  const yearsLabel = formatOneDecimal(years, locale);
+  const hoursLabel = formatOneDecimal(resolved.hours, locale);
+  const rawLabel = formatOneDecimal(resolved.rawHours ?? resolved.hours, locale);
+  const sourceKey = resolved.source === 'pending' ? null : SOURCE_KEY[resolved.source];
+  const sourceHours = resolved.source === 'capped' ? rawLabel : hoursLabel;
 
   return (
     <Screen scroll>
@@ -71,18 +135,48 @@ export default function StatsScreen() {
 
       <Card style={styles.yearsCard}>
         <Text style={styles.cardTitle}>{t('stats.pace')}</Text>
-        <Text style={styles.years}>{years.toFixed(1)}</Text>
+        <Text style={styles.years}>{yearsLabel}</Text>
         <Text style={styles.yearsUnit}>{t('stats.years')}</Text>
-        <Stepper label={t('stats.age')} value={age} display={`${age}`} min={14} max={70} step={1} onChange={setAge} />
+        <Text style={styles.basis}>{t('stats.basis')}</Text>
+        {sourceKey ? (
+          <Text style={styles.source}>{t(sourceKey, { hours: sourceHours })}</Text>
+        ) : null}
+        <Stepper
+          label={t('stats.age')}
+          value={`${age}`}
+          decreaseLabel={t('stats.ageDown')}
+          increaseLabel={t('stats.ageUp')}
+          onDecrease={() => setAge((current) => Math.max(14, current - 1))}
+          onIncrease={() => setAge((current) => Math.min(70, current + 1))}
+        />
         <Stepper
           label={t('stats.hours')}
-          value={hours}
-          display={hours.toFixed(1)}
-          min={0.5}
-          max={12}
-          step={0.5}
-          onChange={setHours}
+          value={hoursLabel}
+          decreaseLabel={t('stats.hoursDown')}
+          increaseLabel={t('stats.hoursUp')}
+          onDecrease={() => setOverrideHours(stepHours(resolved.hours, -1))}
+          onIncrease={() => setOverrideHours(stepHours(resolved.hours, 1))}
         />
+        {resolved.canUseToday ? (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={t('stats.useToday')}
+            style={styles.textBtn}
+            onPress={() => setOverrideHours(null)}>
+            <Text style={styles.textBtnLabel}>{t('stats.useToday')}</Text>
+          </Pressable>
+        ) : null}
+        {resolved.canRequestUsage ? (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={t('stats.openUsage')}
+            style={styles.textBtn}
+            onPress={() => {
+              void openUsagePermission();
+            }}>
+            <Text style={styles.textBtnLabel}>{t('stats.openUsage')}</Text>
+          </Pressable>
+        ) : null}
       </Card>
 
       <Text style={styles.section}>{t('stats.section')}</Text>
@@ -96,21 +190,21 @@ export default function StatsScreen() {
           {last.map((session) => {
             const mode = MODES.find((item) => item.id === session.mode);
             return (
-            <Card key={session.startedAt} style={styles.sessionRow}>
-              <View>
-                <Text style={styles.rowTitle}>{mode ? t(mode.titleKey) : session.mode}</Text>
-                {session.emergency ? <Text style={styles.emergencyLabel}>{t('stats.emergency')}</Text> : null}
-                <Text style={styles.rowDate}>
-                  {new Date(session.startedAt).toLocaleDateString(locale, {
-                    day: 'numeric',
-                    month: 'short',
-                    hour: '2-digit',
-                    minute: '2-digit',
-                  })}
-                </Text>
-              </View>
-              <Text style={styles.rowMeta}>{formatDuration(session.endedAt - session.startedAt, locale)}</Text>
-            </Card>
+              <Card key={session.startedAt} style={styles.sessionRow}>
+                <View>
+                  <Text style={styles.rowTitle}>{mode ? t(mode.titleKey) : session.mode}</Text>
+                  {session.emergency ? <Text style={styles.emergencyLabel}>{t('stats.emergency')}</Text> : null}
+                  <Text style={styles.rowDate}>
+                    {new Date(session.startedAt).toLocaleDateString(locale, {
+                      day: 'numeric',
+                      month: 'short',
+                      hour: '2-digit',
+                      minute: '2-digit',
+                    })}
+                  </Text>
+                </View>
+                <Text style={styles.rowMeta}>{formatDuration(session.endedAt - session.startedAt, locale)}</Text>
+              </Card>
             );
           })}
         </View>
@@ -162,7 +256,16 @@ const styles = StyleSheet.create({
   yearsUnit: {
     ...Type.body,
     color: Palette.muted,
-    marginBottom: 16,
+  },
+  basis: {
+    ...Type.body,
+    color: Palette.muted,
+    marginTop: 8,
+  },
+  source: {
+    ...Type.caption,
+    color: Palette.muted,
+    marginTop: 4,
   },
   stepper: {
     marginTop: 10,
@@ -183,8 +286,9 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   stepBtn: {
-    width: 48,
-    height: 40,
+    minWidth: 48,
+    minHeight: 44,
+    paddingHorizontal: 12,
     borderRadius: Radius.md,
     backgroundColor: Palette.surfaceHigh,
     alignItems: 'center',
@@ -196,6 +300,16 @@ const styles = StyleSheet.create({
     fontFamily: FontFamily.uiSemibold,
     fontSize: 22,
     lineHeight: 26,
+    color: Palette.ink,
+  },
+  textBtn: {
+    minHeight: 44,
+    marginTop: 12,
+    alignSelf: 'flex-start',
+    justifyContent: 'center',
+  },
+  textBtnLabel: {
+    ...Type.label,
     color: Palette.ink,
   },
   section: {
