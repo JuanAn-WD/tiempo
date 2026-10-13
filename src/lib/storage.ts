@@ -208,7 +208,4 @@ export function formatClock(ms: number) {
   return `${pad(m)}:${pad(s)}`;
 }
 
-export function yearsFromDailyHours(dailyHours: number, age: number) {
-  const remaining = Math.max(1, 80 - age);
-  return (dailyHours / 24) * remaining;
-}
+export { yearsFromDailyHours } from '@/lib/screen-years';
