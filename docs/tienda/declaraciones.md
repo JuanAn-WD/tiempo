@@ -2,7 +2,7 @@
 
 Notas internas para Juan Antonio López. No van a la landing. Las páginas públicas están en [`docs/es/`](../es/privacidad.md) y [`docs/en/`](../en/privacy.md).
 
-Describen el binario que junta esta rama (Apartag) con la PR #4 (desbloqueos de emergencia y modo estricto): sin cuenta, sin servidor, sin analítica, sin compras. Los desbloqueos (3, se recupera 1 cada 30 días sin fecha garantizada, cuenta atrás de 5 minutos con la pantalla encendida) y el modo estricto opcional funcionan solo en el teléfono y no cambian ninguna respuesta de privacidad. Si más adelante se añade analítica, `expo-updates`, un SDK de fallos o un pago, hay que rehacer Data safety y la etiqueta de Apple.
+Describen el binario actual: sin cuenta, sin servidor y sin analítica. Incluye Apartag Pro, un pago único no consumible (`pro_lifetime`) que cobran Apple y Google. La app no envía el recibo a ningún servidor: guarda en el teléfono el identificador del producto y el de la transacción. Eso no cambia la respuesta de Data safety ni la de App Privacy, porque el desarrollador no recibe datos. Los desbloqueos (3, se recupera 1 cada 30 días sin fecha garantizada, cuenta atrás de 5 minutos con la pantalla encendida) y el modo estricto opcional siguen solo en el teléfono. Si más adelante se añade analítica, `expo-updates`, un SDK de fallos o una verificación de recibos en un servidor, hay que rehacer Data safety y la etiqueta de Apple.
 
 Los textos **[PENDIENTE: …]** hay que rellenarlos antes de enviar la ficha.
 
@@ -31,7 +31,7 @@ Si un revisor pregunta por categorías concretas, la respuesta sigue siendo que 
 |---|---|---|
 | Información personal | No pide nombre, correo ni teléfono. La etiqueta del QR de emparejar es el texto «apartag.» | No |
 | Ubicación | No se usa | No |
-| Información financiera | Esta versión no tiene compras | No |
+| Información financiera | Hay un pago único (`pro_lifetime`). Lo procesa la tienda. La app no recibe ni envía tarjeta, cuenta ni recibo | No |
 | Fotos o vídeos | La cámara lee un QR en memoria. No hay acceso a la galería ni `READ_MEDIA_IMAGES` / `READ_MEDIA_VIDEO` | No |
 | Audio | `recordAudioAndroid` está en false | No |
 | Contactos, calendario, archivos | No se usan | No |
@@ -204,7 +204,7 @@ Por qué es «no», y no «datos no vinculados a ti»:
 - La selección de Tiempo de uso se comparte en el teléfono con las extensiones, en el App Group `group.com.apartag.app`. Los UID de los tags (principal y de repuesto), el secreto de la llave, las sesiones (con la marca «Emergencia» o «Emergency», según el idioma, cuando procede), el contador de desbloqueos y el modo estricto van en AsyncStorage, también en el teléfono. No van al App Group.
 - La cámara decodifica un QR y no guarda la imagen.
 - Expo se usa para compilar. En el binario de tienda no hay `expo-updates` ni un socio que recoja datos. No declares a Expo como tercero que recoge datos.
-- El pago de la tienda, cuando exista, lo procesa Apple. Esta versión no tiene compras, así que no hay datos de pago.
+- El pago de Apartag Pro lo procesa Apple. El binario no envía el recibo a un servidor de Apartag. En el teléfono queda el identificador `pro_lifetime` y el de la transacción. No se declara como dato recogido.
 
 Matiz de los fallos: esta versión no integra un SDK de crashes. Si más adelante abres los informes de fallos de App Store Connect y los tratas como datos que recibes, la guía de Apple pide declarar Diagnósticos → Datos de fallos, no vinculados a la identidad, para el funcionamiento de la app, sin seguimiento. Hasta ese momento, la respuesta correcta es que no se recogen datos.
 
@@ -305,5 +305,5 @@ Cuando Apple lo apruebe, el perfil de distribución tiene que incluir `com.apple
 
 - Cuestionario de clasificación por edades (IARC / Apple). Hay que contestarlo en la consola. La app no está dirigida a menores de 14 años y no tiene contenidos de tienda que clasificar más allá de eso; no copies de aquí una edad de PEGI.
 - Publicidad: no hay. En los formularios de anuncios, la respuesta es no.
-- Compras: no hay en esta versión. Cuando exista el pago único, el producto será non-consumable y habrá que actualizar la ficha, no esta política de «no hay compras», el día que el código lo tenga.
+- Compras: sí hay un pago único, `pro_lifetime`, non-consumable, sin suscripción. Precio de catálogo 4,99 € (y 4,99 $); el lanzamiento a 2,99 € se pone en la consola, no en el binario. Hay que crear el producto en las dos tiendas, activar En familia en App Store Connect y el acuerdo de apps de pago. La respuesta de privacidad sigue siendo que el desarrollador no recoge datos. El botón «Restaurar compras» está en la pantalla Pro.
 - Orden de fusión: #4, #5 y después #6. Si se describen las emergencias en la ficha, usa 3 desbloqueos, 1 cada 30 días sin prometer la fecha, cuenta atrás de 5 minutos con la pantalla encendida (el bloqueo automático no la cancela; bloquear a mano o salir sí, y no gasta el cargo), etiqueta «Emergencia» o «Emergency», según el idioma, y modo estricto opcional (la confirmación acepta «ESTRICTO» o «STRICT»). Las categorías de Tiempo de uso no se aplican. Android pone `allowBackup` en false: la copia automática no copia ni restaura; una copia anterior puede seguir existiendo. En iPhone AsyncStorage 2.2.0 sigue fuera de iCloud. No hay códigos de respaldo ni recuperación remota. La respuesta de Data safety sigue siendo «no se recogen datos».

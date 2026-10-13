@@ -29,7 +29,7 @@ Si la app se publica a nombre de una sociedad, hay que sustituir este apartado p
 
 Apartag es una app para cerrar las aplicaciones que tú eliges. Acercas un tag NFC, o escaneas un QR que muestra el móvil de alguien de confianza, y esas apps quedan bloqueadas. Para volver a abrirlas hace falta una de tus llaves: ese tag, un segundo tag que hayas emparejado como repuesto o la llave móvil. Si las pierdes, y no tienes activado el modo estricto, puedes usar uno de los desbloqueos de emergencia que se describen más abajo.
 
-En esta versión la app es gratuita y no incluye compras.
+El bloqueo, la llave y las emergencias son gratis. Apartag Pro es un pago único opcional. Lo cobra Apple o Google: Apartag no recibe la tarjeta, el nombre ni la cuenta de la tienda. En el teléfono se guarda solo que Pro está activo (el identificador del producto y, si la tienda lo da, el de la transacción). Eso no sale del teléfono.
 
 ## Qué no ocurre con tus datos
 
@@ -62,6 +62,7 @@ Todo lo de esta lista permanece en el almacenamiento privado de la app, en el pr
 | Tiempo de las sesiones de Apartag y hasta 40 sesiones (modo, inicio, fin y si terminó con un desbloqueo de emergencia) | La pantalla de estadísticas. Esas sesiones aparecen con la etiqueta «Emergencia» o «Emergency», según el idioma de la interfaz. La app está en español y en inglés: sigue el idioma del dispositivo (inglés si es el principal; si no, español) |
 | Desbloqueos de emergencia que te quedan, fecha en que vuelve el siguiente y la hora más reciente que la app ha visto en el reloj del teléfono | Llevar la cuenta (se recupera una cada 30 días, hasta 3, sin fecha garantizada) y no recargar si el reloj va hacia atrás respecto a esa hora |
 | Si tienes activado el modo estricto | Ocultar y desactivar los desbloqueos de emergencia mientras lo esté |
+| Si Apartag Pro está activo, el identificador del producto y el de la transacción de la tienda | Saber que el pago único ya se hizo, sin pedir la tarjeta ni la cuenta |
 | Ajustes del bloqueo en Android (lista, textos del aviso) | El servicio que tapa la app bloqueada |
 
 La edad y las horas de la calculadora de «años en la pantalla» solo existen mientras esa pantalla está abierta. No se guardan. El cálculo no lee tu uso real del teléfono: usa los números que escribes ahí.

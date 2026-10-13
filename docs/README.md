@@ -1,6 +1,6 @@
 # Documentos legales de Apartag
 
-Páginas para la landing y notas para rellenar las consolas de las tiendas. Describen la app con la PR #4 incluida (desbloqueos de emergencia locales y modo estricto opcional) y el nombre Apartag de esta rama. No hay compras ni servidor. Las emergencias no se envían a nadie.
+Páginas para la landing y notas para rellenar las consolas de las tiendas. Describen Apartag sin cuenta y sin servidor. Apartag Pro es un pago único (`pro_lifetime`) que cobra la tienda; el recibo no sale del teléfono. Las emergencias no se envían a nadie.
 
 ## Publicar en la web
 

@@ -112,6 +112,7 @@
           }
         }
       ],
+      "expo-iap",
       "./plugins/with-shield-locales"
     ],
     "locales": {

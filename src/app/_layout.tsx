@@ -7,6 +7,7 @@ import { ActivityIndicator, StyleSheet, View } from 'react-native';
 
 import { brandFonts } from '@/constants/fonts';
 import { Palette } from '@/constants/theme';
+import { ProProvider } from '@/context/pro-store';
 import { TiempoProvider, useTiempo } from '@/context/tiempo-store';
 import { I18nProvider } from '@/i18n';
 
@@ -56,6 +57,7 @@ function Gate({ fontsReady }: { fontsReady: boolean }) {
         <Stack.Screen name="pair-key" options={{ presentation: 'modal' }} />
         <Stack.Screen name="claim-key" options={{ presentation: 'modal' }} />
         <Stack.Screen name="llave" options={{ presentation: 'modal' }} />
+        <Stack.Screen name="pro" options={{ presentation: 'modal' }} />
       </Stack>
     </>
   );
@@ -68,7 +70,9 @@ export default function RootLayout() {
   return (
     <I18nProvider>
       <TiempoProvider>
-        <Gate fontsReady={fontsReady} />
+        <ProProvider>
+          <Gate fontsReady={fontsReady} />
+        </ProProvider>
       </TiempoProvider>
     </I18nProvider>
   );

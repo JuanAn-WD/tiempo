@@ -27,7 +27,8 @@ Apartag blocks the apps you choose. The key is an NFC tag, or another person's p
 
 This version:
 
-- is free and has no in-app purchases;
+- is free for locking with a tag or a phone key, including emergency unlocks and strict mode;
+- offers Apartag Pro, an optional one-time purchase (product `pro_lifetime`, non-consumable, no subscription). The store sets the price: €4.99 / $4.99 catalog, and €2.99 / $2.99 while the launch price is active in that store. Apple or Google charges, invoices, and refunds. The phone only stores that Pro is active;
 - has no account and no server;
 - includes up to 3 free, on-device emergency unlocks, each with a 5-minute wait, which the optional strict mode turns off;
 - has no backup code;
@@ -94,7 +95,9 @@ You agree to use the app lawfully. In particular, do not use it to monitor anoth
 
 ## Stores
 
-If you download Apartag from Google Play or the App Store, you also accept that store's terms. Where those terms and these terms differ about payment or refunds, the store's terms win. In this version there is nothing to buy.
+If you download Apartag from Google Play or the App Store, you also accept that store's terms. Where those terms and these terms differ about payment or refunds, the store's terms win.
+
+Apartag Pro is optional. If you do not buy it, locking, the key, emergency unlocks, and strict mode stay as they are. The purchase is restored with “Restore purchases” on the same store account. There is no subscription and no renewal.
 
 ## Warranty and liability
 
@@ -102,7 +105,7 @@ The app is provided as is, without a promise that the lock cannot be bypassed, t
 
 None of this limits consumer rights that the law does not allow to be excluded. If you are a consumer in the European Union, you keep those rights.
 
-Otherwise, to the extent the law allows, Juan Antonio López is not liable for indirect damages, for loss of data that existed only on your phone, or for your being unable to use apps you chose to block. Because this version has no price, there is no amount paid that can serve as a cap. This sentence does not apply where the law forbids that cap, or to harm the law does not allow to be limited.
+Otherwise, to the extent the law allows, Juan Antonio López is not liable for indirect damages, for loss of data that existed only on your phone, or for your being unable to use apps you chose to block. If you paid for Pro, that liability is capped at the amount of that purchase. If you paid nothing, there is no amount paid that can serve as a cap. This sentence does not apply where the law forbids that cap, or to harm the law does not allow to be limited.
 
 ## Changes
 

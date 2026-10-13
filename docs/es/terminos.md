@@ -27,7 +27,8 @@ Apartag bloquea las aplicaciones que tú eliges. La llave es un tag NFC o el mó
 
 Esta versión:
 
-- es gratuita y no tiene compras dentro de la app;
+- se usa gratis para bloquear con un tag o una llave móvil, con las emergencias y el modo estricto;
+- ofrece Apartag Pro, un pago único opcional (producto `pro_lifetime`, no consumible y sin suscripción). El precio lo fija la tienda: 4,99 € de catálogo, y 2,99 € mientras el lanzamiento esté activo en esa tienda. El cobro, la factura y el reembolso son de Apple o de Google. En el teléfono solo se guarda que Pro está activo;
 - no tiene cuenta ni servidor;
 - incluye hasta 3 desbloqueos de emergencia, gratuitos y locales, con una espera de 5 minutos, que el modo estricto opcional desactiva;
 - no tiene código de respaldo;
@@ -94,7 +95,9 @@ Te comprometes a usar la app de forma lícita. En particular, no la uses para vi
 
 ## Tiendas
 
-Si descargas Apartag en Google Play o en el App Store, también aceptas las condiciones de esa tienda. Si esas condiciones y estos términos dicen cosas distintas sobre el pago o el reembolso, mandan las de la tienda. En esta versión no hay nada que comprar.
+Si descargas Apartag en Google Play o en el App Store, también aceptas las condiciones de esa tienda. Si esas condiciones y estos términos dicen cosas distintas sobre el pago o el reembolso, mandan las de la tienda.
+
+Apartag Pro es opcional. Si no lo compras, el bloqueo, la llave, las emergencias y el modo estricto siguen igual. La compra se restaura con «Restaurar compras» en la misma cuenta de la tienda. No hay suscripción ni renovación.
 
 ## Garantía y responsabilidad
 
@@ -102,7 +105,7 @@ La app se ofrece tal cual, sin una promesa de que el bloqueo sea imposible de sa
 
 Nada de esto limita los derechos que la ley de consumo no permite excluir. Si eres consumidor en la Unión Europea, conservas esos derechos.
 
-En lo demás, y hasta donde la ley lo permite, Juan Antonio López no responde de daños indirectos, de la pérdida de datos que estuviera solo en tu teléfono, ni de no poder usar las apps que tú decidiste bloquear. Como esta versión no tiene un precio, no hay una cantidad pagada que sirva de tope. Esta frase no se aplica cuando la ley impide ese tope, ni a los daños que la ley no deja limitar.
+En lo demás, y hasta donde la ley lo permite, Juan Antonio López no responde de daños indirectos, de la pérdida de datos que estuviera solo en tu teléfono, ni de no poder usar las apps que tú decidiste bloquear. Si pagaste Pro, el tope de esa responsabilidad es el importe de esa compra. Si no pagaste nada, no hay una cantidad pagada que sirva de tope. Esta frase no se aplica cuando la ley impide ese tope, ni a los daños que la ley no deja limitar.
 
 ## Cambios
 
