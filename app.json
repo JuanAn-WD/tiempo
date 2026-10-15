@@ -59,6 +59,7 @@
           "recordAudioAndroid": false
         }
       ],
+      "./plugins/with-nfc-launch",
       [
         "react-native-nfc-manager",
         {

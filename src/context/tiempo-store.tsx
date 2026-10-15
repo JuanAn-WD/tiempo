@@ -10,7 +10,7 @@ import {
   useState,
   type ReactNode,
 } from 'react';
-import { Alert, AppState, Platform } from 'react-native';
+import { Alert, AppState, BackHandler, Platform } from 'react-native';
 
 import type { AndroidBlockableApp, IOSBlockedItem, PermissionStatus } from 'expo-app-blocker';
 
@@ -52,8 +52,13 @@ import {
   getNfcStatus,
   openNfcSettings as openSystemNfcSettings,
   readTag,
+  takeLaunchTagId,
+  watchBackgroundTag,
+  writeLauncherRecord,
 } from '@/lib/nfc';
-import type { NfcFailure } from '@/lib/nfc-types';
+import { NFC_FAILURE_KEY } from '@/lib/nfc-failure-key';
+import { decideTagToggle, isTagLauncherUrl } from '@/lib/nfc-tap';
+import type { NfcFailure, NfcRead } from '@/lib/nfc-types';
 import { sameTagId } from '@/lib/tag-id';
 import {
   DEFAULT_STATE,
@@ -85,6 +90,8 @@ type TiempoContextValue = {
   requestPermissions: () => Promise<void>;
   pairTag: (id?: string) => Promise<boolean>;
   pairSpareTag: (id?: string) => Promise<boolean>;
+  rewritePairedTag: () => Promise<boolean>;
+  launcherFeedback: LauncherFeedback | null;
   clearSpareTag: () => Promise<void>;
   completeOnboarding: () => Promise<void>;
   toggleLockWithTag: (simulate?: boolean) => Promise<void>;
@@ -107,8 +114,23 @@ const TiempoContext = createContext<TiempoContextValue | null>(null);
 
 const SIMULATED_TAG_IDS = new Set(['DEMO-TAG', 'DEMO-SPARE']);
 
-export type NfcScope = 'pair' | 'spare' | 'toggle';
-export type NfcActivity = { scope: NfcScope; phase: 'reading' | 'confirm' | 'auth' };
+export type NfcScope = 'pair' | 'spare' | 'toggle' | 'rewrite';
+export type NfcActivity = { scope: NfcScope; phase: 'reading' | 'confirm' | 'auth' | 'writing' };
+export type LauncherFeedback = { tone: 'ok' | 'error' | 'pending'; message: string };
+
+let coldStartRead: Promise<{ initialUrl: string | null; launchId: string | null }> | null = null;
+
+function readColdStart() {
+  if (!coldStartRead) {
+    coldStartRead = (async () => {
+      const Linking = await import('expo-linking');
+      const initialUrl = await Linking.getInitialURL();
+      const launchId = await takeLaunchTagId();
+      return { initialUrl, launchId };
+    })();
+  }
+  return coldStartRead;
+}
 export type NfcNotice = { scope: NfcScope; error: NfcFailure };
 
 function isSimulatedTag(id: string) {
@@ -173,7 +195,11 @@ export function TiempoProvider({ children }: { children: ReactNode }) {
   const [nfcEnabled, setNfcEnabled] = useState(false);
   const [nfcNotice, setNfcNotice] = useState<NfcNotice | null>(null);
   const [nfcActivity, setNfcActivity] = useState<NfcActivity | null>(null);
+  const [launcherFeedback, setLauncherFeedback] = useState<LauncherFeedback | null>(null);
   const nfcToken = useRef(0);
+  const feedbackTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const launchGen = useRef(0);
+  const lastLaunch = useRef<{ id: string; at: number } | null>(null);
   const [clockSkewed, setClockSkewed] = useState(false);
   const stateRef = useRef(state);
   const lockBusy = useRef(false);
@@ -366,7 +392,13 @@ export function TiempoProvider({ children }: { children: ReactNode }) {
     };
   }, [ready, refreshEmergencyClock, refreshNfcStatus]);
 
-  useEffect(() => () => cancelActiveNfcSession(), []);
+  useEffect(
+    () => () => {
+      cancelActiveNfcSession();
+      if (feedbackTimer.current) clearTimeout(feedbackTimer.current);
+    },
+    [],
+  );
 
   useEffect(() => {
     watchBlockedAttempts();
@@ -397,6 +429,16 @@ export function TiempoProvider({ children }: { children: ReactNode }) {
 
   const requestPerms = useCallback(async () => {
     setPermissions(await requestNativePermissions());
+  }, []);
+
+  const noteLauncherWrite = useCallback((token: number, scope: NfcScope, write: NfcRead) => {
+    if (token !== nfcToken.current || write.ok) return;
+    if (write.error === 'cancelled') {
+      Alert.alert(tRef.current('nfc.launcherSkippedTitle'), tRef.current('nfc.launcherSkippedBody'));
+      return;
+    }
+    setNfcNotice({ scope, error: write.error });
+    void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
   }, []);
 
   const pairTag = useCallback(
@@ -449,9 +491,16 @@ export function TiempoProvider({ children }: { children: ReactNode }) {
         failNfc(token, 'pair', 'unknown');
         return false;
       }
-      return succeedNfc(token);
+      if (token !== nfcToken.current) return false;
+      showNfcPhase(token, 'pair', 'writing');
+      const write = await writeLauncherRecord([read.id], t('nfc.writePrompt'));
+      if (token !== nfcToken.current) return false;
+      const paired = succeedNfc(token);
+      if (!paired) return false;
+      noteLauncherWrite(token, 'pair', write);
+      return true;
     },
-    [authorizeLockedChange, beginNfc, failNfc, persist, showNfcPhase, succeedNfc, t],
+    [authorizeLockedChange, beginNfc, failNfc, noteLauncherWrite, persist, showNfcPhase, succeedNfc, t],
   );
 
   const pairSpareTag = useCallback(
@@ -504,10 +553,33 @@ export function TiempoProvider({ children }: { children: ReactNode }) {
         failNfc(token, 'spare', 'unknown');
         return false;
       }
-      return succeedNfc(token);
+      if (token !== nfcToken.current) return false;
+      showNfcPhase(token, 'spare', 'writing');
+      const write = await writeLauncherRecord([read.id], t('nfc.writePrompt'));
+      if (token !== nfcToken.current) return false;
+      const paired = succeedNfc(token);
+      if (!paired) return false;
+      noteLauncherWrite(token, 'spare', write);
+      return true;
     },
-    [authorizeLockedChange, beginNfc, failNfc, persist, showNfcPhase, succeedNfc, t],
+    [authorizeLockedChange, beginNfc, failNfc, noteLauncherWrite, persist, showNfcPhase, succeedNfc, t],
   );
+
+  const rewritePairedTag = useCallback(async () => {
+    const ids = knownTagIds(stateRef.current);
+    const token = beginNfc('rewrite', 'writing');
+    if (ids.length === 0) {
+      failNfc(token, 'rewrite', 'no-paired-tag');
+      return false;
+    }
+    const write = await writeLauncherRecord(ids, t('nfc.writePrompt'));
+    if (token !== nfcToken.current) return false;
+    if (!write.ok) {
+      failNfc(token, 'rewrite', write.error);
+      return false;
+    }
+    return succeedNfc(token);
+  }, [beginNfc, failNfc, succeedNfc, t]);
 
   const clearSpareTag = useCallback(async () => {
     if (lockedGuard(stateRef.current, t('alerts.actions.removeSpare'), t)) return;
@@ -656,6 +728,218 @@ export function TiempoProvider({ children }: { children: ReactNode }) {
     },
     [lock, unlock],
   );
+
+  const showLauncherFeedback = useCallback((feedback: LauncherFeedback, background = false) => {
+    if (feedbackTimer.current) clearTimeout(feedbackTimer.current);
+    setLauncherFeedback(feedback);
+    if (feedback.tone === 'ok') void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    if (feedback.tone === 'error') void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+    if (feedback.tone !== 'ok') return;
+    feedbackTimer.current = setTimeout(() => {
+      setLauncherFeedback(null);
+      if (!background) return;
+      if (Platform.OS === 'android') BackHandler.exitApp();
+      else router.replace('/');
+    }, 1100);
+  }, []);
+
+  const completeLauncherToggle = useCallback(
+    async (presentedId: string | null, allowQuickRead: boolean) => {
+      const recentLaunch = lastLaunch.current && Date.now() - lastLaunch.current.at < 2500;
+      if (presentedId && recentLaunch && lastLaunch.current && sameTagId(lastLaunch.current.id, presentedId)) {
+        return;
+      }
+      if (!presentedId && allowQuickRead && recentLaunch) return;
+      const myGen = ++launchGen.current;
+      if (presentedId) {
+        lastLaunch.current = { id: presentedId, at: Date.now() };
+        cancelActiveNfcSession();
+      }
+
+      const seen = stateRef.current;
+      if (!seen.onboarded) {
+        showLauncherFeedback({ tone: 'error', message: tRef.current('nfc.tap.notReady') });
+        return;
+      }
+      if (knownTagIds(seen).length === 0) {
+        setNfcNotice({ scope: 'toggle', error: 'no-paired-tag' });
+        showLauncherFeedback({ tone: 'error', message: tRef.current('nfc.failure.noPairedTag') });
+        return;
+      }
+
+      showLauncherFeedback({ tone: 'pending', message: tRef.current('nfc.tap.checking') });
+
+      let id = presentedId;
+      if (!id) {
+        if (!allowQuickRead) {
+          setLauncherFeedback(null);
+          return;
+        }
+        const read = await readTag({ alertMessage: tRef.current('nfc.tap.readPrompt'), timeoutMs: 8000 });
+        if (myGen !== launchGen.current) return;
+        if (!read.ok) {
+          if (read.error === 'cancelled') return;
+          setNfcNotice({ scope: 'toggle', error: read.error });
+          showLauncherFeedback({ tone: 'error', message: tRef.current(NFC_FAILURE_KEY[read.error]) });
+          return;
+        }
+        id = read.id;
+        if (
+          lastLaunch.current &&
+          sameTagId(lastLaunch.current.id, id) &&
+          Date.now() - lastLaunch.current.at < 2500
+        ) {
+          return;
+        }
+        lastLaunch.current = { id, at: Date.now() };
+      }
+
+      if (myGen !== launchGen.current) return;
+      let usage = false;
+      let overlay = false;
+      if (Platform.OS === 'android') {
+        const perms = await getPermissions();
+        if (myGen !== launchGen.current) return;
+        const details = perms?.details.platform === 'android' ? perms.details : null;
+        usage = details?.usageStats === true;
+        overlay = details?.overlay === true;
+      }
+
+      const fresh = stateRef.current;
+      const guarded = guardIosSelection(fresh.iosItems, ownAppIds());
+      const decision = decideTagToggle({
+        onboarded: fresh.onboarded,
+        presentedTagId: id,
+        pairedTagIds: [fresh.tagId, fresh.spareTagId],
+        locked: fresh.locked,
+        platform: Platform.OS === 'ios' ? 'ios' : 'android',
+        usage,
+        overlay,
+        packages: fresh.selectedPackages,
+        ownIds: ownAppIds(),
+        iosItemCount: guarded.items.length,
+      });
+
+      if (!decision.ok) {
+        if (decision.reason === 'missing-id') {
+          setLauncherFeedback(null);
+          return;
+        }
+        if (decision.reason === 'permissions') {
+          setPermissions(await getPermissions());
+          promptBlockPermissions();
+        }
+        if (decision.reason === 'no-apps') {
+          Alert.alert(
+            tRef.current('alerts.chooseApps.title'),
+            Platform.OS === 'ios'
+              ? guarded.ignoredCategories > 0
+                ? tRef.current('alerts.chooseApps.iosCategories')
+                : tRef.current('alerts.chooseApps.ios')
+              : tRef.current('alerts.chooseApps.android'),
+          );
+        }
+        if (decision.reason === 'wrong-tag' || decision.reason === 'unstable' || decision.reason === 'no-paired-tag') {
+          setNfcNotice({
+            scope: 'toggle',
+            error:
+              decision.reason === 'unstable'
+                ? 'unstable'
+                : decision.reason === 'no-paired-tag'
+                  ? 'no-paired-tag'
+                  : 'wrong-tag',
+          });
+        }
+        const message =
+          decision.reason === 'not-ready'
+            ? tRef.current('nfc.tap.notReady')
+            : decision.reason === 'permissions'
+              ? tRef.current('nfc.tap.permissions')
+              : decision.reason === 'no-apps'
+                ? tRef.current('nfc.tap.noApps')
+                : decision.reason === 'no-paired-tag'
+                  ? tRef.current('nfc.failure.noPairedTag')
+                  : decision.reason === 'unstable'
+                    ? tRef.current('nfc.failure.unstable')
+                    : tRef.current('nfc.failure.wrongTag');
+        showLauncherFeedback({ tone: 'error', message });
+        return;
+      }
+
+      if (lockBusy.current) {
+        setLauncherFeedback(null);
+        return;
+      }
+      lockBusy.current = true;
+      try {
+        await toggleWithIdentity(stateRef.current);
+        if (myGen !== launchGen.current) return;
+        const lockedNow = stateRef.current.locked;
+        if (decision.action === 'lock' && !lockedNow) {
+          setLauncherFeedback(null);
+          return;
+        }
+        if (decision.action === 'unlock' && lockedNow) {
+          setLauncherFeedback(null);
+          return;
+        }
+        setNfcActivity(null);
+        setNfcNotice(null);
+        showLauncherFeedback(
+          {
+            tone: 'ok',
+            message: tRef.current(decision.action === 'lock' ? 'nfc.tap.locked' : 'nfc.tap.unlocked'),
+          },
+          true,
+        );
+      } finally {
+        lockBusy.current = false;
+      }
+    },
+    [showLauncherFeedback, toggleWithIdentity],
+  );
+
+  const launchRef = useRef(completeLauncherToggle);
+  useEffect(() => {
+    launchRef.current = completeLauncherToggle;
+  }, [completeLauncherToggle]);
+
+  useEffect(() => {
+    if (!ready || (Platform.OS !== 'android' && Platform.OS !== 'ios')) return;
+    let cancelled = false;
+    let removeUrl: (() => void) | undefined;
+    let unwatch: (() => void) | undefined;
+
+    void (async () => {
+      const Linking = await import('expo-linking');
+      const opened = await readColdStart();
+      if (!cancelled && (opened.launchId || isTagLauncherUrl(opened.initialUrl))) {
+        void launchRef.current(opened.launchId, !opened.launchId);
+      }
+      if (cancelled) return;
+      const sub = Linking.addEventListener('url', ({ url }) => {
+        if (!isTagLauncherUrl(url)) return;
+        void (async () => {
+          const id = await takeLaunchTagId();
+          void launchRef.current(id, !id);
+        })();
+      });
+      removeUrl = () => sub.remove();
+      unwatch = watchBackgroundTag((id) => {
+        void launchRef.current(id, false);
+      });
+      if (cancelled) {
+        removeUrl();
+        unwatch();
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+      removeUrl?.();
+      unwatch?.();
+    };
+  }, [ready]);
 
   const toggleLockWithTag = useCallback(
     async (simulate = false) => {
@@ -913,6 +1197,8 @@ export function TiempoProvider({ children }: { children: ReactNode }) {
       requestPermissions: requestPerms,
       pairTag,
       pairSpareTag,
+      rewritePairedTag,
+      launcherFeedback,
       clearSpareTag,
       completeOnboarding,
       toggleLockWithTag,
@@ -945,8 +1231,10 @@ export function TiempoProvider({ children }: { children: ReactNode }) {
       nfcNotice,
       nfcSupported,
       openNfcSettings,
+      launcherFeedback,
       pairSpareTag,
       pairTag,
+      rewritePairedTag,
       permissions,
       ready,
       refreshEmergencyClock,

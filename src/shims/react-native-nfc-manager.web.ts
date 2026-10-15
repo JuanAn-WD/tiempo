@@ -50,6 +50,53 @@ const manager = {
   async getTag(): Promise<null> {
     return null;
   },
+  async getLaunchTagEvent(): Promise<null> {
+    return null;
+  },
+  async getBackgroundTag(): Promise<null> {
+    return null;
+  },
+  async clearBackgroundTag(): Promise<void> {},
+  setEventListener(): void {},
+  ndefHandler: {
+    async writeNdefMessage(): Promise<void> {},
+    async getNdefMessage(): Promise<null> {
+      return null;
+    },
+    async getNdefStatus(): Promise<{ status: number; capacity: number }> {
+      return { status: 1, capacity: 0 };
+    },
+  },
+  ndefFormatableHandlerAndroid: {
+    async formatNdef(): Promise<void> {},
+  },
+};
+
+export const NfcEvents = {
+  DiscoverTag: 'NfcManagerDiscoverTag',
+  DiscoverBackgroundTag: 'NfcManagerDiscoverBackgroundTag',
+  SessionClosed: 'NfcManagerSessionClosed',
+  StateChanged: 'NfcManagerStateChanged',
+};
+
+export const NdefStatus = {
+  NotSupported: 1,
+  ReadWrite: 2,
+  ReadOnly: 3,
+};
+
+export const Ndef = {
+  TNF_WELL_KNOWN: 0x01,
+  RTD_URI: 'U',
+  uriRecord(uri: string) {
+    return { tnf: 0x01, type: 'U', id: [], payload: uri };
+  },
+  record() {
+    return { tnf: 0x01, type: 'U', id: [], payload: [] as number[] };
+  },
+  encodeMessage(): number[] {
+    return [0];
+  },
 };
 
 export default manager;

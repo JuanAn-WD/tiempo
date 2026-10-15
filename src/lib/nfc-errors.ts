@@ -7,6 +7,8 @@ const IOS_CODE: Record<number, NfcFailure> = {
   200: 'cancelled',
   201: 'timeout',
   203: 'session',
+  400: 'read-only',
+  402: 'not-ndef',
 };
 
 function errorText(error: unknown): string {
@@ -54,5 +56,23 @@ export function classifyNfcError(error: unknown): NfcFailure {
     return 'session';
   }
   if (blob.includes('no reference') || blob.includes('no tech request')) return 'no-tag';
+  if (
+    blob.includes('not writable') ||
+    blob.includes('not writeable') ||
+    blob.includes('read-only') ||
+    blob.includes('readonly') ||
+    blob.includes('read only') ||
+    blob.includes('tagnotwritable')
+  ) {
+    return 'read-only';
+  }
+  if (
+    blob.includes('not formattable') ||
+    blob.includes('not ndef') ||
+    blob.includes('ndef format') ||
+    blob.includes('fail to apply ndef')
+  ) {
+    return 'not-ndef';
+  }
   return 'unknown';
 }

@@ -154,6 +154,10 @@ export const es = {
     nfcOff: 'Sin NFC en este dispositivo',
     tagChange: 'Cambiar tag',
     tagPair: 'Emparejar tag',
+    tagTapHint:
+      'Al emparejar se escribe apartag://tag. Ese enlace solo abre la app: la llave sigue siendo el identificador del tag, no el enlace.',
+    tagRewrite: 'Reescribir tag para el toque',
+    tagRewriteHint: 'Vuelve a escribir el enlace en un tag que ya esté emparejado.',
     spareHint: 'Un segundo tag. Con el principal, basta para activar el modo estricto.',
     spareChange: 'Cambiar segundo tag',
     sparePair: 'Emparejar segundo tag',
@@ -311,6 +315,21 @@ export const es = {
     statusUnsupported: 'Este móvil no tiene NFC.',
     statusUnsupportedDev: 'Sin NFC en este dispositivo. En desarrollo puedes simular el tag.',
     doubleScanHint: 'Al emparejar se lee dos veces y las dos tienen que coincidir.',
+    writing: 'Escribiendo el enlace en el tag.',
+    writePrompt: 'Acerca otra vez el mismo tag para que el toque abra Apartag',
+    launcherSkippedTitle: 'Tag emparejado',
+    launcherSkippedBody: 'No se escribió el enlace. Puedes reescribirlo en Ajustes cuando quieras.',
+    tap: {
+      checking: 'Comprobando el tag…',
+      locked: 'Bloqueado.',
+      unlocked: 'Desbloqueado.',
+      notReady: 'Termina de preparar Apartag antes de usar el tag.',
+      readPrompt: 'Acerca tu tag para comprobarlo',
+      permissions: 'Faltan permisos para bloquear. No se ha cambiado nada.',
+      noApps: 'No hay apps elegidas. No se ha bloqueado nada.',
+      iosLimits:
+        'En iPhone el toque con la app cerrada depende del sistema: pantalla encendida, desbloqueado al menos una vez tras encender, y sin Wallet, cámara u otra sesión NFC. iOS no manda el identificador en el enlace, así que hay que acercar el tag otra vez. Un tag sin formato NDEF no se puede preparar desde el iPhone.',
+    },
     failure: {
       unsupported: 'Este móvil no tiene NFC.',
       disabled: 'El NFC está apagado. Actívalo e inténtalo de nuevo.',
@@ -327,6 +346,10 @@ export const es = {
       needPrimary: 'Empareja primero el tag principal.',
       authFailed: 'Ese no es un tag emparejado. La sesión sigue bloqueada.',
       noPairedTag: 'No hay un tag emparejado. Esta lectura no desbloquea.',
+      readOnly:
+        'Este tag es de solo lectura. Queda emparejado, pero el toque no puede abrir Apartag: ábrela y acércalo.',
+      notNdef:
+        'No se pudo escribir el enlace. El tag no tiene formato NDEF o no se puede formatear. En iPhone hace falta un tag ya preparado. Sigue valiendo si abres Apartag y lo acercas.',
     },
   },
   alerts: {

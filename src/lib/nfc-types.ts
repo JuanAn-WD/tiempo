@@ -15,6 +15,8 @@ export const NFC_FAILURES = [
   'need-primary',
   'auth-failed',
   'no-paired-tag',
+  'read-only',
+  'not-ndef',
 ] as const;
 
 export type NfcFailure = (typeof NFC_FAILURES)[number];

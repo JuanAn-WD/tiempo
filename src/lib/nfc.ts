@@ -2,7 +2,8 @@ import { Platform } from 'react-native';
 
 import { readDeviceLocale, translate } from '@/i18n';
 import { classifyNfcError } from '@/lib/nfc-errors';
-import { isUnstableTagId, sameTagId, tagIdFromEvent } from '@/lib/tag-id';
+import { launcherUriPayload, TAG_LAUNCHER_URL } from '@/lib/nfc-tap';
+import { isUnstableTagId, normalizeTagId, sameTagId, tagIdFromEvent } from '@/lib/tag-id';
 import type { NfcFailure, NfcRadioStatus, NfcRead } from '@/lib/nfc-types';
 
 type NfcManager = typeof import('react-native-nfc-manager').default;
@@ -121,7 +122,12 @@ function withTimeout<T>(promise: Promise<T>, ms: number, onTimeout: () => void):
   });
 }
 
-async function readOnce(manager: NfcManager, myGen: number, alertMessage: string): Promise<NfcRead> {
+async function readOnce(
+  manager: NfcManager,
+  myGen: number,
+  alertMessage: string,
+  timeoutMs: number,
+): Promise<NfcRead> {
   let timedOut = false;
   let needsRelease = false;
   let cleanupPromise: Promise<void> | null = null;
@@ -184,7 +190,7 @@ async function readOnce(manager: NfcManager, myGen: number, alertMessage: string
       readerModeDelay: 10,
     });
 
-    await withTimeout(request, READ_TIMEOUT_MS, () => {
+    await withTimeout(request, timeoutMs, () => {
       timedOut = true;
       cancel();
     });
@@ -207,7 +213,7 @@ async function readOnce(manager: NfcManager, myGen: number, alertMessage: string
   }
 }
 
-async function readExclusive(myGen: number, alertMessage: string): Promise<NfcRead> {
+async function readExclusive(myGen: number, alertMessage: string, timeoutMs: number): Promise<NfcRead> {
   if (!nfcAvailable()) return { ok: false, error: 'unsupported' };
   if (myGen !== generation) return { ok: false, error: 'cancelled' };
 
@@ -218,11 +224,11 @@ async function readExclusive(myGen: number, alertMessage: string): Promise<NfcRe
     return { ok: false, error: classifyNfcError(error) };
   }
 
-  const first = await readOnce(manager, myGen, alertMessage);
+  const first = await readOnce(manager, myGen, alertMessage, timeoutMs);
   if (first.ok || first.error !== 'session' || myGen !== generation) return first;
   await delay(IOS_SETTLE_MS);
   if (myGen !== generation) return { ok: false, error: 'cancelled' };
-  return readOnce(manager, myGen, alertMessage);
+  return readOnce(manager, myGen, alertMessage, timeoutMs);
 }
 
 export function cancelActiveNfcSession(): void {
@@ -232,13 +238,215 @@ export function cancelActiveNfcSession(): void {
   cancel?.();
 }
 
-export function readTag(options?: { alertMessage?: string }): Promise<NfcRead> {
+export function readTag(options?: { alertMessage?: string; timeoutMs?: number }): Promise<NfcRead> {
   const myGen = ++generation;
   const cancel = activeCancel;
   activeCancel = null;
   cancel?.();
   const alertMessage = options?.alertMessage ?? translate(readDeviceLocale(), 'nfc.scanPrompt');
-  return enqueue(() => readExclusive(myGen, alertMessage));
+  const timeoutMs = options?.timeoutMs ?? READ_TIMEOUT_MS;
+  return enqueue(() => readExclusive(myGen, alertMessage, timeoutMs));
+}
+
+function asByteArray(value: number[] | Uint8Array | null | undefined): number[] | null {
+  if (!value) return null;
+  const bytes = Array.from(value);
+  return bytes.length ? bytes : null;
+}
+
+async function writeOnTech(
+  manager: NfcManager,
+  myGen: number,
+  tech: 'ndef' | 'format',
+  acceptedIds: readonly string[],
+  alertMessage: string,
+  bytes: number[],
+): Promise<NfcRead> {
+  let timedOut = false;
+  let needsRelease = false;
+  let connected = false;
+  let cleanupPromise: Promise<void> | null = null;
+  const cleanup = () => {
+    if (!needsRelease) return Promise.resolve();
+    cleanupPromise ??= releaseSession(manager);
+    return cleanupPromise;
+  };
+  const cancel = () => {
+    void cleanup();
+  };
+  activeCancel = cancel;
+
+  try {
+    if (myGen !== generation) return { ok: false, error: 'cancelled' };
+    const { NfcTech, NfcAdapter, NdefStatus } = await import('react-native-nfc-manager');
+    const readerFlags =
+      NfcAdapter.FLAG_READER_NFC_A |
+      NfcAdapter.FLAG_READER_NFC_B |
+      NfcAdapter.FLAG_READER_NFC_F |
+      NfcAdapter.FLAG_READER_NFC_V;
+    needsRelease = true;
+    await withTimeout(
+      manager.requestTechnology(tech === 'ndef' ? NfcTech.Ndef : NfcTech.NdefFormatable, {
+        alertMessage,
+        invalidateAfterFirstRead: false,
+        isReaderModeEnabled: true,
+        readerModeFlags: readerFlags,
+        readerModeDelay: 10,
+      }),
+      READ_TIMEOUT_MS,
+      () => {
+        timedOut = true;
+        cancel();
+      },
+    );
+    if (myGen !== generation) return { ok: false, error: 'cancelled' };
+    connected = true;
+
+    const tag = await manager.getTag();
+    const id = tagIdFromEvent(tag);
+    if (!id) return { ok: false, error: 'no-tag' };
+    if (isUnstableTagId(id)) return { ok: false, error: 'unstable' };
+    if (!acceptedIds.some((accepted) => sameTagId(accepted, id))) return { ok: false, error: 'wrong-tag' };
+
+    if (tech === 'format') {
+      await manager.ndefFormatableHandlerAndroid.formatNdef(bytes, { readOnly: false });
+      return { ok: true, id };
+    }
+
+    if (typeof manager.ndefHandler.getNdefStatus === 'function') {
+      const status = await manager.ndefHandler.getNdefStatus().catch(() => null);
+      if (status?.status === NdefStatus.ReadOnly) return { ok: false, error: 'read-only' };
+      if (status?.status === NdefStatus.NotSupported) return { ok: false, error: 'not-ndef' };
+    }
+    await manager.ndefHandler.writeNdefMessage(bytes);
+    return { ok: true, id };
+  } catch (error) {
+    if (timedOut || myGen !== generation) return { ok: false, error: timedOut ? 'timeout' : 'cancelled' };
+    const mapped = classifyNfcError(error);
+    if (!connected && tech === 'ndef' && (mapped === 'unknown' || mapped === 'not-ndef')) {
+      return { ok: false, error: 'not-ndef' };
+    }
+    if (tech === 'format' && (mapped === 'unknown' || mapped === 'not-ndef')) {
+      return { ok: false, error: 'not-ndef' };
+    }
+    return { ok: false, error: mapped };
+  } finally {
+    await cleanup();
+    if (activeCancel === cancel) activeCancel = null;
+  }
+}
+
+async function writeExclusive(
+  myGen: number,
+  acceptedIds: readonly string[],
+  alertMessage: string,
+): Promise<NfcRead> {
+  if (!nfcAvailable()) return { ok: false, error: 'unsupported' };
+  if (myGen !== generation) return { ok: false, error: 'cancelled' };
+
+  const { Ndef } = await import('react-native-nfc-manager');
+  const record = Ndef.record(Ndef.TNF_WELL_KNOWN, Ndef.RTD_URI, [], launcherUriPayload(TAG_LAUNCHER_URL));
+  const bytes = asByteArray(Ndef.encodeMessage([record]));
+  if (!bytes) return { ok: false, error: 'unknown' };
+
+  let manager: NfcManager;
+  try {
+    manager = await loadManager();
+  } catch (error) {
+    return { ok: false, error: classifyNfcError(error) };
+  }
+
+  const ndef = await writeOnTech(manager, myGen, 'ndef', acceptedIds, alertMessage, bytes);
+  if (ndef.ok || ndef.error !== 'not-ndef' || Platform.OS !== 'android' || myGen !== generation) return ndef;
+  await delay(ANDROID_RELEASE_MS);
+  if (myGen !== generation) return { ok: false, error: 'cancelled' };
+  return writeOnTech(manager, myGen, 'format', acceptedIds, alertMessage, bytes);
+}
+
+/** Writes `apartag://tag` onto a tag whose UID is one of `acceptedIds`. */
+export function writeLauncherRecord(acceptedIds: readonly string[], alertMessage: string): Promise<NfcRead> {
+  const ids = acceptedIds.filter((id) => typeof id === 'string' && normalizeTagId(id));
+  if (ids.length === 0) return Promise.resolve({ ok: false, error: 'no-paired-tag' });
+  const myGen = ++generation;
+  const cancel = activeCancel;
+  activeCancel = null;
+  cancel?.();
+  return enqueue(() => writeExclusive(myGen, ids, alertMessage));
+}
+
+function stableLaunchId(tag: unknown): string | null {
+  const id = tagIdFromEvent(tag);
+  if (!id || isUnstableTagId(id)) return null;
+  return id;
+}
+
+let launchRead: Promise<string | null> | null = null;
+
+/** UID from the intent that opened the app, if that intent was an NFC tag. */
+export function takeLaunchTagId(): Promise<string | null> {
+  if (Platform.OS !== 'android' && Platform.OS !== 'ios') return Promise.resolve(null);
+  if (!launchRead) {
+    launchRead = readLaunchTagOnce().finally(() => {
+      launchRead = null;
+    });
+  }
+  return launchRead;
+}
+
+async function readLaunchTagOnce(): Promise<string | null> {
+  try {
+    const manager = await loadManager();
+    const launch = Platform.OS === 'android' ? await manager.getLaunchTagEvent() : null;
+    const fromLaunch = stableLaunchId(launch);
+    const background = await manager.getBackgroundTag();
+    const fromBackground = stableLaunchId(background);
+    try {
+      await manager.clearBackgroundTag();
+    } catch {
+      /* already empty */
+    }
+    return fromLaunch ?? fromBackground;
+  } catch {
+    return null;
+  }
+}
+
+/** Later taps while the process is alive arrive as background tag events. */
+export function watchBackgroundTag(onTag: (id: string) => void): () => void {
+  if (Platform.OS !== 'android' && Platform.OS !== 'ios') return () => undefined;
+  let stopped = false;
+  let managerRef: NfcManager | null = null;
+  void (async () => {
+    try {
+      const imported = await import('react-native-nfc-manager');
+      if (stopped) return;
+      const manager = imported.default;
+      managerRef = manager;
+      await manager.start();
+      if (stopped) {
+        manager.setEventListener(imported.NfcEvents.DiscoverBackgroundTag, null);
+        return;
+      }
+      manager.setEventListener(imported.NfcEvents.DiscoverBackgroundTag, (tag) => {
+        const id = stableLaunchId(tag);
+        if (id) onTag(id);
+      });
+    } catch {
+      /* native NFC is absent on web and in tests */
+    }
+  })();
+  return () => {
+    stopped = true;
+    void (async () => {
+      try {
+        const manager = managerRef ?? (await import('react-native-nfc-manager')).default;
+        const { NfcEvents } = await import('react-native-nfc-manager');
+        manager.setEventListener(NfcEvents.DiscoverBackgroundTag, null);
+      } catch {
+        /* nothing to remove */
+      }
+    })();
+  };
 }
 
 export async function confirmTag(

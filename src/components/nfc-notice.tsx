@@ -4,26 +4,8 @@ import { Text } from '@/components/app-text';
 import { PrimaryButton } from '@/components/primary-button';
 import { Palette, Radius, Type } from '@/constants/theme';
 import { useTiempo, type NfcScope } from '@/context/tiempo-store';
-import { useI18n, type TranslationKey } from '@/i18n';
-import type { NfcFailure } from '@/lib/nfc-types';
-
-const FAILURE_KEY: Record<NfcFailure, TranslationKey> = {
-  unsupported: 'nfc.failure.unsupported',
-  disabled: 'nfc.failure.disabled',
-  cancelled: 'nfc.failure.cancelled',
-  timeout: 'nfc.failure.timeout',
-  'no-tag': 'nfc.failure.noTag',
-  unstable: 'nfc.failure.unstable',
-  mismatch: 'nfc.failure.mismatch',
-  session: 'nfc.failure.session',
-  unknown: 'nfc.failure.unknown',
-  'wrong-tag': 'nfc.failure.wrongTag',
-  'same-as-primary': 'nfc.failure.sameAsPrimary',
-  'same-as-spare': 'nfc.failure.sameAsSpare',
-  'need-primary': 'nfc.failure.needPrimary',
-  'auth-failed': 'nfc.failure.authFailed',
-  'no-paired-tag': 'nfc.failure.noPairedTag',
-};
+import { useI18n } from '@/i18n';
+import { NFC_FAILURE_KEY } from '@/lib/nfc-failure-key';
 
 type Props = {
   scope: NfcScope | readonly NfcScope[];
@@ -41,7 +23,9 @@ export function NfcNotice({ scope, onRetry }: Props) {
         ? t('nfc.confirming')
         : active.phase === 'auth'
           ? t('nfc.authorizing')
-          : t('nfc.scanning');
+          : active.phase === 'writing'
+            ? t('nfc.writing')
+            : t('nfc.scanning');
     return (
       <View accessibilityRole="alert" accessibilityLiveRegion="polite" style={[styles.box, styles.active]}>
         <Text style={styles.text}>{message}</Text>
@@ -57,7 +41,7 @@ export function NfcNotice({ scope, onRetry }: Props) {
       <Text style={styles.text}>
         {Platform.OS === 'web' && notice.error === 'unsupported'
           ? t('deviceOnly.nfc')
-          : t(FAILURE_KEY[notice.error])}
+          : t(NFC_FAILURE_KEY[notice.error])}
       </Text>
       {notice.error === 'disabled' ? (
         <PrimaryButton muted label={t('nfc.openSettings')} onPress={() => void openNfcSettings()} />

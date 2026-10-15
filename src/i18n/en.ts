@@ -153,6 +153,10 @@ export const en = {
     nfcOff: 'No NFC on this device',
     tagChange: 'Change tag',
     tagPair: 'Pair tag',
+    tagTapHint:
+      'Pairing writes apartag://tag. That link only opens the app: the key is still the tag identifier, not the link.',
+    tagRewrite: 'Rewrite tag for the tap',
+    tagRewriteHint: 'Write the link again on a tag that is already paired.',
     spareHint: 'A second tag. With the main one, that’s enough to turn on Strict mode.',
     spareChange: 'Change second tag',
     sparePair: 'Pair second tag',
@@ -308,6 +312,21 @@ export const en = {
     statusUnsupported: 'This phone doesn’t have NFC.',
     statusUnsupportedDev: 'No NFC on this device. In development you can simulate a tag.',
     doubleScanHint: 'Pairing reads the tag twice, and both reads have to match.',
+    writing: 'Writing the link onto the tag.',
+    writePrompt: 'Hold the same tag here again so a tap opens Apartag',
+    launcherSkippedTitle: 'Tag paired',
+    launcherSkippedBody: 'The link was not written. You can rewrite it in Settings whenever you want.',
+    tap: {
+      checking: 'Checking the tag…',
+      locked: 'Locked.',
+      unlocked: 'Unlocked.',
+      notReady: 'Finish setting up Apartag before using the tag.',
+      readPrompt: 'Hold your tag here so it can be checked',
+      permissions: 'Permissions are missing, so nothing was locked.',
+      noApps: 'No apps are selected, so nothing was locked.',
+      iosLimits:
+        'On iPhone, a tap with the app closed depends on the system: screen on, unlocked at least once since boot, and not in Wallet, the camera, or another NFC session. iOS does not send the identifier in the link, so you hold the tag up again. A tag without NDEF cannot be prepared from the iPhone.',
+    },
     failure: {
       unsupported: 'This phone doesn’t have NFC.',
       disabled: 'NFC is off. Turn it on and try again.',
@@ -324,6 +343,10 @@ export const en = {
       needPrimary: 'Pair the main tag first.',
       authFailed: 'That isn’t a paired tag. The session stays locked.',
       noPairedTag: 'No tag is paired. This scan won’t unlock.',
+      readOnly:
+        'This tag is read-only. It stays paired, but a tap cannot open Apartag: open the app and hold it there.',
+      notNdef:
+        'The link could not be written. The tag has no NDEF format, or it cannot be formatted. iPhone needs a tag that is already prepared. It still works if you open Apartag and hold it there.',
     },
   },
   alerts: {

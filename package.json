@@ -62,7 +62,7 @@
     "i18n:check": "node scripts/check-i18n-keys.mjs",
     "contrast:check": "node scripts/check-contrast.mjs",
     "postinstall": "node scripts/apply-android-blocker-patch.mjs",
-    "test": "node scripts/test-mobile-key.mjs && node scripts/test-permission-flow.mjs && node scripts/test-pro.mjs && node scripts/test-screen-years.mjs && node scripts/test-store-review.mjs && node scripts/test-android-lock.mjs && node scripts/test-android-blocker-native.mjs",
+    "test": "node scripts/test-mobile-key.mjs && node scripts/test-permission-flow.mjs && node scripts/test-pro.mjs && node scripts/test-screen-years.mjs && node scripts/test-store-review.mjs && node scripts/test-android-lock.mjs && node scripts/test-android-blocker-native.mjs && node scripts/test-nfc-tap.mjs",
     "build:apk": "eas build --platform android --profile preview --non-interactive"
   },
   "private": true
