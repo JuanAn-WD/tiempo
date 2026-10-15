@@ -32,6 +32,19 @@ export function getBlockedApps(): string[] {
   return [];
 }
 
+export function setUsageBudget(_config: {
+  strict: boolean;
+  defaultMinutes: number;
+  overrides: Record<string, number>;
+}): void {}
+
+export function getUsageBudgetStatus(_packages: string[]): {
+  usageGranted: boolean;
+  apps: { packageName: string; usedMs: number }[];
+} {
+  return { usageGranted: false, apps: [] };
+}
+
 export function configureAndroid(_config: unknown): void {}
 
 export function startMonitoring(): void {}

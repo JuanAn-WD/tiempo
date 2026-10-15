@@ -3,13 +3,14 @@ import { StyleSheet, View } from 'react-native';
 
 import { Text } from '@/components/app-text';
 import { Screen } from '@/components/screen';
+import { UsageBudgetCard } from '@/components/usage-budget-card';
 import { Badge, BrandMark } from '@/components/ui';
 import { Palette, Radius, Type } from '@/constants/theme';
 import { useTiempo } from '@/context/tiempo-store';
 import { useI18n } from '@/i18n';
 
 export default function AppsScreen() {
-  const { state, setIosSelection } = useTiempo();
+  const { state, setIosSelection, setUsageStrict, setUsageLimitMinutes } = useTiempo();
   const { t } = useI18n();
 
   return (
@@ -26,6 +27,15 @@ export default function AppsScreen() {
       <Text style={styles.title}>{t('apps.title')}</Text>
       <Text style={styles.sub}>{t('apps.iosSub')}</Text>
       <Text style={styles.limit}>{t('apps.iosLimit')}</Text>
+      <UsageBudgetCard
+        strict={state.usageStrict}
+        minutes={state.usageLimitMinutes}
+        counting={false}
+        usageGranted={undefined}
+        onStrict={setUsageStrict}
+        onMinutes={setUsageLimitMinutes}
+        onOpenUsage={() => undefined}
+      />
       <View style={styles.pickerWrap}>
         <FamilyActivityPickerView
           initialSelection={state.iosSelectionData}

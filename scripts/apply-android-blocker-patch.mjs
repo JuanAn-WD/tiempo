@@ -16,6 +16,7 @@ const FILES = [
   'android/src/main/java/expo/modules/appblocker/AppBlockerPrefs.kt',
   'android/src/main/java/expo/modules/appblocker/OverlayManager.kt',
   'android/src/main/java/expo/modules/appblocker/ExpoAppBlockerModule.kt',
+  'android/src/main/java/expo/modules/appblocker/UsageBudget.kt',
   'src/index.ts',
 ];
 

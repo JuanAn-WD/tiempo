@@ -1,20 +1,53 @@
 import { Image } from 'expo-image';
-import { useMemo, useState } from 'react';
+import { useFocusEffect, useRouter } from 'expo-router';
+import { useCallback, useMemo, useState } from 'react';
 import { Pressable, StyleSheet, TextInput, View } from 'react-native';
 
 import { Text } from '@/components/app-text';
 import { DeviceOnlyNotice } from '@/components/device-only-notice';
 import { Screen } from '@/components/screen';
+import { UsageBudgetCard } from '@/components/usage-budget-card';
 import { Badge, BrandMark, Card } from '@/components/ui';
 import { Palette, Radius, Type } from '@/constants/theme';
 import { useTiempo } from '@/context/tiempo-store';
 import { useI18n } from '@/i18n';
+import { readUsageBudget } from '@/lib/blocker';
+import {
+  allowanceMinutes,
+  remainingMinutesCeil,
+  remainingUsageMs,
+  stepUsageMinutes,
+  USAGE_MAX_MINUTES,
+} from '@/lib/usage-budget';
 
 export default function AppsScreen() {
-  const { apps, state, togglePackage } = useTiempo();
+  const router = useRouter();
+  const { apps, state, togglePackage, setUsageStrict, setUsageLimitMinutes, setUsageOverride } = useTiempo();
   const { t } = useI18n();
   const [query, setQuery] = useState('');
   const [onlyOn, setOnlyOn] = useState(false);
+  const [usedMs, setUsedMs] = useState<Record<string, number>>({});
+  const [usageGranted, setUsageGranted] = useState<boolean | null | undefined>(undefined);
+  const selectedKey = state.selectedPackages.join('\n');
+
+  const refreshUsage = useCallback(async () => {
+    const reading = await readUsageBudget(selectedKey ? selectedKey.split('\n') : []);
+    if (reading.status !== 'ready') {
+      setUsageGranted(null);
+      setUsedMs({});
+      return;
+    }
+    setUsageGranted(reading.usageGranted);
+    setUsedMs(reading.usedMs);
+  }, [selectedKey]);
+
+  useFocusEffect(
+    useCallback(() => {
+      void refreshUsage();
+      const id = setInterval(() => void refreshUsage(), 5000);
+      return () => clearInterval(id);
+    }, [refreshUsage]),
+  );
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -41,6 +74,15 @@ export default function AppsScreen() {
       <Text style={styles.title}>{t('apps.title')}</Text>
       <Text style={styles.sub}>{t('apps.sub')}</Text>
       <DeviceOnlyNotice notice="blocker" />
+      <UsageBudgetCard
+        strict={state.usageStrict}
+        minutes={state.usageLimitMinutes}
+        counting
+        usageGranted={usageGranted}
+        onStrict={setUsageStrict}
+        onMinutes={setUsageLimitMinutes}
+        onOpenUsage={() => router.push('/permissions?scope=block')}
+      />
 
       <View style={styles.tools}>
         <TextInput
@@ -61,28 +103,92 @@ export default function AppsScreen() {
       <View style={styles.list}>
         {filtered.map((app) => {
           const on = state.selectedPackages.includes(app.packageName);
+          const override = state.usageOverrides[app.packageName];
+          const allowance = allowanceMinutes(
+            {
+              strict: state.usageStrict,
+              defaultMinutes: state.usageLimitMinutes,
+              overrides: state.usageOverrides,
+            },
+            app.packageName,
+          );
+          const remaining =
+            usageGranted === true
+              ? remainingMinutesCeil(remainingUsageMs(allowance, usedMs[app.packageName] ?? 0))
+              : null;
           return (
-            <Pressable
-              key={app.packageName}
-              accessibilityRole="switch"
-              accessibilityState={{ checked: on }}
-              onPress={() => togglePackage(app.packageName)}>
-              <Card style={[styles.row, on && styles.rowOn]}>
-                {app.iconBase64 ? (
-                  <Image source={{ uri: `data:image/png;base64,${app.iconBase64}` }} style={styles.icon} />
-                ) : (
-                  <View style={[styles.iconFallback, on && styles.iconFallbackOn]}>
-                    <Text style={styles.iconLetter}>{app.name.slice(0, 1)}</Text>
+            <View key={app.packageName} style={styles.item}>
+              <Pressable
+                accessibilityRole="switch"
+                accessibilityState={{ checked: on }}
+                onPress={() => togglePackage(app.packageName)}>
+                <Card style={[styles.row, on && styles.rowOn]}>
+                  {app.iconBase64 ? (
+                    <Image source={{ uri: `data:image/png;base64,${app.iconBase64}` }} style={styles.icon} />
+                  ) : (
+                    <View style={[styles.iconFallback, on && styles.iconFallbackOn]}>
+                      <Text style={styles.iconLetter}>{app.name.slice(0, 1)}</Text>
+                    </View>
+                  )}
+                  <View style={styles.meta}>
+                    <Text style={styles.name}>{app.name}</Text>
+                    {on && usageGranted !== undefined ? (
+                      <Text style={styles.remaining}>
+                        {allowance <= 0
+                          ? t('apps.budget.remainingStrict')
+                          : remaining === null
+                            ? t('apps.budget.remainingUnknown')
+                            : remaining <= 0
+                              ? t('apps.budget.remainingZero')
+                              : t('apps.budget.remaining', { count: remaining })}
+                      </Text>
+                    ) : null}
                   </View>
-                )}
-                <View style={styles.meta}>
-                  <Text style={styles.name}>{app.name}</Text>
+                  <View style={[styles.toggle, on && styles.toggleOn]}>
+                    <View style={[styles.knob, on && styles.knobOn]} />
+                  </View>
+                </Card>
+              </Pressable>
+              {on && !state.usageStrict ? (
+                <View
+                  accessibilityLabel={t('apps.budget.perApp', { name: app.name })}
+                  style={styles.override}>
+                  <Text style={styles.overrideLabel}>
+                    {allowance <= 0
+                      ? t('apps.budget.overrideZero')
+                      : t('apps.budget.limit', { count: allowance })}
+                  </Text>
+                  <View style={styles.overrideActions}>
+                    <Pressable
+                      accessibilityRole="button"
+                      accessibilityLabel={t('apps.budget.decrease')}
+                      onPress={() =>
+                        setUsageOverride(app.packageName, stepUsageMinutes(allowance, -1, 0))
+                      }
+                      style={styles.stepBtn}>
+                      <Text style={styles.stepTxt}>−</Text>
+                    </Pressable>
+                    <Pressable
+                      accessibilityRole="button"
+                      accessibilityLabel={t('apps.budget.increase')}
+                      disabled={allowance >= USAGE_MAX_MINUTES}
+                      onPress={() => setUsageOverride(app.packageName, stepUsageMinutes(allowance, 1, 0))}
+                      style={styles.stepBtn}>
+                      <Text style={styles.stepTxt}>+</Text>
+                    </Pressable>
+                    {override === undefined ? null : (
+                      <Pressable
+                        accessibilityRole="button"
+                        accessibilityLabel={t('apps.budget.useDefault')}
+                        onPress={() => setUsageOverride(app.packageName, null)}
+                        style={styles.defaultBtn}>
+                        <Text style={styles.defaultTxt}>{t('apps.budget.useDefault')}</Text>
+                      </Pressable>
+                    )}
+                  </View>
                 </View>
-                <View style={[styles.toggle, on && styles.toggleOn]}>
-                  <View style={[styles.knob, on && styles.knobOn]} />
-                </View>
-              </Card>
-            </Pressable>
+              ) : null}
+            </View>
           );
         })}
         {filtered.length === 0 ? <Text style={styles.empty}>{t('apps.empty')}</Text> : null}
@@ -147,6 +253,53 @@ const styles = StyleSheet.create({
   list: {
     gap: 8,
     paddingBottom: 24,
+  },
+  item: {
+    gap: 6,
+  },
+  remaining: {
+    ...Type.caption,
+    marginTop: 2,
+    color: Palette.muted,
+  },
+  override: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 8,
+    paddingHorizontal: 8,
+  },
+  overrideLabel: {
+    ...Type.caption,
+    color: Palette.faintText,
+    flex: 1,
+  },
+  overrideActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  stepBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: Radius.sm,
+    borderWidth: 1,
+    borderColor: Palette.line,
+    backgroundColor: Palette.surface,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  stepTxt: {
+    ...Type.labelBold,
+    color: Palette.ink,
+  },
+  defaultBtn: {
+    paddingHorizontal: 8,
+    paddingVertical: 6,
+  },
+  defaultTxt: {
+    ...Type.captionBold,
+    color: Palette.accentBright,
   },
   row: {
     flexDirection: 'row',

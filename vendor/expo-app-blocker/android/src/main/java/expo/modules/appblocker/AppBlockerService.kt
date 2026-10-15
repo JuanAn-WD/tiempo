@@ -30,6 +30,10 @@ class AppBlockerService : Service() {
   private val unlockController by lazy { TemporaryUnlockController(this) }
   // Timestamp of the last tick spent consuming earned time; 0 when not consuming.
   private var consumingSinceMs = 0L
+  // Daily budget ticks. Only the package we are currently allowing is counted,
+  // and only while it stays in front, so the overlay itself is not usage.
+  private var usagePackage: String? = null
+  private var usageSinceMs = 0L
   // Whether a block is currently being enforced (overlay shown / app redirected).
   private var blocking = false
 
@@ -41,12 +45,16 @@ class AppBlockerService : Service() {
   }
 
   private fun tick() {
+    val now = System.currentTimeMillis()
+    UsageBudget.rollDay(this, now)
     getCurrentForegroundPackage()?.let { currentForeground = it }
     val foreground = currentForeground
 
     if (foreground == null || !isBlocked(foreground)) {
       // Outside any blocked app: pause consumption and drop any active block.
       consumingSinceMs = 0L
+      usagePackage = null
+      usageSinceMs = 0L
       clearBlock()
       lastForegroundPackage = foreground
       return
@@ -54,9 +62,10 @@ class AppBlockerService : Service() {
 
     if (unlockController.hasTimeLeft) {
       // Inside a blocked app with earned time — spend it and keep the app usable.
-      val now = System.currentTimeMillis()
       if (consumingSinceMs > 0L) unlockController.consume(now - consumingSinceMs)
       consumingSinceMs = now
+      usagePackage = null
+      usageSinceMs = 0L
       if (unlockController.hasTimeLeft) {
         clearBlock()
       } else {
@@ -65,14 +74,56 @@ class AppBlockerService : Service() {
         enforceBlock(foreground, BlockReason.EXPIRED)
       }
     } else {
-      // Inside a blocked app with no earned time — block on entry.
       consumingSinceMs = 0L
-      if (!blocking || foreground != lastForegroundPackage) {
-        Log.d(TAG, "Blocked app in foreground: $foreground")
-        enforceBlock(foreground, BlockReason.OPENED)
+      when (budgetVerdict(foreground, now)) {
+        BudgetVerdict.ALLOW -> clearBlock()
+        BudgetVerdict.EXHAUSTED -> {
+          if (!blocking || foreground != lastForegroundPackage) {
+            Log.d(TAG, "Daily budget exhausted: $foreground")
+            enforceBlock(foreground, BlockReason.EXPIRED)
+          }
+        }
+        BudgetVerdict.IMMEDIATE -> {
+          // Strict mode, or a 0-minute allowance: block on entry.
+          if (!blocking || foreground != lastForegroundPackage) {
+            Log.d(TAG, "Blocked app in foreground: $foreground")
+            enforceBlock(foreground, BlockReason.OPENED)
+          }
+        }
       }
     }
     lastForegroundPackage = foreground
+  }
+
+  /**
+   * Strict / 0 minutes blocks immediately. A positive allowance stays open
+   * until today's foreground time (ticks or UsageStats, whichever is higher)
+   * is spent, then the existing overlay covers the app.
+   */
+  private fun budgetVerdict(packageName: String, now: Long): BudgetVerdict {
+    val allowance = UsageBudget.allowanceMinutes(UsageBudget.readConfig(this), packageName)
+    if (allowance <= 0) {
+      usagePackage = null
+      usageSinceMs = 0L
+      return BudgetVerdict.IMMEDIATE
+    }
+    var persisted = UsageBudget.persistedMs(this, packageName)
+    if (usagePackage == packageName && usageSinceMs > 0L) {
+      val delta = UsageBudget.tickDelta(now, usageSinceMs)
+      if (delta > 0L) persisted += delta
+    }
+    val used = UsageBudget.mergeUsed(persisted, UsageBudget.statsMs(this, packageName, now))
+    if (used != UsageBudget.persistedMs(this, packageName)) {
+      UsageBudget.setPersistedMs(this, packageName, used)
+    }
+    if (UsageBudget.shouldBlock(allowance, used)) {
+      usagePackage = null
+      usageSinceMs = 0L
+      return BudgetVerdict.EXHAUSTED
+    }
+    usagePackage = packageName
+    usageSinceMs = now
+    return BudgetVerdict.ALLOW
   }
 
   private fun clearBlock() {
@@ -337,6 +388,8 @@ class AppBlockerService : Service() {
       .setOngoing(true)
       .setPriority(NotificationCompat.PRIORITY_LOW)
       .build()
+
+  private enum class BudgetVerdict { ALLOW, EXHAUSTED, IMMEDIATE }
 
   companion object {
     private const val TAG = "ExpoAppBlocker"
