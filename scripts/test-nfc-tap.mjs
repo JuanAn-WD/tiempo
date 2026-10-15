@@ -72,6 +72,47 @@ assert.ok(uriWrite > 0 && aarWrite > uriWrite);
 assert.match(nfcSource, /AAR_TYPE/);
 assert.match(nfcSource, /androidApplicationRecordPayload\(\)/);
 assert.match(nfcSource, /encodeMessage\(\[uri, aar\]\)/);
+assert.match(nfcSource, /export function confirmAndWriteLauncher/);
+assert.match(nfcSource, /export function writeLauncherRecord/);
+
+const confirmWrite = nfcSource.slice(
+  nfcSource.indexOf('async function confirmWriteSession'),
+  nfcSource.indexOf('async function confirmAndWriteExclusive'),
+);
+assert.ok(confirmWrite.indexOf('NfcTech.Ndef') < confirmWrite.indexOf('NfcTech.NdefFormatable'));
+assert.ok(confirmWrite.indexOf('NfcTech.NdefFormatable') < confirmWrite.indexOf('NfcTech.NfcA'));
+assert.doesNotMatch(confirmWrite, /FLAG_READER_SKIP_NDEF_CHECK/);
+assert.match(confirmWrite, /written: false, reason: 'read-only'/);
+assert.match(confirmWrite, /written: false, reason: 'not-ndef'/);
+assert.match(confirmWrite, /error: 'mismatch'/);
+
+const storeSource = fs.readFileSync(path.join(root, 'src/context/tiempo-store.tsx'), 'utf8');
+function between(source, start, end) {
+  const from = source.indexOf(start);
+  const to = source.indexOf(end, from + start.length);
+  assert.ok(from >= 0 && to > from, `${start} .. ${end}`);
+  return source.slice(from, to);
+}
+const finishPairing = between(storeSource, 'const finishPairing', 'const pairTag');
+assert.match(finishPairing, /if \(!result\.ok\)/);
+assert.ok(finishPairing.indexOf('if (!result.ok)') < finishPairing.indexOf('await save(result.id)'));
+assert.match(finishPairing, /if \(!result\.written\)/);
+assert.ok(finishPairing.indexOf('await save(result.id)') < finishPairing.indexOf('succeedNfc'));
+assert.doesNotMatch(finishPairing, /launcherSkipped/);
+
+for (const [start, end] of [
+  ['const pairTag', 'const pairSpareTag'],
+  ['const pairSpareTag', 'const rewritePairedTag'],
+]) {
+  const body = between(storeSource, start, end);
+  assert.match(body, /confirmAndWriteLauncher/);
+  assert.doesNotMatch(body, /writeLauncherRecord/);
+  assert.ok(body.indexOf('confirmAndWriteLauncher') < body.indexOf('finishPairing'));
+}
+const rewrite = between(storeSource, 'const rewritePairedTag', 'const clearSpareTag');
+assert.match(rewrite, /writeLauncherRecord/);
+assert.doesNotMatch(rewrite, /confirmAndWriteLauncher/);
+assert.doesNotMatch(storeSource, /launcherSkipped/);
 
 for (const url of ['apartag://tag', 'apartag://tag/', '  APARTAG://tag  ', 'apartag://tag?id=DEADBEEF']) {
   assert.equal(isTagLauncherUrl(url), true, url);
@@ -142,6 +183,7 @@ assert.equal(classifyNfcError('Tag is not writeable'), 'read-only');
 assert.equal(classifyNfcError('NfcError:400'), 'read-only');
 assert.equal(classifyNfcError('Tag is not ndef formattable'), 'not-ndef');
 assert.equal(classifyNfcError('fail to apply ndef formatable tech'), 'not-ndef');
+assert.equal(classifyNfcError('No ndef available'), 'not-ndef');
 
 const session = {
   locked: true,
