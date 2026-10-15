@@ -4,8 +4,26 @@ import type { AndroidBlockableApp, IOSBlockedItem, PermissionStatus } from 'expo
 
 import type { Locale } from '@/i18n/locale';
 import { translate } from '@/i18n/translate';
+import { androidLockDecision, type AndroidLockDecision } from '@/lib/android-lock';
 import { ownAppIds } from '@/lib/own-app';
 import { guardIosSelection, withoutOwnPackages } from '@/lib/self-block';
+
+type AndroidBlockerModule = typeof import('expo-app-blocker') & {
+  isMonitoring?: () => boolean;
+  isIgnoringBatteryOptimizations?: () => boolean;
+  openBatterySettings?: () => void;
+};
+
+export type AndroidStartResult = 'started' | 'permissions' | 'no-apps' | 'failed';
+
+export type AndroidDiagnostics = {
+  usage: boolean | null;
+  overlay: boolean | null;
+  notifications: boolean | null;
+  batteryUnrestricted: boolean | null;
+  serviceRunning: boolean | null;
+  selectedApps: number;
+};
 
 const SUGGESTED = [
   { packageName: 'com.instagram.android', name: 'Instagram' },
@@ -17,8 +35,19 @@ const SUGGESTED = [
   { packageName: 'com.snapchat.android', name: 'Snapchat' },
 ];
 
-async function native() {
+async function native(): Promise<AndroidBlockerModule> {
   return import('expo-app-blocker');
+}
+
+async function requestNotificationsBestEffort() {
+  try {
+    const Notifications = await import('expo-notifications');
+    const current = await Notifications.getPermissionsAsync();
+    if (current.granted || !current.canAskAgain) return;
+    await Notifications.requestPermissionsAsync();
+  } catch {
+    /* the overlay still blocks when notifications stay off */
+  }
 }
 
 export async function applyAndroidOverlayTheme(locale: Locale = 'es') {
@@ -93,11 +122,66 @@ export async function listAndroidApps(locale: Locale = 'es'): Promise<AndroidBlo
   }
 }
 
-export async function startAndroidBlock(packages: string[]) {
+export async function startAndroidBlock(packages: string[]): Promise<AndroidStartResult> {
+  if (Platform.OS !== 'android') return 'started';
+  try {
+    const perms = await getPermissions();
+    const details = perms?.details.platform === 'android' ? perms.details : null;
+    const decision: AndroidLockDecision = androidLockDecision({
+      packages,
+      ownIds: ownAppIds(),
+      usage: details?.usageStats === true,
+      overlay: details?.overlay === true,
+    });
+    if (!decision.ok) return decision.reason;
+    await requestNotificationsBestEffort();
+    const blocker = await native();
+    blocker.setBlockedApps(decision.packages);
+    blocker.startMonitoring();
+    return 'started';
+  } catch {
+    return 'failed';
+  }
+}
+
+export async function readAndroidDiagnostics(selectedApps: number): Promise<AndroidDiagnostics> {
+  const empty: AndroidDiagnostics = {
+    usage: null,
+    overlay: null,
+    notifications: null,
+    batteryUnrestricted: null,
+    serviceRunning: null,
+    selectedApps,
+  };
+  if (Platform.OS !== 'android') return empty;
+  try {
+    const blocker = await native();
+    const status = await blocker.getPermissionStatus();
+    const details = status.details.platform === 'android' ? status.details : null;
+    return {
+      usage: details?.usageStats ?? null,
+      overlay: details?.overlay ?? null,
+      notifications: details?.notifications ?? null,
+      batteryUnrestricted:
+        typeof blocker.isIgnoringBatteryOptimizations === 'function'
+          ? blocker.isIgnoringBatteryOptimizations()
+          : null,
+      serviceRunning: typeof blocker.isMonitoring === 'function' ? blocker.isMonitoring() : null,
+      selectedApps,
+    };
+  } catch {
+    return empty;
+  }
+}
+
+export async function openBatterySettings(): Promise<void> {
   if (Platform.OS !== 'android') return;
-  const blocker = await native();
-  blocker.setBlockedApps(withoutOwnPackages(packages, ownAppIds()));
-  blocker.startMonitoring();
+  try {
+    const blocker = await native();
+    blocker.openBatterySettings?.();
+  } catch {
+    /* leave the diagnostics row on screen */
+  }
 }
 
 export async function stopAndroidBlock() {

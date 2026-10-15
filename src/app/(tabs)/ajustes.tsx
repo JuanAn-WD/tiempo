@@ -12,6 +12,7 @@ import { Palette, Radius, Type } from '@/constants/theme';
 import { usePro } from '@/context/pro-store';
 import { useTiempo } from '@/context/tiempo-store';
 import { useI18n, type Translate } from '@/i18n';
+import { openBatterySettings, readAndroidDiagnostics, type AndroidDiagnostics } from '@/lib/blocker';
 import { usePermissionRecord } from '@/lib/permission-ack';
 import { countKeys, formatRefillDate, hasBackupKey, acceptsStrictConfirmation } from '@/lib/emergency';
 
@@ -48,13 +49,15 @@ export default function SettingsScreen() {
   const pro = usePro();
   const [confirmation, setConfirmation] = useState('');
   const [confirmOff, setConfirmOff] = useState(false);
+  const [diagnostics, setDiagnostics] = useState<AndroidDiagnostics | null>(null);
 
   useFocusEffect(
     useCallback(() => {
       void refreshEmergencyClock();
       void refreshNfcStatus();
       void refreshPermissions();
-    }, [refreshEmergencyClock, refreshNfcStatus, refreshPermissions]),
+      void readAndroidDiagnostics(state.selectedPackages.length).then(setDiagnostics);
+    }, [refreshEmergencyClock, refreshNfcStatus, refreshPermissions, state.selectedPackages.length]),
   );
 
   const ok = !!permissions?.allGranted;
@@ -274,6 +277,52 @@ export default function SettingsScreen() {
 
       <Card style={styles.card}>
         <View style={styles.rowTop}>
+          <Text style={styles.rowTitle}>{t('settings.diagnostics.title')}</Text>
+          <Badge
+            label={t('settings.diagnostics.appsCount', { count: state.selectedPackages.length })}
+            tone={state.selectedPackages.length > 0 ? 'focus' : 'neutral'}
+          />
+        </View>
+        <DiagnosticRow
+          label={t('settings.diagnostics.usage')}
+          value={flagLabel(t, diagnostics?.usage ?? null)}
+          ok={diagnostics?.usage === true}
+        />
+        <DiagnosticRow
+          label={t('settings.diagnostics.overlay')}
+          value={flagLabel(t, diagnostics?.overlay ?? null)}
+          ok={diagnostics?.overlay === true}
+        />
+        <DiagnosticRow
+          label={t('settings.diagnostics.notifications')}
+          value={flagLabel(t, diagnostics?.notifications ?? null)}
+          ok={diagnostics?.notifications === true}
+        />
+        <DiagnosticRow
+          label={t('settings.diagnostics.battery')}
+          value={flagLabel(t, diagnostics?.batteryUnrestricted ?? null)}
+          ok={diagnostics?.batteryUnrestricted === true}
+        />
+        <DiagnosticRow
+          label={t('settings.diagnostics.service')}
+          value={flagLabel(t, diagnostics?.serviceRunning ?? null)}
+          ok={diagnostics?.serviceRunning === true}
+        />
+        <DiagnosticRow
+          label={t('settings.diagnostics.apps')}
+          value={t('settings.diagnostics.appsCount', { count: state.selectedPackages.length })}
+          ok={state.selectedPackages.length > 0}
+        />
+        <Text style={styles.rowHint}>{t('settings.diagnostics.hint')}</Text>
+        {Platform.OS === 'android' ? (
+          <PrimaryButton muted label={t('settings.diagnostics.batteryButton')} onPress={() => void openBatterySettings()} />
+        ) : (
+          <Text style={styles.rowHint}>{t('settings.diagnostics.otherPlatform')}</Text>
+        )}
+      </Card>
+
+      <Card style={styles.card}>
+        <View style={styles.rowTop}>
           <Text style={styles.rowTitle}>{t('settings.permissionsTitle')}</Text>
           <Badge
             label={ok ? t('settings.badgeReady') : t('settings.badgeMissing')}
@@ -308,6 +357,21 @@ export default function SettingsScreen() {
       <DeviceOnlyNotice notice="review" />
       <Text style={styles.legal}>{t('settings.legal')}</Text>
     </Screen>
+  );
+}
+
+function flagLabel(t: Translate, value: boolean | null) {
+  if (value === true) return t('settings.diagnostics.yes');
+  if (value === false) return t('settings.diagnostics.no');
+  return t('settings.diagnostics.unknown');
+}
+
+function DiagnosticRow({ label, value, ok }: { label: string; value: string; ok: boolean }) {
+  return (
+    <View style={styles.diagRow}>
+      <Text style={styles.diagLabel}>{label}</Text>
+      <Text style={[styles.diagValue, ok ? styles.diagOk : null]}>{value}</Text>
+    </View>
   );
 }
 
@@ -359,6 +423,24 @@ const styles = StyleSheet.create({
     color: Palette.ink,
     letterSpacing: 1,
     backgroundColor: Palette.bgElevated,
+  },
+  diagRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  diagLabel: {
+    ...Type.body,
+    color: Palette.muted,
+    flex: 1,
+  },
+  diagValue: {
+    ...Type.labelBold,
+    color: Palette.ink,
+  },
+  diagOk: {
+    color: Palette.focus,
   },
   legal: {
     ...Type.caption,

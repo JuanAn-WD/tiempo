@@ -11,7 +11,7 @@
     "@noble/hashes": "^1.8.0",
     "@react-native-async-storage/async-storage": "2.2.0",
     "expo": "~57.0.27",
-    "expo-app-blocker": "^0.1.77",
+    "expo-app-blocker": "0.1.77",
     "expo-camera": "~57.0.6",
     "expo-constants": "~57.0.21",
     "expo-crypto": "~57.0.3",
@@ -61,7 +61,8 @@
     "lint": "expo lint",
     "i18n:check": "node scripts/check-i18n-keys.mjs",
     "contrast:check": "node scripts/check-contrast.mjs",
-    "test": "node scripts/test-mobile-key.mjs && node scripts/test-permission-flow.mjs && node scripts/test-pro.mjs && node scripts/test-screen-years.mjs && node scripts/test-store-review.mjs",
+    "postinstall": "node scripts/apply-android-blocker-patch.mjs",
+    "test": "node scripts/test-mobile-key.mjs && node scripts/test-permission-flow.mjs && node scripts/test-pro.mjs && node scripts/test-screen-years.mjs && node scripts/test-store-review.mjs && node scripts/test-android-lock.mjs && node scripts/test-android-blocker-native.mjs",
     "build:apk": "eas build --platform android --profile preview --non-interactive"
   },
   "private": true

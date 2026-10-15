@@ -1,5 +1,5 @@
 import { useFocusEffect, useRouter } from 'expo-router';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import { Text } from '@/components/app-text';
@@ -18,7 +18,7 @@ import { formatClock, formatDuration, MODES } from '@/lib/storage';
 
 export default function FocusScreen() {
   const router = useRouter();
-  const { state, toggleLockWithTag, setMode, refreshEmergencyClock } = useTiempo();
+  const { state, enforcing, toggleLockWithTag, setMode, refreshEmergencyClock } = useTiempo();
   const { record, ready: permissionsReady } = usePermissionRecord();
   const nfcExplained = permissionsReady && record.seen.includes('nfc');
   const scanTag = () => {
@@ -30,18 +30,26 @@ export default function FocusScreen() {
   };
   const { locale, t } = useI18n();
   const [clock, setClock] = useState<{ at: number; ms: number } | null>(null);
+  const promptedPermissions = useRef(false);
+  const unarmed = state.locked && !enforcing;
 
   useEffect(() => {
-    if (!state.locked || !state.lockedAt) return;
+    if (!unarmed || promptedPermissions.current) return;
+    promptedPermissions.current = true;
+    router.push('/permissions?scope=block');
+  }, [router, unarmed]);
+
+  useEffect(() => {
+    if (!enforcing || !state.lockedAt) return;
     const startedAt = state.lockedAt;
     const id = setInterval(() => {
       setClock({ at: startedAt, ms: Date.now() - startedAt });
     }, 1000);
     return () => clearInterval(id);
-  }, [state.locked, state.lockedAt]);
+  }, [enforcing, state.lockedAt]);
 
   const sessionMs =
-    state.locked && state.lockedAt && clock?.at === state.lockedAt ? clock.ms : 0;
+    enforcing && state.lockedAt && clock?.at === state.lockedAt ? clock.ms : 0;
   const mode = MODES.find((item) => item.id === state.mode);
 
   useFocusEffect(
@@ -57,27 +65,29 @@ export default function FocusScreen() {
   }, [state.locked, t]);
 
   return (
-    <Screen atmosphere={state.locked ? 'focus' : 'idle'}>
+    <Screen atmosphere={enforcing ? 'focus' : 'idle'}>
       <View style={styles.topBar}>
         <BrandMark size={20} />
         <Badge
-          label={state.locked ? t('focus.badgeFocus') : t('focus.badgeReady')}
-          tone={state.locked ? 'focus' : 'accent'}
+          label={unarmed ? t('focus.badgeUnarmed') : enforcing ? t('focus.badgeFocus') : t('focus.badgeReady')}
+          tone={unarmed ? 'danger' : enforcing ? 'focus' : 'accent'}
         />
       </View>
 
       <View style={styles.heroCopy}>
-        <Text style={styles.kicker}>{state.locked ? (mode ? t(mode.titleKey) : t('focus.session')) : t('focus.presence')}</Text>
+        <Text style={styles.kicker}>
+          {enforcing ? (mode ? t(mode.titleKey) : t('focus.session')) : t('focus.presence')}
+        </Text>
         <Text style={styles.title}>
-          {state.locked ? t('focus.titleLocked') : t('focus.titleIdle')}
+          {unarmed ? t('focus.titleUnarmed') : enforcing ? t('focus.titleLocked') : t('focus.titleIdle')}
         </Text>
       </View>
 
       <View style={styles.orbArea}>
         <FocusOrb
-          locked={state.locked}
+          locked={enforcing}
           hint={hint}
-          clock={state.locked ? formatClock(sessionMs) : undefined}
+          clock={enforcing ? formatClock(sessionMs) : undefined}
           onPress={scanTag}
           onLongPress={__DEV__ ? () => void toggleLockWithTag(true) : undefined}
         />
@@ -94,7 +104,7 @@ export default function FocusScreen() {
               accessibilityRole="button"
               accessibilityState={{ selected: on }}
               onPress={() => setMode(item.id)}
-              style={[styles.modeCard, on && (state.locked ? styles.modeCardFocus : styles.modeCardOn)]}>
+              style={[styles.modeCard, on && (enforcing ? styles.modeCardFocus : styles.modeCardOn)]}>
               <View style={[styles.modeMark, on && styles.modeMarkOn]}>
                 <Text style={[styles.modeMarkText, on && styles.modeMarkTextOn]}>{item.mark}</Text>
               </View>
@@ -106,9 +116,9 @@ export default function FocusScreen() {
 
       <View style={styles.statsRow}>
         <StatTile
-          emphasize={!state.locked}
-          value={formatDuration(state.locked ? sessionMs : state.recoveredMs, locale)}
-          label={state.locked ? t('focus.statSession') : t('focus.statReclaimed')}
+          emphasize={!enforcing}
+          value={formatDuration(enforcing ? sessionMs : state.recoveredMs, locale)}
+          label={enforcing ? t('focus.statSession') : t('focus.statReclaimed')}
         />
         <StatTile
           value={state.mobileKeySecret ? t('common.on') : t('common.dash')}
@@ -116,6 +126,15 @@ export default function FocusScreen() {
         />
       </View>
 
+      {unarmed ? (
+        <View style={styles.unarmed}>
+          <Text style={styles.unarmedBody}>{t('focus.unarmedBody')}</Text>
+          <PrimaryButton
+            label={t('focus.unarmedAction')}
+            onPress={() => router.push('/permissions?scope=block')}
+          />
+        </View>
+      ) : null}
       <PrimaryButton
         label={state.locked ? t('focus.scanKey') : t('focus.lockWithKey')}
         onPress={() => router.push('/scan-key')}
@@ -223,6 +242,14 @@ const styles = StyleSheet.create({
   },
   emergency: {
     marginTop: 10,
+  },
+  unarmed: {
+    gap: 12,
+    marginBottom: 12,
+  },
+  unarmedBody: {
+    ...Type.body,
+    color: Palette.muted,
   },
   footer: {
     ...Type.caption,

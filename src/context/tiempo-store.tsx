@@ -1,4 +1,5 @@
 import * as Haptics from 'expo-haptics';
+import { router } from 'expo-router';
 import {
   createContext,
   useCallback,
@@ -24,6 +25,7 @@ import {
   startIosBlock,
   stopAndroidBlock,
   stopIosBlock,
+  type AndroidStartResult,
 } from '@/lib/blocker';
 import {
   INITIAL_MONO_CLOCK,
@@ -64,6 +66,12 @@ import {
 type TiempoContextValue = {
   ready: boolean;
   state: TiempoState;
+  /**
+   * True only when the session is locked AND Android is actually blocking.
+   * On iOS this matches `state.locked`. On Android it stays false when usage
+   * access or overlay is missing, so the UI must not say the phone is locked.
+   */
+  enforcing: boolean;
   apps: AndroidBlockableApp[];
   permissions: PermissionStatus | null;
   nfcSupported: boolean;
@@ -125,12 +133,20 @@ function snapshot(state: TiempoState): EmergencySnapshot {
   };
 }
 
-async function applyNativeLock(next: TiempoState) {
-  if (Platform.OS === 'android') {
-    await startAndroidBlock(next.selectedPackages);
-  }
+async function applyNativeLock(next: TiempoState): Promise<AndroidStartResult> {
+  if (Platform.OS === 'android') return startAndroidBlock(next.selectedPackages);
   if (Platform.OS === 'ios' && next.iosItems.length) {
     await startIosBlock(next.iosItems);
+    return 'started';
+  }
+  return 'no-apps';
+}
+
+function promptBlockPermissions() {
+  try {
+    router.push('/permissions?scope=block');
+  } catch {
+    /* the focus screen still shows the permission card */
   }
 }
 
@@ -150,6 +166,7 @@ export function TiempoProvider({ children }: { children: ReactNode }) {
   const tRef = useRef(t);
   const [ready, setReady] = useState(false);
   const [state, setState] = useState<TiempoState>(DEFAULT_STATE);
+  const [androidEnforcing, setAndroidEnforcing] = useState(false);
   const [apps, setApps] = useState<AndroidBlockableApp[]>([]);
   const [permissions, setPermissions] = useState<PermissionStatus | null>(null);
   const [nfcSupported, setNfcSupported] = useState(false);
@@ -297,12 +314,19 @@ export function TiempoProvider({ children }: { children: ReactNode }) {
       setNfcEnabled(nfc.enabled);
 
       if (loaded.locked) {
-        const canAndroid = Platform.OS === 'android' && loaded.selectedPackages.length > 0;
+        const canAndroid = Platform.OS === 'android';
         const canIos = Platform.OS === 'ios' && loaded.iosItems.length > 0;
         if (canAndroid || canIos) {
           try {
-            await applyNativeLock(loaded);
+            const result = await applyNativeLock(loaded);
+            if (Platform.OS === 'android') {
+              setAndroidEnforcing(result === 'started');
+              if (result !== 'started' && result !== 'permissions') {
+                Alert.alert(tRef.current('alerts.relock.title'), tRef.current('alerts.relock.body'));
+              }
+            }
           } catch {
+            setAndroidEnforcing(false);
             Alert.alert(tRef.current('alerts.relock.title'), tRef.current('alerts.relock.body'));
           }
         }
@@ -323,7 +347,14 @@ export function TiempoProvider({ children }: { children: ReactNode }) {
     void refreshEmergencyClock();
     const sub = AppState.addEventListener('change', (next) => {
       void refreshEmergencyClock();
-      if (next === 'active') void refreshNfcStatus();
+      if (next === 'active') {
+        void refreshNfcStatus();
+        if (Platform.OS === 'android' && stateRef.current.locked) {
+          void startAndroidBlock(stateRef.current.selectedPackages).then((result) => {
+            setAndroidEnforcing(result === 'started');
+          });
+        }
+      }
       if (next === 'background') cancelActiveNfcSession();
     });
     const id = setInterval(() => {
@@ -499,6 +530,7 @@ export function TiempoProvider({ children }: { children: ReactNode }) {
       const latest = stateRef.current;
       if (!latest.locked) return false;
       if (options?.emergency && !consumeEmergency(snapshot(latest), Date.now())) return false;
+      setAndroidEnforcing(false);
       await clearNativeLock();
       let spent = false;
       await persist((prev) => {
@@ -548,9 +580,10 @@ export function TiempoProvider({ children }: { children: ReactNode }) {
         const current = stateRef.current;
         if (current.locked) {
           try {
-            await applyNativeLock(current);
+            const restored = await applyNativeLock(current);
+            if (Platform.OS === 'android') setAndroidEnforcing(restored === 'started');
           } catch {
-            /* the saved lock is reapplied on next launch */
+            setAndroidEnforcing(false);
           }
         }
         return false;
@@ -563,11 +596,18 @@ export function TiempoProvider({ children }: { children: ReactNode }) {
   const lock = useCallback(
     async (current: TiempoState, pulse?: { nonce: string; ts: number }) => {
       if (Platform.OS === 'android') {
-        if (current.selectedPackages.length === 0) {
+        const result = await startAndroidBlock(current.selectedPackages);
+        if (result === 'no-apps') {
+          setAndroidEnforcing(false);
           Alert.alert(t('alerts.chooseApps.title'), t('alerts.chooseApps.android'));
           return;
         }
-        await startAndroidBlock(current.selectedPackages);
+        if (result !== 'started') {
+          setAndroidEnforcing(false);
+          setPermissions(await getPermissions());
+          promptBlockPermissions();
+          return;
+        }
       }
       if (Platform.OS === 'ios') {
         const guarded = guardIosSelection(current.iosItems, ownAppIds());
@@ -582,6 +622,7 @@ export function TiempoProvider({ children }: { children: ReactNode }) {
         }
         await startIosBlock(guarded.items);
       }
+      if (Platform.OS === 'android') setAndroidEnforcing(true);
       const lockedAt = Date.now();
       await persist((prev) => ({
         ...prev,
@@ -598,7 +639,7 @@ export function TiempoProvider({ children }: { children: ReactNode }) {
                 prev.lastSeenAt,
               ),
             }
-          : {}),
+            : {}),
       }));
     },
     [persist, t],
@@ -852,10 +893,13 @@ export function TiempoProvider({ children }: { children: ReactNode }) {
     }
   }, [refreshEmergencyClock, t, unlock]);
 
+  const enforcing = Platform.OS === 'android' ? state.locked && androidEnforcing : state.locked;
+
   const value = useMemo(
     () => ({
       ready,
       state,
+      enforcing,
       apps,
       permissions,
       nfcSupported,
@@ -887,6 +931,7 @@ export function TiempoProvider({ children }: { children: ReactNode }) {
     }),
     [
       apps,
+      enforcing,
       becomeKeyHolder,
       clearKeyHolder,
       clearNfcNotice,
