@@ -5,7 +5,7 @@ import { Text } from '@/components/app-text';
 import { Palette, Radius, Type } from '@/constants/theme';
 import { useTiempo } from '@/context/tiempo-store';
 
-/** Short confirmation when a tag opens the app from somewhere other than the tag route. */
+/** iOS confirmation when a tag opens the app away from the tag route. Android never shows this for a tap. */
 export function LauncherFeedback() {
   const segments = useSegments();
   const { launcherFeedback } = useTiempo();

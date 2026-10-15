@@ -1,0 +1,37 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+  <uses-permission android:name="android.permission.NFC" />
+  <uses-permission android:name="android.permission.VIBRATE" />
+
+  <application>
+    <!--
+      Invisible tap handler. Theme.NoDisplay draws no window when finish()
+      runs before onResume. A translucent theme would still flash a frame.
+      The task is not the app task, so the tap never shows in Recents and
+      never brings React Native forward.
+      DISPATCH_NFC_MESSAGE is required only when targetSdk is above API 36.
+      Declaring it now would drop NFC intents on current phones.
+      TAG_DISCOVERED is the UID fallback for a paired tag with no apartag://tag
+      record. It is deprecated in API 37; NDEF_DISCOVERED stays the primary path.
+    -->
+    <activity
+      android:name=".NfcTapActivity"
+      android:exported="true"
+      android:theme="@android:style/Theme.NoDisplay"
+      android:excludeFromRecents="true"
+      android:noHistory="true"
+      android:taskAffinity="com.apartag.app.nfc"
+      android:launchMode="singleInstance"
+      android:stateNotNeeded="true"
+      android:autoRemoveFromRecents="true">
+      <intent-filter>
+        <action android:name="android.nfc.action.NDEF_DISCOVERED" />
+        <category android:name="android.intent.category.DEFAULT" />
+        <data android:scheme="apartag" android:host="tag" />
+      </intent-filter>
+      <intent-filter>
+        <action android:name="android.nfc.action.TAG_DISCOVERED" />
+        <category android:name="android.intent.category.DEFAULT" />
+      </intent-filter>
+    </activity>
+  </application>
+</manifest>

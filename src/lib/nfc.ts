@@ -363,7 +363,11 @@ async function writeExclusive(
   return writeOnTech(manager, myGen, 'format', acceptedIds, alertMessage, bytes);
 }
 
-/** Writes `apartag://tag` onto a tag whose UID is one of `acceptedIds`. */
+/**
+ * Writes `apartag://tag` onto a tag whose UID is one of `acceptedIds`.
+ * Android uses that record so the invisible activity can see the tap.
+ * iOS uses it as a deep link. The UID remains the key on both.
+ */
 export function writeLauncherRecord(acceptedIds: readonly string[], alertMessage: string): Promise<NfcRead> {
   const ids = acceptedIds.filter((id) => typeof id === 'string' && normalizeTagId(id));
   if (ids.length === 0) return Promise.resolve({ ok: false, error: 'no-paired-tag' });

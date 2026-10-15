@@ -10,7 +10,7 @@ import {
   useState,
   type ReactNode,
 } from 'react';
-import { Alert, AppState, BackHandler, Platform } from 'react-native';
+import { Alert, AppState, Platform } from 'react-native';
 
 import type { AndroidBlockableApp, IOSBlockedItem, PermissionStatus } from 'expo-app-blocker';
 
@@ -57,6 +57,7 @@ import {
   writeLauncherRecord,
 } from '@/lib/nfc';
 import { NFC_FAILURE_KEY } from '@/lib/nfc-failure-key';
+import { pullNfcTapEvent, pushNfcTapState, subscribeNfcTap } from '@/lib/nfc-native-tap';
 import { decideTagToggle, isTagLauncherUrl } from '@/lib/nfc-tap';
 import type { NfcFailure, NfcRead } from '@/lib/nfc-types';
 import { sameTagId } from '@/lib/tag-id';
@@ -205,14 +206,40 @@ export function TiempoProvider({ children }: { children: ReactNode }) {
   const lockBusy = useRef(false);
   const clockRef = useRef<MonoClock>(INITIAL_MONO_CLOCK);
   const persistQueue = useRef(Promise.resolve());
+  const consumeNativeTapRef = useRef<() => Promise<TiempoState | null>>(async () => null);
+
+  useEffect(() => {
+    consumeNativeTapRef.current = async () => {
+      let adopted: TiempoState | null = null;
+      const run = persistQueue.current.then(async () => {
+        const prev = stateRef.current;
+        let result: ReturnType<typeof pullNfcTapEvent>;
+        try {
+          result = pullNfcTapEvent(prev);
+        } catch {
+          return;
+        }
+        if (!result.applied) return;
+        adopted = result.state;
+        if (result.state !== prev) {
+          stateRef.current = result.state;
+          setState(result.state);
+          await saveState(result.state);
+        }
+        setAndroidEnforcing(result.state.locked);
+      });
+      persistQueue.current = run.then(
+        () => undefined,
+        () => undefined,
+      );
+      await run;
+      return adopted;
+    };
+  });
 
   useEffect(() => {
     tRef.current = t;
   }, [t]);
-
-  useEffect(() => {
-    stateRef.current = state;
-  }, [state]);
 
   const persist = useCallback(async (updater: TiempoState | ((prev: TiempoState) => TiempoState)) => {
     const run = persistQueue.current.then(async () => {
@@ -222,6 +249,7 @@ export function TiempoProvider({ children }: { children: ReactNode }) {
       stateRef.current = next;
       setState(next);
       await saveState(next);
+      pushNfcTapState(next);
       return next;
     });
     persistQueue.current = run.then(
@@ -333,18 +361,25 @@ export function TiempoProvider({ children }: { children: ReactNode }) {
     void (async () => {
       const loaded = await loadState();
       stateRef.current = loaded;
-      setState(loaded);
+      let current = loaded;
+      try {
+        current = (await consumeNativeTapRef.current()) ?? loaded;
+      } catch {
+        /* native tap prefs are absent outside a dev build */
+      }
+      stateRef.current = current;
+      setState(current);
       const [perms, nfc] = await Promise.all([getPermissions(), getNfcStatus()]);
       setPermissions(perms);
       setNfcSupported(nfc.supported);
       setNfcEnabled(nfc.enabled);
 
-      if (loaded.locked) {
+      if (current.locked) {
         const canAndroid = Platform.OS === 'android';
-        const canIos = Platform.OS === 'ios' && loaded.iosItems.length > 0;
+        const canIos = Platform.OS === 'ios' && current.iosItems.length > 0;
         if (canAndroid || canIos) {
           try {
-            const result = await applyNativeLock(loaded);
+            const result = await applyNativeLock(current);
             if (Platform.OS === 'android') {
               setAndroidEnforcing(result === 'started');
               if (result !== 'started' && result !== 'permissions') {
@@ -374,12 +409,19 @@ export function TiempoProvider({ children }: { children: ReactNode }) {
     const sub = AppState.addEventListener('change', (next) => {
       void refreshEmergencyClock();
       if (next === 'active') {
-        void refreshNfcStatus();
-        if (Platform.OS === 'android' && stateRef.current.locked) {
-          void startAndroidBlock(stateRef.current.selectedPackages).then((result) => {
+        void (async () => {
+          await refreshNfcStatus();
+          let current = stateRef.current;
+          try {
+            current = (await consumeNativeTapRef.current()) ?? stateRef.current;
+          } catch {
+            /* keep the JS session if native prefs cannot be read */
+          }
+          if (Platform.OS === 'android' && current.locked) {
+            const result = await startAndroidBlock(current.selectedPackages);
             setAndroidEnforcing(result === 'started');
-          });
-        }
+          }
+        })();
       }
       if (next === 'background') cancelActiveNfcSession();
     });
@@ -737,9 +779,8 @@ export function TiempoProvider({ children }: { children: ReactNode }) {
     if (feedback.tone !== 'ok') return;
     feedbackTimer.current = setTimeout(() => {
       setLauncherFeedback(null);
-      if (!background) return;
-      if (Platform.OS === 'android') BackHandler.exitApp();
-      else router.replace('/');
+      if (!background || Platform.OS !== 'ios') return;
+      router.replace('/');
     }, 1100);
   }, []);
 
@@ -905,7 +946,16 @@ export function TiempoProvider({ children }: { children: ReactNode }) {
   }, [completeLauncherToggle]);
 
   useEffect(() => {
-    if (!ready || (Platform.OS !== 'android' && Platform.OS !== 'ios')) return;
+    if (!ready || Platform.OS !== 'android') return;
+    void consumeNativeTapRef.current();
+    return subscribeNfcTap(() => {
+      void consumeNativeTapRef.current();
+    });
+  }, [ready]);
+
+  useEffect(() => {
+    // Android toggles in NfcTapActivity and never delivers this URL to JS.
+    if (!ready || Platform.OS !== 'ios') return;
     let cancelled = false;
     let removeUrl: (() => void) | undefined;
     let unwatch: (() => void) | undefined;

@@ -7,6 +7,10 @@ import { isUnstableTagId, normalizeTagId, sameTagId } from '@/lib/tag-id';
  * is a separate credential and is never written here). A link, a notification,
  * or a copied NDEF payload must not lock or unlock on its own.
  *
+ * Android does not open the app. modules/nfc-tap receives the tap in a
+ * no-UI activity, checks this same UID rule, and toggles AppBlockerService.
+ * decideTagToggle below is the iOS path and the shared decision spec.
+ *
  * iOS limits (background tag reading):
  * - Apple's documented background reader only routes universal links and a
  *   short list of system schemes, not custom ones. Current iOS builds often

@@ -59,7 +59,6 @@
           "recordAudioAndroid": false
         }
       ],
-      "./plugins/with-nfc-launch",
       [
         "react-native-nfc-manager",
         {
@@ -67,6 +66,7 @@
           "includeNdefEntitlement": true
         }
       ],
+      "./plugins/with-nfc-launch",
       [
         "expo-app-blocker",
         {

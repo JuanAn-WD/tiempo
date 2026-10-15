@@ -9,8 +9,9 @@ import { useTiempo } from '@/context/tiempo-store';
 import { useI18n } from '@/i18n';
 
 /**
- * `apartag://tag` lands here. The link is only a launcher: the provider
- * reads the tag UID and toggles. This screen shows the result.
+ * iOS only. `apartag://tag` can open this screen because iOS cannot toggle
+ * in the background. Android handles the same link in NfcTapActivity and
+ * never routes here.
  */
 export default function TagLaunchScreen() {
   const router = useRouter();

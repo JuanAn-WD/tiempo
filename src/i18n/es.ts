@@ -155,7 +155,7 @@ export const es = {
     tagChange: 'Cambiar tag',
     tagPair: 'Emparejar tag',
     tagTapHint:
-      'Al emparejar se escribe apartag://tag. Ese enlace solo abre la app: la llave sigue siendo el identificador del tag, no el enlace.',
+      'En Android, acercar el tag bloquea o desbloquea sin abrir Apartag. El enlace apartag://tag solo sirve para que el sistema reconozca el tag; la llave sigue siendo su identificador. En iPhone el sistema puede abrir la app.',
     tagRewrite: 'Reescribir tag para el toque',
     tagRewriteHint: 'Vuelve a escribir el enlace en un tag que ya esté emparejado.',
     spareHint: 'Un segundo tag. Con el principal, basta para activar el modo estricto.',
@@ -316,9 +316,10 @@ export const es = {
     statusUnsupportedDev: 'Sin NFC en este dispositivo. En desarrollo puedes simular el tag.',
     doubleScanHint: 'Al emparejar se lee dos veces y las dos tienen que coincidir.',
     writing: 'Escribiendo el enlace en el tag.',
-    writePrompt: 'Acerca otra vez el mismo tag para que el toque abra Apartag',
+    writePrompt: 'Acerca otra vez el mismo tag para dejar el toque listo',
     launcherSkippedTitle: 'Tag emparejado',
-    launcherSkippedBody: 'No se escribió el enlace. Puedes reescribirlo en Ajustes cuando quieras.',
+    launcherSkippedBody:
+      'No se escribió el enlace. En Android el toque puede seguir valiendo por el identificador. Puedes reescribirlo en Ajustes.',
     tap: {
       checking: 'Comprobando el tag…',
       locked: 'Bloqueado.',
@@ -347,9 +348,9 @@ export const es = {
       authFailed: 'Ese no es un tag emparejado. La sesión sigue bloqueada.',
       noPairedTag: 'No hay un tag emparejado. Esta lectura no desbloquea.',
       readOnly:
-        'Este tag es de solo lectura. Queda emparejado, pero el toque no puede abrir Apartag: ábrela y acércalo.',
+        'Este tag es de solo lectura. Queda emparejado. En Android el toque sigue valiendo por el identificador. En iPhone el toque con la app cerrada necesita el enlace: ábrela y acércalo.',
       notNdef:
-        'No se pudo escribir el enlace. El tag no tiene formato NDEF o no se puede formatear. En iPhone hace falta un tag ya preparado. Sigue valiendo si abres Apartag y lo acercas.',
+        'No se pudo escribir el enlace. En Android el toque sigue valiendo por el identificador. En iPhone hace falta un tag ya preparado, o abrir Apartag y acercarlo.',
     },
   },
   alerts: {

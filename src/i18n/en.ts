@@ -154,7 +154,7 @@ export const en = {
     tagChange: 'Change tag',
     tagPair: 'Pair tag',
     tagTapHint:
-      'Pairing writes apartag://tag. That link only opens the app: the key is still the tag identifier, not the link.',
+      'On Android, a tap locks or unlocks without opening Apartag. The apartag://tag link only lets the system recognize the tag; the key is still its identifier. On iPhone the system may open the app.',
     tagRewrite: 'Rewrite tag for the tap',
     tagRewriteHint: 'Write the link again on a tag that is already paired.',
     spareHint: 'A second tag. With the main one, that’s enough to turn on Strict mode.',
@@ -313,9 +313,10 @@ export const en = {
     statusUnsupportedDev: 'No NFC on this device. In development you can simulate a tag.',
     doubleScanHint: 'Pairing reads the tag twice, and both reads have to match.',
     writing: 'Writing the link onto the tag.',
-    writePrompt: 'Hold the same tag here again so a tap opens Apartag',
+    writePrompt: 'Hold the same tag here again to prepare the tap',
     launcherSkippedTitle: 'Tag paired',
-    launcherSkippedBody: 'The link was not written. You can rewrite it in Settings whenever you want.',
+    launcherSkippedBody:
+      'The link was not written. On Android the tap can still work from the identifier. You can rewrite it in Settings.',
     tap: {
       checking: 'Checking the tag…',
       locked: 'Locked.',
@@ -344,9 +345,9 @@ export const en = {
       authFailed: 'That isn’t a paired tag. The session stays locked.',
       noPairedTag: 'No tag is paired. This scan won’t unlock.',
       readOnly:
-        'This tag is read-only. It stays paired, but a tap cannot open Apartag: open the app and hold it there.',
+        'This tag is read-only. It stays paired. On Android the tap still works from the identifier. On iPhone a tap with the app closed needs the link: open Apartag and hold it there.',
       notNdef:
-        'The link could not be written. The tag has no NDEF format, or it cannot be formatted. iPhone needs a tag that is already prepared. It still works if you open Apartag and hold it there.',
+        'The link could not be written. On Android the tap still works from the identifier. iPhone needs a tag that is already prepared, or you open Apartag and hold it there.',
     },
   },
   alerts: {

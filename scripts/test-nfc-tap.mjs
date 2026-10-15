@@ -40,6 +40,7 @@ function loadTs(rel) {
 
 const { TAG_LAUNCHER_URL, launcherUriPayload, isTagLauncherUrl, decideTagToggle } = loadTs('src/lib/nfc-tap.ts');
 const { classifyNfcError } = loadTs('src/lib/nfc-errors.ts');
+const { applyNativeTapEvent } = loadTs('src/lib/nfc-tap-state.ts');
 
 const PAIRED = '04A1B2C3D4E5F6';
 const SPARE = 'AABBCCDD';
@@ -122,5 +123,26 @@ assert.equal(classifyNfcError('Tag is not writeable'), 'read-only');
 assert.equal(classifyNfcError('NfcError:400'), 'read-only');
 assert.equal(classifyNfcError('Tag is not ndef formattable'), 'not-ndef');
 assert.equal(classifyNfcError('fail to apply ndef formatable tech'), 'not-ndef');
+
+const session = {
+  locked: true,
+  lockedAt: 1_000,
+  recoveredMs: 50,
+  mode: 'trabajo',
+  sessions: [],
+};
+const unlocked = applyNativeTapEvent(session, { action: 'unlock', at: 4_000 });
+assert.equal(unlocked.locked, false);
+assert.equal(unlocked.lockedAt, null);
+assert.equal(unlocked.recoveredMs, 3_050);
+assert.equal(unlocked.sessions.length, 1);
+assert.equal(unlocked.sessions[0].startedAt, 1_000);
+assert.equal(unlocked.sessions[0].endedAt, 4_000);
+assert.equal(applyNativeTapEvent(unlocked, { action: 'unlock', at: 9_000 }), unlocked);
+
+const locked = applyNativeTapEvent(unlocked, { action: 'lock', at: 8_000 });
+assert.equal(locked.locked, true);
+assert.equal(locked.lockedAt, 8_000);
+assert.equal(applyNativeTapEvent(locked, { action: 'lock', at: 9_000 }), locked);
 
 console.log('nfc tap ok');

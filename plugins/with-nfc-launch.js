@@ -1,49 +1,45 @@
 const { withAndroidManifest } = require('expo/config-plugins');
 
-const ACTION = 'android.nfc.action.NDEF_DISCOVERED';
-const SCHEME = 'apartag';
-const HOST = 'tag';
+const NFC_ACTIONS = new Set([
+  'android.nfc.action.NDEF_DISCOVERED',
+  'android.nfc.action.TAG_DISCOVERED',
+  'android.nfc.action.TECH_DISCOVERED',
+]);
 
 /**
- * Expo's android.intentFilters always prefixes the action with
- * `android.intent.action.`, which turns NDEF_DISCOVERED into a name Android
- * will never deliver. The filter is written here, on the main activity, for
- * the launcher URI `apartag://tag` (scheme + host, no path).
+ * Android must not open React Native when a tag is tapped.
  *
- * singleTask keeps a second tap on the same task (onNewIntent) instead of
- * starting another copy of the app.
+ * Expo's android.intentFilters prefixes every action with
+ * `android.intent.action.`, so NDEF_DISCOVERED cannot be declared in app.json.
+ * The invisible handler lives in modules/nfc-tap (autolinked on prebuild):
+ * Theme.NoDisplay, excludeFromRecents, noHistory, and its own taskAffinity.
+ * It receives NDEF_DISCOVERED for apartag://tag and TAG_DISCOVERED as a UID
+ * fallback, toggles the blocker, and finishes.
+ *
+ * This plugin only strips those actions from the main activity, including any
+ * filter added by an earlier plugin. iOS still uses the apartag://tag deep
+ * link because iOS cannot run this activity in the background.
  */
+function isMainActivity(activity) {
+  return (activity['intent-filter'] ?? []).some((filter) =>
+    (filter.action ?? []).some((action) => action.$?.['android:name'] === 'android.intent.action.MAIN'),
+  );
+}
+
+function isNfcFilter(filter) {
+  return (filter.action ?? []).some((action) => NFC_ACTIONS.has(action.$?.['android:name']));
+}
+
 function withNfcLaunch(config) {
   return withAndroidManifest(config, (config) => {
-    const application = config.modResults.manifest.application?.[0];
-    const activities = application?.activity;
+    const activities = config.modResults.manifest.application?.[0]?.activity;
     if (!activities?.length) return config;
 
-    const main =
-      activities.find((activity) =>
-        (activity['intent-filter'] ?? []).some((filter) =>
-          (filter.action ?? []).some((action) => action.$?.['android:name'] === 'android.intent.action.MAIN'),
-        ),
-      ) ?? activities[0];
-
-    if (!main.$) main.$ = {};
-    main.$['android:launchMode'] = 'singleTask';
-    if (!main['intent-filter']) main['intent-filter'] = [];
-
-    const already = main['intent-filter'].some((filter) => {
-      const hasAction = (filter.action ?? []).some((action) => action.$?.['android:name'] === ACTION);
-      const hasData = (filter.data ?? []).some(
-        (data) => data.$?.['android:scheme'] === SCHEME && data.$?.['android:host'] === HOST,
-      );
-      return hasAction && hasData;
-    });
-    if (already) return config;
-
-    main['intent-filter'].push({
-      action: [{ $: { 'android:name': ACTION } }],
-      category: [{ $: { 'android:name': 'android.intent.category.DEFAULT' } }],
-      data: [{ $: { 'android:scheme': SCHEME, 'android:host': HOST } }],
-    });
+    for (const activity of activities) {
+      if (!isMainActivity(activity)) continue;
+      if (!activity['intent-filter']) continue;
+      activity['intent-filter'] = activity['intent-filter'].filter((filter) => !isNfcFilter(filter));
+    }
     return config;
   });
 }
