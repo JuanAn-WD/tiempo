@@ -20,7 +20,7 @@ export const PERMISSION_COPY_FIELDS = ['title', 'body', 'denied', 'unavailable',
 
 export type AppPlatform = 'ios' | 'android' | 'web';
 
-export type FlowScope = 'session' | 'nfc' | 'camera';
+export type FlowScope = 'session' | 'nfc' | 'camera' | 'block';
 
 export type PermissionOutcome = 'granted' | 'denied' | 'undetermined' | 'unavailable' | 'notUsed';
 
@@ -42,7 +42,7 @@ export function normalizePlatform(os: string): AppPlatform {
 
 export function parseFlowScope(value: string | string[] | undefined): FlowScope {
   const raw = Array.isArray(value) ? value[0] : value;
-  if (raw === 'nfc' || raw === 'camera') return raw;
+  if (raw === 'nfc' || raw === 'camera' || raw === 'block') return raw;
   return 'session';
 }
 
@@ -50,6 +50,7 @@ export function parseFlowScope(value: string | string[] | undefined): FlowScope 
 export function stepsFor(platform: AppPlatform, scope: FlowScope): PermissionId[] {
   if (scope === 'nfc') return ['nfc'];
   if (scope === 'camera') return ['camera'];
+  if (scope === 'block') return platform === 'android' ? ['usage', 'overlay', 'notifications'] : [];
   if (platform === 'ios') return ['nfc', 'screenTime', 'notifications', 'camera'];
   if (platform === 'android') return ['nfc', 'usage', 'overlay', 'accessibility', 'notifications', 'camera'];
   return ['nfc', 'screenTime', 'usage', 'overlay', 'accessibility', 'notifications', 'camera'];

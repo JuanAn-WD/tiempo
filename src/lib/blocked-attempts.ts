@@ -8,7 +8,8 @@
  *
  * Platform limits (expo-app-blocker 0.1.77):
  *
- * Android. The foreground service polls usage about every 500ms. When a
+ * Android. The foreground service polls usage about every second, looking back
+ * two minutes so a delayed usage event is still seen. When a
  * blocked app is in front and there is no earned-time unlock, it shows the
  * overlay and appends one event to SharedPreferences (`pending_intercepts`).
  * A 2 second debounce collapses the poll into one attempt. The app name is

@@ -98,6 +98,9 @@ assert.equal(ios.includes('overlay'), false);
 assert.equal(ios.includes('accessibility'), false);
 assert.deepEqual(stepsFor('ios', 'nfc'), ['nfc']);
 assert.deepEqual(stepsFor('android', 'camera'), ['camera']);
+assert.deepEqual(stepsFor('android', 'block'), ['usage', 'overlay', 'notifications']);
+assert.deepEqual(stepsFor('ios', 'block'), []);
+assert.equal(parseFlowScope('block'), 'block');
 assert.equal(new Set(android).size, android.length);
 
 assert.equal(activeStep(android, 0), 'nfc');

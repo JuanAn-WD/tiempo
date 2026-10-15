@@ -48,7 +48,7 @@ export const TAB_BAR_HEIGHT = 64;
 
 export function AppTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
   const insets = useSafeAreaInsets();
-  const { state: appState } = useTiempo();
+  const { enforcing } = useTiempo();
   const { t } = useI18n();
   const bottomPad = Math.max(insets.bottom, 10);
 
@@ -59,7 +59,7 @@ export function AppTabBar({ state, descriptors, navigation }: BottomTabBarProps)
           const focused = state.index === index;
           const meta = TABS[route.name];
           const label = meta ? t(meta.label) : (descriptors[route.key]?.options.title ?? route.name);
-          const showLockDot = route.name === 'index' && appState.locked;
+          const showLockDot = route.name === 'index' && enforcing;
 
           const onPress = () => {
             const event = navigation.emit({
@@ -83,7 +83,7 @@ export function AppTabBar({ state, descriptors, navigation }: BottomTabBarProps)
               style={({ pressed }) => [
                 styles.item,
                 focused && styles.itemOn,
-                focused && appState.locked && route.name === 'index' && styles.itemFocus,
+                focused && enforcing && route.name === 'index' && styles.itemFocus,
                 pressed && styles.pressed,
               ]}>
               <View style={styles.iconWrap}>
@@ -97,7 +97,7 @@ export function AppTabBar({ state, descriptors, navigation }: BottomTabBarProps)
                   weight={focused ? 'bold' : 'regular'}
                   tintColor={
                     focused
-                      ? route.name === 'index' && appState.locked
+                      ? route.name === 'index' && enforcing
                         ? Palette.focus
                         : Palette.accentText
                       : Palette.muted
@@ -109,7 +109,7 @@ export function AppTabBar({ state, descriptors, navigation }: BottomTabBarProps)
                 style={[
                   styles.label,
                   focused && styles.labelOn,
-                  focused && route.name === 'index' && appState.locked && styles.labelFocus,
+                  focused && route.name === 'index' && enforcing && styles.labelFocus,
                 ]}>
                 {label}
               </Text>

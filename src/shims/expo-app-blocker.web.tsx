@@ -38,6 +38,16 @@ export function startMonitoring(): void {}
 
 export function stopMonitoring(): void {}
 
+export function isMonitoring(): boolean {
+  return false;
+}
+
+export function isIgnoringBatteryOptimizations(): boolean {
+  return false;
+}
+
+export function openBatterySettings(): void {}
+
 export async function presentFamilyActivityPicker(): Promise<never> {
   return unsupported();
 }
