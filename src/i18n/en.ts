@@ -176,10 +176,10 @@ export const en = {
     tagChange: 'Change tag',
     tagPair: 'Pair tag',
     tagTapHint:
-      'On Android, a tap locks or unlocks without opening Apartag and without tapping Open. Rewrite the tag once so it stores the app record. The key is still the identifier. On iPhone the system may open the app.',
+      'On Android, a tap locks or unlocks without opening Apartag and without tapping Open. Pairing writes that tap onto the tag. The key is still the identifier. On iPhone the system may open the app.',
     tagRewrite: 'Rewrite tag for the tap',
     tagRewriteHint:
-      'Write the paired tag again. On Android this stores the app record so the tap does not ask you to open it.',
+      'Repair: if the tap asks you to open the app, or the tag was paired without the record, write the link and the app record again.',
     spareHint: 'A second tag. With the main one, that’s enough to turn on Strict mode.',
     spareChange: 'Change second tag',
     sparePair: 'Pair second tag',
@@ -335,12 +335,10 @@ export const en = {
     statusDisabled: 'NFC is off.',
     statusUnsupported: 'This phone doesn’t have NFC.',
     statusUnsupportedDev: 'No NFC on this device. In development you can simulate a tag.',
-    doubleScanHint: 'Pairing reads the tag twice, and both reads have to match.',
-    writing: 'Writing the link onto the tag.',
-    writePrompt: 'Hold the same tag here again to prepare the tap',
-    launcherSkippedTitle: 'Tag paired',
-    launcherSkippedBody:
-      'The link was not written. On Android the tap can still work from the identifier. You can rewrite it in Settings.',
+    doubleScanHint:
+      'Pairing reads the tag twice and they have to match. The second hold writes the tap before you let go.',
+    writing: 'Keep the tag there: it is checked and the tap is written.',
+    writePrompt: 'Keep holding the same tag. It is checked and the tap is prepared',
     tap: {
       checking: 'Checking the tag…',
       locked: 'Locked.',

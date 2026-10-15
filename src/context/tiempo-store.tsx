@@ -50,6 +50,7 @@ import {
 } from '@/lib/mobile-key';
 import {
   cancelActiveNfcSession,
+  confirmAndWriteLauncher,
   confirmTag,
   getNfcStatus,
   openNfcSettings as openSystemNfcSettings,
@@ -57,11 +58,12 @@ import {
   takeLaunchTagId,
   watchBackgroundTag,
   writeLauncherRecord,
+  type PairingRecord,
 } from '@/lib/nfc';
 import { NFC_FAILURE_KEY } from '@/lib/nfc-failure-key';
 import { pullNfcTapEvent, pushNfcTapState, subscribeNfcTap } from '@/lib/nfc-native-tap';
 import { decideTagToggle, isTagLauncherUrl } from '@/lib/nfc-tap';
-import type { NfcFailure, NfcRead } from '@/lib/nfc-types';
+import type { NfcFailure } from '@/lib/nfc-types';
 import { sameTagId } from '@/lib/tag-id';
 import { clampUsageMinutes, USAGE_DEFAULT_MINUTES, type UsageBudgetConfig } from '@/lib/usage-budget';
 import {
@@ -493,15 +495,35 @@ export function TiempoProvider({ children }: { children: ReactNode }) {
     setPermissions(await requestNativePermissions());
   }, []);
 
-  const noteLauncherWrite = useCallback((token: number, scope: NfcScope, write: NfcRead) => {
-    if (token !== nfcToken.current || write.ok) return;
-    if (write.error === 'cancelled') {
-      Alert.alert(tRef.current('nfc.launcherSkippedTitle'), tRef.current('nfc.launcherSkippedBody'));
-      return;
-    }
-    setNfcNotice({ scope, error: write.error });
-    void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
-  }, []);
+  const finishPairing = useCallback(
+    async (
+      token: number,
+      scope: NfcScope,
+      result: PairingRecord,
+      save: (id: string) => Promise<unknown>,
+    ) => {
+      if (token !== nfcToken.current) return false;
+      if (!result.ok) {
+        failNfc(token, scope, result.error);
+        return false;
+      }
+      try {
+        await save(result.id);
+      } catch {
+        failNfc(token, scope, 'unknown');
+        return false;
+      }
+      if (token !== nfcToken.current) return false;
+      if (!result.written) {
+        setNfcActivity(null);
+        setNfcNotice({ scope, error: result.reason });
+        void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+        return true;
+      }
+      return succeedNfc(token);
+    },
+    [failNfc, succeedNfc],
+  );
 
   const pairTag = useCallback(
     async (id?: string) => {
@@ -527,42 +549,25 @@ export function TiempoProvider({ children }: { children: ReactNode }) {
       const allowed = await authorizeLockedChange(token, 'pair');
       if (!allowed || token !== nfcToken.current) return false;
       const replacing = Boolean(stateRef.current.tagId);
-      const read = await confirmTag(
+      const result = await confirmAndWriteLauncher(
         {
           first: replacing ? t('nfc.newTagPrompt') : t('nfc.scanPrompt'),
-          second: t('nfc.confirmPrompt'),
+          confirm: t('nfc.writePrompt'),
         },
-        (step) => showNfcPhase(token, 'pair', step === 'second' ? 'confirm' : 'reading'),
+        (step) => showNfcPhase(token, 'pair', step === 'writing' ? 'writing' : 'reading'),
       );
       if (token !== nfcToken.current) return false;
-      if (!read.ok) {
-        failNfc(token, 'pair', read.error);
-        return false;
-      }
-      if (isSimulatedTag(read.id) && !__DEV__) {
+      if (result.ok && isSimulatedTag(result.id) && !__DEV__) {
         failNfc(token, 'pair', 'unknown');
         return false;
       }
-      if (stateRef.current.spareTagId && sameTagId(read.id, stateRef.current.spareTagId)) {
+      if (result.ok && stateRef.current.spareTagId && sameTagId(result.id, stateRef.current.spareTagId)) {
         failNfc(token, 'pair', 'same-as-spare');
         return false;
       }
-      try {
-        await persist((prev) => ({ ...prev, tagId: read.id }));
-      } catch {
-        failNfc(token, 'pair', 'unknown');
-        return false;
-      }
-      if (token !== nfcToken.current) return false;
-      showNfcPhase(token, 'pair', 'writing');
-      const write = await writeLauncherRecord([read.id], t('nfc.writePrompt'));
-      if (token !== nfcToken.current) return false;
-      const paired = succeedNfc(token);
-      if (!paired) return false;
-      noteLauncherWrite(token, 'pair', write);
-      return true;
+      return finishPairing(token, 'pair', result, (tagId) => persist((prev) => ({ ...prev, tagId })));
     },
-    [authorizeLockedChange, beginNfc, failNfc, noteLauncherWrite, persist, showNfcPhase, succeedNfc, t],
+    [authorizeLockedChange, beginNfc, failNfc, finishPairing, persist, showNfcPhase, succeedNfc, t],
   );
 
   const pairSpareTag = useCallback(
@@ -592,39 +597,22 @@ export function TiempoProvider({ children }: { children: ReactNode }) {
       }
       const allowed = await authorizeLockedChange(token, 'spare');
       if (!allowed || token !== nfcToken.current) return false;
-      const read = await confirmTag(
-        { first: t('nfc.newTagPrompt'), second: t('nfc.confirmPrompt') },
-        (step) => showNfcPhase(token, 'spare', step === 'second' ? 'confirm' : 'reading'),
+      const result = await confirmAndWriteLauncher(
+        { first: t('nfc.newTagPrompt'), confirm: t('nfc.writePrompt') },
+        (step) => showNfcPhase(token, 'spare', step === 'writing' ? 'writing' : 'reading'),
       );
       if (token !== nfcToken.current) return false;
-      if (!read.ok) {
-        failNfc(token, 'spare', read.error);
-        return false;
-      }
-      if (isSimulatedTag(read.id) && !__DEV__) {
+      if (result.ok && isSimulatedTag(result.id) && !__DEV__) {
         failNfc(token, 'spare', 'unknown');
         return false;
       }
-      if (stateRef.current.tagId && sameTagId(read.id, stateRef.current.tagId)) {
+      if (result.ok && stateRef.current.tagId && sameTagId(result.id, stateRef.current.tagId)) {
         failNfc(token, 'spare', 'same-as-primary');
         return false;
       }
-      try {
-        await persist((prev) => ({ ...prev, spareTagId: read.id }));
-      } catch {
-        failNfc(token, 'spare', 'unknown');
-        return false;
-      }
-      if (token !== nfcToken.current) return false;
-      showNfcPhase(token, 'spare', 'writing');
-      const write = await writeLauncherRecord([read.id], t('nfc.writePrompt'));
-      if (token !== nfcToken.current) return false;
-      const paired = succeedNfc(token);
-      if (!paired) return false;
-      noteLauncherWrite(token, 'spare', write);
-      return true;
+      return finishPairing(token, 'spare', result, (spareTagId) => persist((prev) => ({ ...prev, spareTagId })));
     },
-    [authorizeLockedChange, beginNfc, failNfc, noteLauncherWrite, persist, showNfcPhase, succeedNfc, t],
+    [authorizeLockedChange, beginNfc, failNfc, finishPairing, persist, showNfcPhase, succeedNfc, t],
   );
 
   const rewritePairedTag = useCallback(async () => {
