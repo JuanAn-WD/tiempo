@@ -65,7 +65,7 @@ assert.match(flow, /scope === 'block'/);
 const store = read('src/context/tiempo-store.tsx');
 assert.match(store, /startAndroidBlock\(current\.selectedPackages\)/);
 assert.match(store, /startAndroidBlock\(next\.selectedPackages\)/);
-assert.match(store, /applyNativeLock\(loaded\)/);
+assert.match(store, /applyNativeLock\(current\)/);
 assert.match(store, /permissions\?scope=block/);
 
 console.log('android blocker native contract ok');

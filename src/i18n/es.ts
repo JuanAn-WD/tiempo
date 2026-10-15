@@ -154,6 +154,11 @@ export const es = {
     nfcOff: 'Sin NFC en este dispositivo',
     tagChange: 'Cambiar tag',
     tagPair: 'Emparejar tag',
+    tagTapHint:
+      'En Android, acercar el tag bloquea o desbloquea sin abrir Apartag y sin pulsar Abrir. Hay que reescribir el tag una vez para guardar el registro de la app. La llave sigue siendo el identificador. En iPhone el sistema puede abrir la app.',
+    tagRewrite: 'Reescribir tag para el toque',
+    tagRewriteHint:
+      'Vuelve a escribir el tag emparejado. En Android guarda el registro de la app para que el toque no pida Abrir.',
     spareHint: 'Un segundo tag. Con el principal, basta para activar el modo estricto.',
     spareChange: 'Cambiar segundo tag',
     sparePair: 'Emparejar segundo tag',
@@ -311,6 +316,22 @@ export const es = {
     statusUnsupported: 'Este móvil no tiene NFC.',
     statusUnsupportedDev: 'Sin NFC en este dispositivo. En desarrollo puedes simular el tag.',
     doubleScanHint: 'Al emparejar se lee dos veces y las dos tienen que coincidir.',
+    writing: 'Escribiendo el enlace en el tag.',
+    writePrompt: 'Acerca otra vez el mismo tag para dejar el toque listo',
+    launcherSkippedTitle: 'Tag emparejado',
+    launcherSkippedBody:
+      'No se escribió el enlace. En Android el toque puede seguir valiendo por el identificador. Puedes reescribirlo en Ajustes.',
+    tap: {
+      checking: 'Comprobando el tag…',
+      locked: 'Bloqueado.',
+      unlocked: 'Desbloqueado.',
+      notReady: 'Termina de preparar Apartag antes de usar el tag.',
+      readPrompt: 'Acerca tu tag para comprobarlo',
+      permissions: 'Faltan permisos para bloquear. No se ha cambiado nada.',
+      noApps: 'No hay apps elegidas. No se ha bloqueado nada.',
+      iosLimits:
+        'En iPhone el toque con la app cerrada depende del sistema: pantalla encendida, desbloqueado al menos una vez tras encender, y sin Wallet, cámara u otra sesión NFC. iOS no manda el identificador en el enlace, así que hay que acercar el tag otra vez. Un tag sin formato NDEF no se puede preparar desde el iPhone.',
+    },
     failure: {
       unsupported: 'Este móvil no tiene NFC.',
       disabled: 'El NFC está apagado. Actívalo e inténtalo de nuevo.',
@@ -327,6 +348,10 @@ export const es = {
       needPrimary: 'Empareja primero el tag principal.',
       authFailed: 'Ese no es un tag emparejado. La sesión sigue bloqueada.',
       noPairedTag: 'No hay un tag emparejado. Esta lectura no desbloquea.',
+      readOnly:
+        'Este tag es de solo lectura. Queda emparejado. En Android el toque sigue valiendo por el identificador. En iPhone el toque con la app cerrada necesita el enlace: ábrela y acércalo.',
+      notNdef:
+        'No se pudo escribir el enlace. En Android el toque sigue valiendo por el identificador. En iPhone hace falta un tag ya preparado, o abrir Apartag y acercarlo.',
     },
   },
   alerts: {

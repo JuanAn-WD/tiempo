@@ -5,6 +5,7 @@ import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 import { ActivityIndicator, StyleSheet, View } from 'react-native';
 
+import { LauncherFeedback } from '@/components/launcher-feedback';
 import { StoreReviewPrompt } from '@/components/store-review-prompt';
 import { brandFonts } from '@/constants/fonts';
 import { Palette } from '@/constants/theme';
@@ -49,6 +50,7 @@ function Gate({ fontsReady }: { fontsReady: boolean }) {
     <>
       <StatusBar style="light" />
       <StoreReviewPrompt />
+      <LauncherFeedback />
       <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: Palette.bg } }}>
         <Stack.Screen name="(tabs)" />
         <Stack.Screen name="onboarding" />
@@ -60,6 +62,7 @@ function Gate({ fontsReady }: { fontsReady: boolean }) {
         <Stack.Screen name="claim-key" options={{ presentation: 'modal' }} />
         <Stack.Screen name="llave" options={{ presentation: 'modal' }} />
         <Stack.Screen name="pro" options={{ presentation: 'modal' }} />
+        <Stack.Screen name="tag" />
       </Stack>
     </>
   );

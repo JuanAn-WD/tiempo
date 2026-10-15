@@ -32,7 +32,9 @@ export default function SettingsScreen() {
     state,
     pairTag,
     pairSpareTag,
+    rewritePairedTag,
     clearSpareTag,
+    nfcNotice,
     setStrict,
     nfcSupported,
     nfcEnabled,
@@ -193,10 +195,13 @@ export default function SettingsScreen() {
           </Text>
         )}
         <Text style={styles.rowHint}>{t('nfc.doubleScanHint')}</Text>
+        <Text style={styles.rowHint}>{t('settings.tagTapHint')}</Text>
+        {Platform.OS === 'ios' ? <Text style={styles.rowHint}>{t('nfc.tap.iosLimits')}</Text> : null}
         <NfcNotice
-          scope="pair"
+          scope={['pair', 'rewrite']}
           onRetry={() => {
             if (!nfcExplained) explainNfc();
+            else if (nfcNotice?.scope === 'rewrite') void rewritePairedTag();
             else void pairTag();
           }}
         />
@@ -207,6 +212,19 @@ export default function SettingsScreen() {
             else void pairTag();
           }}
         />
+        {state.tagId || state.spareTagId ? (
+          <>
+            <Text style={styles.rowHint}>{t('settings.tagRewriteHint')}</Text>
+            <PrimaryButton
+              muted
+              label={t('settings.tagRewrite')}
+              onPress={() => {
+                if (!nfcExplained) explainNfc();
+                else void rewritePairedTag();
+              }}
+            />
+          </>
+        ) : null}
       </Card>
 
       <Card style={styles.card}>

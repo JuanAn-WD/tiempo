@@ -66,6 +66,7 @@
           "includeNdefEntitlement": true
         }
       ],
+      "./plugins/with-nfc-launch",
       [
         "expo-app-blocker",
         {

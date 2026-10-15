@@ -39,6 +39,11 @@ async function native(): Promise<AndroidBlockerModule> {
   return import('expo-app-blocker');
 }
 
+export async function requestAndroidNotifications() {
+  if (Platform.OS !== 'android') return;
+  await requestNotificationsBestEffort();
+}
+
 async function requestNotificationsBestEffort() {
   try {
     const Notifications = await import('expo-notifications');

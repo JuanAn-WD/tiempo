@@ -153,6 +153,11 @@ export const en = {
     nfcOff: 'No NFC on this device',
     tagChange: 'Change tag',
     tagPair: 'Pair tag',
+    tagTapHint:
+      'On Android, a tap locks or unlocks without opening Apartag and without tapping Open. Rewrite the tag once so it stores the app record. The key is still the identifier. On iPhone the system may open the app.',
+    tagRewrite: 'Rewrite tag for the tap',
+    tagRewriteHint:
+      'Write the paired tag again. On Android this stores the app record so the tap does not ask you to open it.',
     spareHint: 'A second tag. With the main one, that’s enough to turn on Strict mode.',
     spareChange: 'Change second tag',
     sparePair: 'Pair second tag',
@@ -308,6 +313,22 @@ export const en = {
     statusUnsupported: 'This phone doesn’t have NFC.',
     statusUnsupportedDev: 'No NFC on this device. In development you can simulate a tag.',
     doubleScanHint: 'Pairing reads the tag twice, and both reads have to match.',
+    writing: 'Writing the link onto the tag.',
+    writePrompt: 'Hold the same tag here again to prepare the tap',
+    launcherSkippedTitle: 'Tag paired',
+    launcherSkippedBody:
+      'The link was not written. On Android the tap can still work from the identifier. You can rewrite it in Settings.',
+    tap: {
+      checking: 'Checking the tag…',
+      locked: 'Locked.',
+      unlocked: 'Unlocked.',
+      notReady: 'Finish setting up Apartag before using the tag.',
+      readPrompt: 'Hold your tag here so it can be checked',
+      permissions: 'Permissions are missing, so nothing was locked.',
+      noApps: 'No apps are selected, so nothing was locked.',
+      iosLimits:
+        'On iPhone, a tap with the app closed depends on the system: screen on, unlocked at least once since boot, and not in Wallet, the camera, or another NFC session. iOS does not send the identifier in the link, so you hold the tag up again. A tag without NDEF cannot be prepared from the iPhone.',
+    },
     failure: {
       unsupported: 'This phone doesn’t have NFC.',
       disabled: 'NFC is off. Turn it on and try again.',
@@ -324,6 +345,10 @@ export const en = {
       needPrimary: 'Pair the main tag first.',
       authFailed: 'That isn’t a paired tag. The session stays locked.',
       noPairedTag: 'No tag is paired. This scan won’t unlock.',
+      readOnly:
+        'This tag is read-only. It stays paired. On Android the tap still works from the identifier. On iPhone a tap with the app closed needs the link: open Apartag and hold it there.',
+      notNdef:
+        'The link could not be written. On Android the tap still works from the identifier. iPhone needs a tag that is already prepared, or you open Apartag and hold it there.',
     },
   },
   alerts: {
