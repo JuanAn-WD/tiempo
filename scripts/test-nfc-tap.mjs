@@ -38,7 +38,15 @@ function loadTs(rel) {
   return mod.exports;
 }
 
-const { TAG_LAUNCHER_URL, launcherUriPayload, isTagLauncherUrl, decideTagToggle } = loadTs('src/lib/nfc-tap.ts');
+const {
+  TAG_LAUNCHER_URL,
+  ANDROID_PACKAGE,
+  AAR_TYPE,
+  launcherUriPayload,
+  androidApplicationRecordPayload,
+  isTagLauncherUrl,
+  decideTagToggle,
+} = loadTs('src/lib/nfc-tap.ts');
 const { classifyNfcError } = loadTs('src/lib/nfc-errors.ts');
 const { applyNativeTapEvent } = loadTs('src/lib/nfc-tap-state.ts');
 
@@ -51,8 +59,19 @@ const SOCIAL = [
 ];
 
 assert.equal(TAG_LAUNCHER_URL, 'apartag://tag');
+assert.equal(ANDROID_PACKAGE, 'com.apartag.app');
+assert.equal(AAR_TYPE, 'android.com:pkg');
 assert.deepEqual(launcherUriPayload(), [0x00, ...Buffer.from('apartag://tag')]);
 assert.equal(Buffer.from(launcherUriPayload().slice(1)).toString(), 'apartag://tag');
+assert.equal(Buffer.from(androidApplicationRecordPayload()).toString(), 'com.apartag.app');
+
+const nfcSource = fs.readFileSync(path.join(root, 'src/lib/nfc.ts'), 'utf8');
+const uriWrite = nfcSource.indexOf('TNF_WELL_KNOWN');
+const aarWrite = nfcSource.indexOf('TNF_EXTERNAL_TYPE');
+assert.ok(uriWrite > 0 && aarWrite > uriWrite);
+assert.match(nfcSource, /AAR_TYPE/);
+assert.match(nfcSource, /androidApplicationRecordPayload\(\)/);
+assert.match(nfcSource, /encodeMessage\(\[uri, aar\]\)/);
 
 for (const url of ['apartag://tag', 'apartag://tag/', '  APARTAG://tag  ', 'apartag://tag?id=DEADBEEF']) {
   assert.equal(isTagLauncherUrl(url), true, url);

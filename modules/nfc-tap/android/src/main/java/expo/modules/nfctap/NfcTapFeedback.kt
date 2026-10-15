@@ -3,7 +3,6 @@ package expo.modules.nfctap
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
-import android.app.PendingIntent
 import android.content.Context
 import android.content.pm.PackageManager
 import android.os.Build
@@ -13,24 +12,35 @@ import android.os.VibratorManager
 import android.widget.Toast
 import java.util.Locale
 
-/** Toast survives finish(). A notification is only for a lock that could not start. */
+/**
+ * The lock already happened before this runs. Nothing here asks the user to
+ * tap "Abrir": there is no content intent and no action that starts an activity.
+ * The confirmation is a normal auto-cancel notification on "Estado de bloqueo".
+ */
 object NfcTapFeedback {
-  private const val CHANNEL_ID = "apartag_nfc_tap"
+  private const val STATE_CHANNEL_ID = "apartag_lock_state"
+  const val STATE_CHANNEL_NAME = "Estado de bloqueo"
+  private const val STATE_NOTIFICATION_ID = 9108
+  private const val NOTICE_CHANNEL_ID = "apartag_nfc_tap"
   private const val NOTICE_ID = 9107
   private const val BUZZ_MS = 80L
+  private const val STATE_TIMEOUT_MS = 6_000L
 
   fun show(context: Context, outcome: NfcTapController.Outcome) {
     val text = message(outcome) ?: return
     buzz(context)
     Toast.makeText(context.applicationContext, text, Toast.LENGTH_SHORT).show()
     when (outcome) {
+      NfcTapController.Outcome.LOCKED,
+      NfcTapController.Outcome.UNLOCKED,
+      -> {
+        cancel(context, NOTICE_ID)
+        notify(context, STATE_CHANNEL_ID, STATE_CHANNEL_NAME, STATE_NOTIFICATION_ID, text, timeout = true)
+      }
       NfcTapController.Outcome.PERMISSIONS,
       NfcTapController.Outcome.NO_APPS,
       NfcTapController.Outcome.FAILED,
-      -> notify(context, text)
-      NfcTapController.Outcome.LOCKED,
-      NfcTapController.Outcome.UNLOCKED,
-      -> cancel(context)
+      -> notify(context, NOTICE_CHANNEL_ID, "Apartag", NOTICE_ID, text, timeout = false)
       else -> Unit
     }
   }
@@ -83,7 +93,14 @@ object NfcTapFeedback {
     }
   }
 
-  private fun notify(context: Context, text: String) {
+  private fun notify(
+    context: Context,
+    channelId: String,
+    channelName: String,
+    id: Int,
+    text: String,
+    timeout: Boolean,
+  ) {
     if (Build.VERSION.SDK_INT >= 33 &&
       context.checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
     ) {
@@ -91,24 +108,14 @@ object NfcTapFeedback {
     }
     val manager = context.getSystemService(NotificationManager::class.java) ?: return
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-      manager.createNotificationChannel(
-        NotificationChannel(CHANNEL_ID, "Apartag", NotificationManager.IMPORTANCE_DEFAULT),
-      )
-    }
-    val launch = context.packageManager.getLaunchIntentForPackage(context.packageName)
-    val pending = if (launch == null) {
-      null
-    } else {
-      PendingIntent.getActivity(
-        context,
-        0,
-        launch,
-        PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
-      )
+      val channel = NotificationChannel(channelId, channelName, NotificationManager.IMPORTANCE_DEFAULT)
+      channel.enableVibration(false)
+      channel.setSound(null, null)
+      manager.createNotificationChannel(channel)
     }
     val icon = context.applicationInfo.icon.takeIf { it != 0 } ?: android.R.drawable.stat_notify_more
     val builder = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-      Notification.Builder(context, CHANNEL_ID)
+      Notification.Builder(context, channelId)
     } else {
       @Suppress("DEPRECATION")
       Notification.Builder(context)
@@ -118,11 +125,14 @@ object NfcTapFeedback {
       .setContentTitle("Apartag")
       .setContentText(text)
       .setAutoCancel(true)
-    if (pending != null) builder.setContentIntent(pending)
-    manager.notify(NOTICE_ID, builder.build())
+      .setOnlyAlertOnce(true)
+    if (timeout && Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+      builder.setTimeoutAfter(STATE_TIMEOUT_MS)
+    }
+    manager.notify(id, builder.build())
   }
 
-  private fun cancel(context: Context) {
-    context.getSystemService(NotificationManager::class.java)?.cancel(NOTICE_ID)
+  private fun cancel(context: Context, id: Int) {
+    context.getSystemService(NotificationManager::class.java)?.cancel(id)
   }
 }

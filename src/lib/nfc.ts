@@ -2,7 +2,12 @@ import { Platform } from 'react-native';
 
 import { readDeviceLocale, translate } from '@/i18n';
 import { classifyNfcError } from '@/lib/nfc-errors';
-import { launcherUriPayload, TAG_LAUNCHER_URL } from '@/lib/nfc-tap';
+import {
+  AAR_TYPE,
+  androidApplicationRecordPayload,
+  launcherUriPayload,
+  TAG_LAUNCHER_URL,
+} from '@/lib/nfc-tap';
 import { isUnstableTagId, normalizeTagId, sameTagId, tagIdFromEvent } from '@/lib/tag-id';
 import type { NfcFailure, NfcRadioStatus, NfcRead } from '@/lib/nfc-types';
 
@@ -345,8 +350,12 @@ async function writeExclusive(
   if (myGen !== generation) return { ok: false, error: 'cancelled' };
 
   const { Ndef } = await import('react-native-nfc-manager');
-  const record = Ndef.record(Ndef.TNF_WELL_KNOWN, Ndef.RTD_URI, [], launcherUriPayload(TAG_LAUNCHER_URL));
-  const bytes = asByteArray(Ndef.encodeMessage([record]));
+  // URI first, so Android's NDEF filter and iOS both see apartag://tag.
+  // The AAR is second: it names this package so Android starts the tap
+  // activity directly instead of posting a system "Abrir" notification.
+  const uri = Ndef.record(Ndef.TNF_WELL_KNOWN, Ndef.RTD_URI, [], launcherUriPayload(TAG_LAUNCHER_URL));
+  const aar = Ndef.record(Ndef.TNF_EXTERNAL_TYPE, AAR_TYPE, [], androidApplicationRecordPayload());
+  const bytes = asByteArray(Ndef.encodeMessage([uri, aar]));
   if (!bytes) return { ok: false, error: 'unknown' };
 
   let manager: NfcManager;
@@ -364,9 +373,10 @@ async function writeExclusive(
 }
 
 /**
- * Writes `apartag://tag` onto a tag whose UID is one of `acceptedIds`.
- * Android uses that record so the invisible activity can see the tap.
- * iOS uses it as a deep link. The UID remains the key on both.
+ * Writes `apartag://tag` plus the Android Application Record onto a tag
+ * whose UID is one of `acceptedIds`. Pairing and the Settings rewrite both
+ * use this. iOS uses the URI as a deep link and ignores the AAR. The UID
+ * remains the key on both.
  */
 export function writeLauncherRecord(acceptedIds: readonly string[], alertMessage: string): Promise<NfcRead> {
   const ids = acceptedIds.filter((id) => typeof id === 'string' && normalizeTagId(id));

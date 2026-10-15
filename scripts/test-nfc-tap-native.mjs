@@ -23,9 +23,13 @@ assert.match(manifest, /android.nfc.action.TAG_DISCOVERED/);
 assert.match(manifest, /android:scheme="apartag"/);
 assert.match(manifest, /android:host="tag"/);
 assert.match(manifest, /android:exported="true"/);
+assert.match(manifest, /android:priority="999"/);
+assert.match(manifest, /android.intent.category.DEFAULT/);
+assert.match(manifest, /singleInstance/);
 
 const activity = read('modules/nfc-tap/android/src/main/java/expo/modules/nfctap/NfcTapActivity.kt');
 assert.match(activity, /finish\(\)/);
+assert.match(activity, /overridePendingTransition\(0, 0\)/);
 assert.match(activity, /ACTION_NDEF_DISCOVERED/);
 assert.match(activity, /ACTION_TAG_DISCOVERED/);
 assert.doesNotMatch(activity, /startActivity/);
@@ -52,6 +56,13 @@ const feedback = read('modules/nfc-tap/android/src/main/java/expo/modules/nfctap
 assert.match(feedback, /Toast/);
 assert.match(feedback, /VibrationEffect/);
 assert.match(feedback, /80L/);
+assert.match(feedback, /Estado de bloqueo/);
+assert.match(feedback, /POST_NOTIFICATIONS/);
+assert.match(feedback, /setAutoCancel\(true\)/);
+assert.match(feedback, /Bloqueado\./);
+assert.match(feedback, /Desbloqueado\./);
+assert.doesNotMatch(feedback, /getLaunchIntentForPackage/);
+assert.doesNotMatch(feedback, /PendingIntent/);
 
 const plugin = read('plugins/with-nfc-launch.js');
 assert.match(plugin, /NDEF_DISCOVERED/);

@@ -154,9 +154,10 @@ export const en = {
     tagChange: 'Change tag',
     tagPair: 'Pair tag',
     tagTapHint:
-      'On Android, a tap locks or unlocks without opening Apartag. The apartag://tag link only lets the system recognize the tag; the key is still its identifier. On iPhone the system may open the app.',
+      'On Android, a tap locks or unlocks without opening Apartag and without tapping Open. Rewrite the tag once so it stores the app record. The key is still the identifier. On iPhone the system may open the app.',
     tagRewrite: 'Rewrite tag for the tap',
-    tagRewriteHint: 'Write the link again on a tag that is already paired.',
+    tagRewriteHint:
+      'Write the paired tag again. On Android this stores the app record so the tap does not ask you to open it.',
     spareHint: 'A second tag. With the main one, that’s enough to turn on Strict mode.',
     spareChange: 'Change second tag',
     sparePair: 'Pair second tag',

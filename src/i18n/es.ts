@@ -155,9 +155,10 @@ export const es = {
     tagChange: 'Cambiar tag',
     tagPair: 'Emparejar tag',
     tagTapHint:
-      'En Android, acercar el tag bloquea o desbloquea sin abrir Apartag. El enlace apartag://tag solo sirve para que el sistema reconozca el tag; la llave sigue siendo su identificador. En iPhone el sistema puede abrir la app.',
+      'En Android, acercar el tag bloquea o desbloquea sin abrir Apartag y sin pulsar Abrir. Hay que reescribir el tag una vez para guardar el registro de la app. La llave sigue siendo el identificador. En iPhone el sistema puede abrir la app.',
     tagRewrite: 'Reescribir tag para el toque',
-    tagRewriteHint: 'Vuelve a escribir el enlace en un tag que ya esté emparejado.',
+    tagRewriteHint:
+      'Vuelve a escribir el tag emparejado. En Android guarda el registro de la app para que el toque no pida Abrir.',
     spareHint: 'Un segundo tag. Con el principal, basta para activar el modo estricto.',
     spareChange: 'Cambiar segundo tag',
     sparePair: 'Emparejar segundo tag',

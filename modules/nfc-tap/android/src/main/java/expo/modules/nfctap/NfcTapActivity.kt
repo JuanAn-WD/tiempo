@@ -12,10 +12,12 @@ import android.os.Bundle
 class NfcTapActivity : Activity() {
   override fun onCreate(savedInstanceState: Bundle?) {
     super.onCreate(savedInstanceState)
+    overridePendingTransition(0, 0)
     try {
       handle(intent)
     } finally {
       finish()
+      overridePendingTransition(0, 0)
     }
   }
 
@@ -26,6 +28,7 @@ class NfcTapActivity : Activity() {
       handle(intent)
     } finally {
       finish()
+      overridePendingTransition(0, 0)
     }
   }
 

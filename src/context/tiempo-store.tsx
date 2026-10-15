@@ -20,6 +20,7 @@ import {
   applyAndroidOverlayTheme,
   getPermissions,
   listAndroidApps,
+  requestAndroidNotifications,
   requestNativePermissions,
   startAndroidBlock,
   startIosBlock,
@@ -373,6 +374,7 @@ export function TiempoProvider({ children }: { children: ReactNode }) {
       setPermissions(perms);
       setNfcSupported(nfc.supported);
       setNfcEnabled(nfc.enabled);
+      if (Platform.OS === 'android') void requestAndroidNotifications();
 
       if (current.locked) {
         const canAndroid = Platform.OS === 'android';

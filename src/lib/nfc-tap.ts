@@ -9,7 +9,12 @@ import { isUnstableTagId, normalizeTagId, sameTagId } from '@/lib/tag-id';
  *
  * Android does not open the app. modules/nfc-tap receives the tap in a
  * no-UI activity, checks this same UID rule, and toggles AppBlockerService.
- * decideTagToggle below is the iOS path and the shared decision spec.
+ * The message written on the tag is the URI record plus an Android
+ * Application Record for this package. Without that second record Android
+ * treats the URI as a link and shows a system notification the user must
+ * tap (Abrir) before the activity starts. The AAR is not a credential.
+ * iOS ignores it and still uses the first record. decideTagToggle below is
+ * the iOS path and the shared decision spec.
  *
  * iOS limits (background tag reading):
  * - Apple's documented background reader only routes universal links and a
@@ -26,10 +31,23 @@ import { isUnstableTagId, normalizeTagId, sameTagId } from '@/lib/tag-id';
  */
 export const TAG_LAUNCHER_URL = 'apartag://tag';
 
+/** Package named by the Android Application Record. Must match app.json. */
+export const ANDROID_PACKAGE = 'com.apartag.app';
+
+/** External type of an Android Application Record (`NdefRecord.RTD_ANDROID_APP`). */
+export const AAR_TYPE = 'android.com:pkg';
+
 /** URI record payload: identifier code 0x00 (no abbreviation) plus the full URI. */
 export function launcherUriPayload(uri: string = TAG_LAUNCHER_URL): number[] {
   const bytes = [0x00];
   for (let i = 0; i < uri.length; i += 1) bytes.push(uri.charCodeAt(i) & 0xff);
+  return bytes;
+}
+
+/** AAR payload: the package name in US-ASCII. Not a key. */
+export function androidApplicationRecordPayload(packageName: string = ANDROID_PACKAGE): number[] {
+  const bytes: number[] = [];
+  for (let i = 0; i < packageName.length; i += 1) bytes.push(packageName.charCodeAt(i) & 0xff);
   return bytes;
 }
 
