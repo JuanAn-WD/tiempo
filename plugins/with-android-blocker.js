@@ -27,7 +27,9 @@ const PERMISSIONS = [
 function withAndroidBlocker(config) {
   const script = path.join(__dirname, '..', 'scripts', 'apply-android-blocker-patch.mjs');
   try {
-    execFileSync(process.execPath, [script], { stdio: 'inherit' });
+    // The patch script logs to stdout. `stdio: 'inherit'` would mix that text
+    // into `expo config --json` and EAS would fail to parse the config.
+    execFileSync(process.execPath, [script], { stdio: ['ignore', process.stderr, process.stderr] });
   } catch (error) {
     throw new Error(`[with-android-blocker] failed to patch expo-app-blocker: ${error.message}`);
   }
