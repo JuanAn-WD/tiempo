@@ -24,7 +24,15 @@ export function Screen({
 }: Props) {
   const bottom = tabPadding ? BottomTabInset + Spacing.four : Spacing.four;
   const body = (
-    <View style={[styles.inner, { paddingBottom: bottom }, contentStyle]}>{children}</View>
+    <View
+      style={[
+        styles.inner,
+        scroll ? styles.innerScroll : styles.innerFill,
+        { paddingBottom: bottom },
+        contentStyle,
+      ]}>
+      {children}
+    </View>
   );
 
   return (
@@ -90,8 +98,19 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   inner: {
-    flex: 1,
     paddingHorizontal: Spacing.four,
     paddingTop: Spacing.three,
+  },
+  innerFill: {
+    flex: 1,
+  },
+  /**
+   * Grow to the viewport when the column is short, and past it when the
+   * column is tall, so a ScrollView can reach the last row. `flex: 1`
+   * (basis 0) would lock this view to the screen and let later rows paint
+   * over a hint that no longer fits.
+   */
+  innerScroll: {
+    flexGrow: 1,
   },
 });
