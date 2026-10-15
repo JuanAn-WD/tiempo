@@ -155,10 +155,10 @@ export const es = {
     tagChange: 'Cambiar tag',
     tagPair: 'Emparejar tag',
     tagTapHint:
-      'En Android, acercar el tag bloquea o desbloquea sin abrir Apartag y sin pulsar Abrir. Hay que reescribir el tag una vez para guardar el registro de la app. La llave sigue siendo el identificador. En iPhone el sistema puede abrir la app.',
+      'En Android, acercar el tag bloquea o desbloquea sin abrir Apartag y sin pulsar Abrir. El emparejamiento escribe ese toque en el tag. La llave sigue siendo el identificador. En iPhone el sistema puede abrir la app.',
     tagRewrite: 'Reescribir tag para el toque',
     tagRewriteHint:
-      'Vuelve a escribir el tag emparejado. En Android guarda el registro de la app para que el toque no pida Abrir.',
+      'Reparación: si el toque pide Abrir, o el tag se emparejó sin el registro, vuelve a escribir el enlace y el registro de la app.',
     spareHint: 'Un segundo tag. Con el principal, basta para activar el modo estricto.',
     spareChange: 'Cambiar segundo tag',
     sparePair: 'Emparejar segundo tag',
@@ -315,12 +315,10 @@ export const es = {
     statusDisabled: 'El NFC está apagado.',
     statusUnsupported: 'Este móvil no tiene NFC.',
     statusUnsupportedDev: 'Sin NFC en este dispositivo. En desarrollo puedes simular el tag.',
-    doubleScanHint: 'Al emparejar se lee dos veces y las dos tienen que coincidir.',
-    writing: 'Escribiendo el enlace en el tag.',
-    writePrompt: 'Acerca otra vez el mismo tag para dejar el toque listo',
-    launcherSkippedTitle: 'Tag emparejado',
-    launcherSkippedBody:
-      'No se escribió el enlace. En Android el toque puede seguir valiendo por el identificador. Puedes reescribirlo en Ajustes.',
+    doubleScanHint:
+      'Al emparejar se lee dos veces y tienen que coincidir. En la segunda, sin soltar el tag, se escribe el toque.',
+    writing: 'Mantén el tag: se comprueba y se escribe el toque.',
+    writePrompt: 'Mantén el mismo tag. Se comprueba y se deja el toque listo',
     tap: {
       checking: 'Comprobando el tag…',
       locked: 'Bloqueado.',
