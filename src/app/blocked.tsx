@@ -15,7 +15,7 @@ import { useI18n } from '@/i18n';
 import { usePermissionRecord } from '@/lib/permission-ack';
 
 export default function BlockedScreen() {
-  const { app } = useLocalSearchParams<{ app?: string }>();
+  const { app, reason } = useLocalSearchParams<{ app?: string; reason?: string }>();
   const router = useRouter();
   const { toggleLockWithTag, state, refreshEmergencyClock } = useTiempo();
   const { record, ready: permissionsReady } = usePermissionRecord();
@@ -45,7 +45,13 @@ export default function BlockedScreen() {
       </Text>
       <Text style={styles.title}>{name}</Text>
       <Text style={styles.body}>
-        {state.locked ? (state.strict ? t('blocked.strict') : t('blocked.normal')) : t('blocked.done')}
+        {state.locked
+          ? reason === 'expired'
+            ? t('blocked.budget')
+            : state.strict
+              ? t('blocked.strict')
+              : t('blocked.normal')
+          : t('blocked.done')}
       </Text>
 
       <View style={styles.tag}>

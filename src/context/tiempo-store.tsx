@@ -26,6 +26,7 @@ import {
   startIosBlock,
   stopAndroidBlock,
   stopIosBlock,
+  syncUsageBudget,
   type AndroidStartResult,
 } from '@/lib/blocker';
 import {
@@ -62,6 +63,7 @@ import { pullNfcTapEvent, pushNfcTapState, subscribeNfcTap } from '@/lib/nfc-nat
 import { decideTagToggle, isTagLauncherUrl } from '@/lib/nfc-tap';
 import type { NfcFailure, NfcRead } from '@/lib/nfc-types';
 import { sameTagId } from '@/lib/tag-id';
+import { clampUsageMinutes, USAGE_DEFAULT_MINUTES, type UsageBudgetConfig } from '@/lib/usage-budget';
 import {
   DEFAULT_STATE,
   loadState,
@@ -106,6 +108,9 @@ type TiempoContextValue = {
   togglePackage: (pkg: string) => void;
   setIosSelection: (selectionData: string, items: IOSBlockedItem[]) => void;
   setStrict: (value: boolean, confirmation?: string) => void;
+  setUsageStrict: (value: boolean) => void;
+  setUsageLimitMinutes: (minutes: number) => void;
+  setUsageOverride: (pkg: string, minutes: number | null) => void;
   emergencyUnlock: () => Promise<boolean>;
   refreshEmergencyClock: () => Promise<void>;
   /** True when the wall clock is behind the last accepted timestamp. */
@@ -157,8 +162,19 @@ function snapshot(state: TiempoState): EmergencySnapshot {
   };
 }
 
+function budgetConfig(state: TiempoState): UsageBudgetConfig {
+  return {
+    strict: state.usageStrict,
+    defaultMinutes: state.usageLimitMinutes,
+    overrides: state.usageOverrides,
+  };
+}
+
 async function applyNativeLock(next: TiempoState): Promise<AndroidStartResult> {
-  if (Platform.OS === 'android') return startAndroidBlock(next.selectedPackages);
+  if (Platform.OS === 'android') {
+    await syncUsageBudget(budgetConfig(next));
+    return startAndroidBlock(next.selectedPackages);
+  }
   if (Platform.OS === 'ios' && next.iosItems.length) {
     await startIosBlock(next.iosItems);
     return 'started';
@@ -251,6 +267,7 @@ export function TiempoProvider({ children }: { children: ReactNode }) {
       setState(next);
       await saveState(next);
       pushNfcTapState(next);
+      void syncUsageBudget(budgetConfig(next)).catch(() => undefined);
       return next;
     });
     persistQueue.current = run.then(
@@ -420,6 +437,7 @@ export function TiempoProvider({ children }: { children: ReactNode }) {
             /* keep the JS session if native prefs cannot be read */
           }
           if (Platform.OS === 'android' && current.locked) {
+            await syncUsageBudget(budgetConfig(current));
             const result = await startAndroidBlock(current.selectedPackages);
             setAndroidEnforcing(result === 'started');
           }
@@ -712,6 +730,7 @@ export function TiempoProvider({ children }: { children: ReactNode }) {
   const lock = useCallback(
     async (current: TiempoState, pulse?: { nonce: string; ts: number }) => {
       if (Platform.OS === 'android') {
+        await syncUsageBudget(budgetConfig(current));
         const result = await startAndroidBlock(current.selectedPackages);
         if (result === 'no-apps') {
           setAndroidEnforcing(false);
@@ -1174,6 +1193,50 @@ export function TiempoProvider({ children }: { children: ReactNode }) {
     [persist, t],
   );
 
+  const setUsageStrict = useCallback(
+    (value: boolean) => {
+      if (lockedGuard(stateRef.current, t('alerts.actions.changeBudget'), t)) return;
+      void persist((prev) => {
+        if (prev.locked) return prev;
+        if (value) return { ...prev, usageStrict: true };
+        return {
+          ...prev,
+          usageStrict: false,
+          usageLimitMinutes: prev.usageLimitMinutes > 0 ? prev.usageLimitMinutes : USAGE_DEFAULT_MINUTES,
+        };
+      });
+    },
+    [persist, t],
+  );
+
+  const setUsageLimitMinutes = useCallback(
+    (minutes: number) => {
+      if (lockedGuard(stateRef.current, t('alerts.actions.changeBudget'), t)) return;
+      void persist((prev) => {
+        if (prev.locked || prev.usageStrict) return prev;
+        const usageLimitMinutes = clampUsageMinutes(minutes);
+        if (usageLimitMinutes <= 0) return prev;
+        return { ...prev, usageLimitMinutes };
+      });
+    },
+    [persist, t],
+  );
+
+  const setUsageOverride = useCallback(
+    (pkg: string, minutes: number | null) => {
+      if (lockedGuard(stateRef.current, t('alerts.actions.changeBudget'), t)) return;
+      if (withoutOwnPackages([pkg], ownAppIds()).length === 0) return;
+      void persist((prev) => {
+        if (prev.locked || prev.usageStrict) return prev;
+        const usageOverrides = { ...prev.usageOverrides };
+        if (minutes === null) delete usageOverrides[pkg];
+        else usageOverrides[pkg] = clampUsageMinutes(minutes);
+        return { ...prev, usageOverrides };
+      });
+    },
+    [persist, t],
+  );
+
   const setStrict = useCallback(
     (value: boolean, confirmation?: string) => {
       const current = stateRef.current;
@@ -1263,6 +1326,9 @@ export function TiempoProvider({ children }: { children: ReactNode }) {
       togglePackage,
       setIosSelection,
       setStrict,
+      setUsageStrict,
+      setUsageLimitMinutes,
+      setUsageOverride,
       emergencyUnlock,
       refreshEmergencyClock,
       clockSkewed,
@@ -1297,6 +1363,9 @@ export function TiempoProvider({ children }: { children: ReactNode }) {
       setIosSelection,
       setMode,
       setStrict,
+      setUsageLimitMinutes,
+      setUsageOverride,
+      setUsageStrict,
       state,
       toggleLockWithMobileKey,
       toggleLockWithTag,
