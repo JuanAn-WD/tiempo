@@ -105,6 +105,38 @@ class ExpoAppBlockerModule : Module() {
       AppBlockerPrefs.getBlockedPackages(context).toList()
     }
 
+    /**
+     * JS is the editor. The service reads these prefs on each poll, including
+     * after a process restart, so the budget does not depend on the activity.
+     * Missing keys stay strict (budget 0): that is the block-on-open behavior.
+     */
+    Function("setUsageBudget") { config: Map<String, Any?> ->
+      val strict = config["strict"] as? Boolean ?: true
+      val defaultMinutes = (config["defaultMinutes"] as? Number)?.toInt() ?: UsageBudget.DEFAULT_MINUTES
+      val raw = config["overrides"] as? Map<*, *>
+      val overrides = HashMap<String, Int>()
+      raw?.forEach { (key, value) ->
+        if (key is String && value is Number) overrides[key] = value.toInt()
+      }
+      UsageBudget.writeConfig(context, strict, defaultMinutes, overrides)
+      Log.d(TAG, "setUsageBudget strict=$strict minutes=$defaultMinutes")
+    }
+
+    Function("getUsageBudgetStatus") { packages: List<String> ->
+      val now = System.currentTimeMillis()
+      UsageBudget.rollDay(context, now)
+      val apps = packages.map { pkg ->
+        mapOf(
+          "packageName" to pkg,
+          "usedMs" to UsageBudget.mergedUsed(context, pkg, now).toDouble(),
+        )
+      }
+      mapOf(
+        "usageGranted" to UsageBudget.hasUsageAccess(context),
+        "apps" to apps,
+      )
+    }
+
     Function("drainPendingIntercepts") {
       AppBlockerPrefs.drainIntercepts(context)
     }

@@ -9,6 +9,7 @@ import { normalizeEmergencyFields } from '@/lib/emergency';
 import { sanitizeUsedNonces, type UsedPulseNonce } from '@/lib/mobile-key-mac';
 import { ownAppIds } from '@/lib/own-app';
 import { guardIosSelection, withoutOwnPackages } from '@/lib/self-block';
+import { sanitizeUsageBudget, USAGE_DEFAULT_MINUTES } from '@/lib/usage-budget';
 
 export type ModeId = 'trabajo' | 'estudio' | 'casa' | 'gym';
 
@@ -47,6 +48,15 @@ export type TiempoState = {
   recoveredMs: number;
   sessions: SessionRecord[];
   strict: boolean;
+  /**
+   * Daily allowance. Strict means 0 minutes: apps block as soon as the
+   * session locks. Otherwise each selected app may be used until its
+   * minutes are gone. Free, not Pro.
+   */
+  usageStrict: boolean;
+  usageLimitMinutes: number;
+  /** Package name → minutes. Missing key uses `usageLimitMinutes`. */
+  usageOverrides: Record<string, number>;
 };
 
 export const MODES: { id: ModeId; titleKey: TranslationKey; subtitleKey: TranslationKey; mark: string }[] = [
@@ -81,6 +91,9 @@ export const DEFAULT_STATE: TiempoState = {
   recoveredMs: 0,
   sessions: [],
   strict: false,
+  usageStrict: true,
+  usageLimitMinutes: USAGE_DEFAULT_MINUTES,
+  usageOverrides: {},
 };
 
 const KEY = 'tiempo.state.v3';
@@ -141,6 +154,11 @@ export function sanitizeState(
   const data = raw as Partial<TiempoState>;
   const mode = MODES.some((m) => m.id === data.mode) ? (data.mode as ModeId) : DEFAULT_STATE.mode;
   const emergency = normalizeEmergencyFields(data, now, options.honorStrict);
+  const usage = sanitizeUsageBudget({
+    strict: data.usageStrict,
+    defaultMinutes: data.usageLimitMinutes,
+    overrides: data.usageOverrides,
+  });
   return {
     ...DEFAULT_STATE,
     ...data,
@@ -168,6 +186,9 @@ export function sanitizeState(
     emergencyRefillAt: emergency.emergencyRefillAt,
     lastSeenAt: emergency.lastSeenAt,
     strict: emergency.strict,
+    usageStrict: usage.strict,
+    usageLimitMinutes: usage.defaultMinutes,
+    usageOverrides: usage.overrides,
   };
 }
 

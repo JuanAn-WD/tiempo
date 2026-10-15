@@ -116,6 +116,45 @@ export function getBlockedApps(): string[] {
   return NativeModule.getBlockedApps();
 }
 
+export type UsageBudgetConfig = {
+  /** True blocks immediately (allowance 0). */
+  strict: boolean;
+  defaultMinutes: number;
+  overrides: Record<string, number>;
+};
+
+export type UsageBudgetStatus = {
+  /** False when PACKAGE_USAGE_STATS is not granted. Same check the lock uses. */
+  usageGranted: boolean;
+  apps: { packageName: string; usedMs: number }[];
+};
+
+/** Copy the daily budget into native prefs. The service reads it on each poll. */
+export function setUsageBudget(config: UsageBudgetConfig): void {
+  if (Platform.OS !== "android") return;
+  NativeModule.setUsageBudget(config);
+}
+
+/** Today's persisted/UsageStats time for the given packages. */
+export function getUsageBudgetStatus(packages: string[]): UsageBudgetStatus {
+  if (Platform.OS !== "android") return { usageGranted: false, apps: [] };
+  const raw = (NativeModule.getUsageBudgetStatus(packages) ?? {}) as {
+    usageGranted?: unknown;
+    apps?: unknown;
+  };
+  const apps = Array.isArray(raw.apps) ? raw.apps : [];
+  return {
+    usageGranted: raw.usageGranted === true,
+    apps: apps.flatMap((row) => {
+      if (!row || typeof row !== "object") return [];
+      const item = row as { packageName?: unknown; usedMs?: unknown };
+      if (typeof item.packageName !== "string") return [];
+      const usedMs = typeof item.usedMs === "number" && item.usedMs > 0 ? item.usedMs : 0;
+      return [{ packageName: item.packageName, usedMs }];
+    }),
+  };
+}
+
 export function configureAndroid(config: AndroidConfig): void {
   if (Platform.OS !== "android") return;
   NativeModule.setAndroidConfig(config);

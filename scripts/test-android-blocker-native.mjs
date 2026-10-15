@@ -14,6 +14,10 @@ function read(rel) {
 }
 
 const service = read('vendor/expo-app-blocker/android/src/main/java/expo/modules/appblocker/AppBlockerService.kt');
+assert.match(service, /UsageBudget\.rollDay/);
+assert.match(service, /UsageBudget\.allowanceMinutes/);
+assert.match(service, /BudgetVerdict\.IMMEDIATE/);
+assert.match(service, /BudgetVerdict\.EXHAUSTED/);
 assert.match(service, /ACTIVITY_RESUMED/);
 assert.match(service, /MOVE_TO_FOREGROUND/);
 assert.match(service, /LOOKBACK_WINDOW_MS = 120_000L/);
@@ -34,11 +38,15 @@ assert.doesNotMatch(overlay, /FLAG_NOT_FOCUSABLE/);
 assert.doesNotMatch(overlay, /FLAG_NOT_TOUCHABLE/);
 
 const moduleKt = read('vendor/expo-app-blocker/android/src/main/java/expo/modules/appblocker/ExpoAppBlockerModule.kt');
+assert.match(moduleKt, /Function\("setUsageBudget"\)/);
+assert.match(moduleKt, /Function\("getUsageBudgetStatus"\)/);
 assert.match(moduleKt, /Function\("isMonitoring"\)/);
 assert.match(moduleKt, /isIgnoringBatteryOptimizations/);
 assert.match(moduleKt, /openBatterySettings/);
 
 const index = read('vendor/expo-app-blocker/src/index.ts');
+assert.match(index, /export function setUsageBudget\(/);
+assert.match(index, /export function getUsageBudgetStatus\(/);
 assert.match(index, /export function isMonitoring\(\)/);
 assert.match(index, /export function openBatterySettings\(\)/);
 
