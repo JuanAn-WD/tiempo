@@ -69,6 +69,7 @@ export function classifyNfcError(error: unknown): NfcFailure {
   if (
     blob.includes('not formattable') ||
     blob.includes('not ndef') ||
+    blob.includes('no ndef') ||
     blob.includes('ndef format') ||
     blob.includes('fail to apply ndef')
   ) {

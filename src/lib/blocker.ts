@@ -13,6 +13,11 @@ type AndroidBlockerModule = typeof import('expo-app-blocker') & {
   isMonitoring?: () => boolean;
   isIgnoringBatteryOptimizations?: () => boolean;
   openBatterySettings?: () => void;
+  setUsageBudget?: (config: UsageBudgetConfig) => void;
+  getUsageBudgetStatus?: (packages: string[]) => {
+    usageGranted: boolean;
+    apps: { packageName: string; usedMs: number }[];
+  };
 };
 
 export type AndroidStartResult = 'started' | 'permissions' | 'no-apps' | 'failed';
@@ -131,7 +136,7 @@ export async function listAndroidApps(locale: Locale = 'es'): Promise<AndroidBlo
 export async function syncUsageBudget(config: UsageBudgetConfig): Promise<void> {
   if (Platform.OS !== 'android') return;
   try {
-    (await native()).setUsageBudget(config);
+    (await native()).setUsageBudget?.(config);
   } catch {
     /* Expo Go and web have no UsageBudget prefs */
   }
@@ -145,7 +150,8 @@ export type UsageBudgetReading =
 export async function readUsageBudget(packages: string[]): Promise<UsageBudgetReading> {
   if (Platform.OS !== 'android') return { status: 'unavailable' };
   try {
-    const status = (await native()).getUsageBudgetStatus(packages);
+    const status = (await native()).getUsageBudgetStatus?.(packages);
+    if (!status) return { status: 'unavailable' };
     const usedMs: Record<string, number> = {};
     for (const row of status.apps) {
       if (typeof row.usedMs === 'number' && row.usedMs > 0) usedMs[row.packageName] = row.usedMs;

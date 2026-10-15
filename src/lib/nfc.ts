@@ -341,6 +341,14 @@ async function writeOnTech(
   }
 }
 
+/** URI first, AAR second. The AAR is not a credential; the UID still is. */
+async function launcherMessageBytes(): Promise<number[] | null> {
+  const { Ndef } = await import('react-native-nfc-manager');
+  const uri = Ndef.record(Ndef.TNF_WELL_KNOWN, Ndef.RTD_URI, [], launcherUriPayload(TAG_LAUNCHER_URL));
+  const aar = Ndef.record(Ndef.TNF_EXTERNAL_TYPE, AAR_TYPE, [], androidApplicationRecordPayload());
+  return asByteArray(Ndef.encodeMessage([uri, aar]));
+}
+
 async function writeExclusive(
   myGen: number,
   acceptedIds: readonly string[],
@@ -349,13 +357,7 @@ async function writeExclusive(
   if (!nfcAvailable()) return { ok: false, error: 'unsupported' };
   if (myGen !== generation) return { ok: false, error: 'cancelled' };
 
-  const { Ndef } = await import('react-native-nfc-manager');
-  // URI first, so Android's NDEF filter and iOS both see apartag://tag.
-  // The AAR is second: it names this package so Android starts the tap
-  // activity directly instead of posting a system "Abrir" notification.
-  const uri = Ndef.record(Ndef.TNF_WELL_KNOWN, Ndef.RTD_URI, [], launcherUriPayload(TAG_LAUNCHER_URL));
-  const aar = Ndef.record(Ndef.TNF_EXTERNAL_TYPE, AAR_TYPE, [], androidApplicationRecordPayload());
-  const bytes = asByteArray(Ndef.encodeMessage([uri, aar]));
+  const bytes = await launcherMessageBytes();
   if (!bytes) return { ok: false, error: 'unknown' };
 
   let manager: NfcManager;
@@ -374,9 +376,10 @@ async function writeExclusive(
 
 /**
  * Writes `apartag://tag` plus the Android Application Record onto a tag
- * whose UID is one of `acceptedIds`. Pairing and the Settings rewrite both
- * use this. iOS uses the URI as a deep link and ignores the AAR. The UID
- * remains the key on both.
+ * whose UID is one of `acceptedIds`. Settings uses this to repair a tag.
+ * First pairing writes in the confirmation session instead
+ * (`confirmAndWriteLauncher`). iOS uses the URI as a deep link and ignores
+ * the AAR. The UID remains the key on both.
  */
 export function writeLauncherRecord(acceptedIds: readonly string[], alertMessage: string): Promise<NfcRead> {
   const ids = acceptedIds.filter((id) => typeof id === 'string' && normalizeTagId(id));
@@ -461,6 +464,194 @@ export function watchBackgroundTag(onTag: (id: string) => void): () => void {
       }
     })();
   };
+}
+
+/**
+ * First pairing: the UID was confirmed, and the tap records were stored,
+ * or the tag cannot store them. `written: false` still identifies the tag.
+ */
+export type PairingRecord =
+  | { ok: true; id: string; written: true }
+  | { ok: true; id: string; written: false; reason: 'read-only' | 'not-ndef' }
+  | { ok: false; error: NfcFailure };
+
+/**
+ * Second hold of pairing. Ndef is requested first so a writable tag stays
+ * connected as Ndef and the URI + AAR are stored before the session ends.
+ * NdefFormatable is next so an unformatted Android tag is formatted in that
+ * same hold. A tag that connects as something else is confirmed by UID and
+ * reported as not NDEF. Reader mode must not skip the NDEF check, or
+ * `Ndef.get` is empty and the write casts the wrong tech.
+ */
+async function confirmWriteSession(
+  manager: NfcManager,
+  myGen: number,
+  expectedId: string,
+  alertMessage: string,
+  bytes: number[],
+): Promise<PairingRecord> {
+  let timedOut = false;
+  let needsRelease = false;
+  let cleanupPromise: Promise<void> | null = null;
+  const cleanup = () => {
+    if (!needsRelease) return Promise.resolve();
+    cleanupPromise ??= releaseSession(manager);
+    return cleanupPromise;
+  };
+  const cancel = () => {
+    void cleanup();
+  };
+  activeCancel = cancel;
+
+  try {
+    if (myGen !== generation) return { ok: false, error: 'cancelled' };
+    const { NfcTech, NfcAdapter, NdefStatus } = await import('react-native-nfc-manager');
+    const techs =
+      Platform.OS === 'ios'
+        ? [NfcTech.Ndef, NfcTech.MifareIOS, NfcTech.Iso15693IOS, NfcTech.FelicaIOS, NfcTech.IsoDep]
+        : [
+            NfcTech.Ndef,
+            NfcTech.NdefFormatable,
+            NfcTech.NfcA,
+            NfcTech.NfcB,
+            NfcTech.NfcF,
+            NfcTech.NfcV,
+            NfcTech.IsoDep,
+            NfcTech.MifareUltralight,
+            NfcTech.MifareClassic,
+          ];
+    const readerFlags =
+      NfcAdapter.FLAG_READER_NFC_A |
+      NfcAdapter.FLAG_READER_NFC_B |
+      NfcAdapter.FLAG_READER_NFC_F |
+      NfcAdapter.FLAG_READER_NFC_V;
+
+    needsRelease = true;
+    const connectedRaw = await withTimeout(
+      manager.requestTechnology(techs, {
+        alertMessage,
+        invalidateAfterFirstRead: false,
+        isReaderModeEnabled: true,
+        readerModeFlags: readerFlags,
+        readerModeDelay: 10,
+      }),
+      READ_TIMEOUT_MS,
+      () => {
+        timedOut = true;
+        cancel();
+      },
+    );
+    if (myGen !== generation) return { ok: false, error: 'cancelled' };
+    const tech = typeof connectedRaw === 'string' ? connectedRaw : '';
+
+    const tag = await manager.getTag();
+    const id = tagIdFromEvent(tag);
+    if (!id) return { ok: false, error: 'no-tag' };
+    if (isUnstableTagId(id)) return { ok: false, error: 'unstable' };
+    if (!sameTagId(expectedId, id)) return { ok: false, error: 'mismatch' };
+
+    if (tech === 'NdefFormatable') {
+      try {
+        await manager.ndefFormatableHandlerAndroid.formatNdef(bytes, { readOnly: false });
+        return { ok: true, id, written: true };
+      } catch (error) {
+        const mapped = classifyNfcError(error);
+        if (mapped === 'read-only' || mapped === 'not-ndef') {
+          return { ok: true, id, written: false, reason: mapped };
+        }
+        return { ok: false, error: mapped };
+      }
+    }
+
+    if (tech === 'Ndef') {
+      if (typeof manager.ndefHandler.getNdefStatus === 'function') {
+        const status = await manager.ndefHandler.getNdefStatus().catch(() => null);
+        if (status?.status === NdefStatus.ReadOnly) {
+          return { ok: true, id, written: false, reason: 'read-only' };
+        }
+        if (Platform.OS === 'ios' && status?.status === NdefStatus.NotSupported) {
+          return { ok: true, id, written: false, reason: 'not-ndef' };
+        }
+      }
+      try {
+        await manager.ndefHandler.writeNdefMessage(bytes);
+        return { ok: true, id, written: true };
+      } catch (error) {
+        const mapped = classifyNfcError(error);
+        if (mapped === 'read-only' || mapped === 'not-ndef') {
+          return { ok: true, id, written: false, reason: mapped };
+        }
+        return { ok: false, error: mapped };
+      }
+    }
+
+    return { ok: true, id, written: false, reason: 'not-ndef' };
+  } catch (error) {
+    if (timedOut || myGen !== generation) {
+      return { ok: false, error: timedOut ? 'timeout' : 'cancelled' };
+    }
+    return { ok: false, error: classifyNfcError(error) };
+  } finally {
+    await cleanup();
+    if (activeCancel === cancel) activeCancel = null;
+  }
+}
+
+async function confirmAndWriteExclusive(
+  myGen: number,
+  prompts: { first: string; confirm: string },
+  onStep?: (step: 'first' | 'writing') => void,
+): Promise<PairingRecord> {
+  if (!nfcAvailable()) return { ok: false, error: 'unsupported' };
+  if (myGen !== generation) return { ok: false, error: 'cancelled' };
+  onStep?.('first');
+
+  let manager: NfcManager;
+  try {
+    manager = await loadManager();
+  } catch (error) {
+    return { ok: false, error: classifyNfcError(error) };
+  }
+
+  let first = await readOnce(manager, myGen, prompts.first, READ_TIMEOUT_MS);
+  if (!first.ok && first.error === 'session' && myGen === generation) {
+    await delay(IOS_SETTLE_MS);
+    if (myGen !== generation) return { ok: false, error: 'cancelled' };
+    first = await readOnce(manager, myGen, prompts.first, READ_TIMEOUT_MS);
+  }
+  if (!first.ok) return first;
+  if (myGen !== generation) return { ok: false, error: 'cancelled' };
+
+  const bytes = await launcherMessageBytes();
+  if (!bytes) return { ok: false, error: 'unknown' };
+  if (myGen !== generation) return { ok: false, error: 'cancelled' };
+
+  onStep?.('writing');
+  let second = await confirmWriteSession(manager, myGen, first.id, prompts.confirm, bytes);
+  if (!second.ok && second.error === 'session' && myGen === generation) {
+    await delay(Platform.OS === 'ios' ? IOS_SETTLE_MS : ANDROID_RELEASE_MS);
+    if (myGen !== generation) return { ok: false, error: 'cancelled' };
+    second = await confirmWriteSession(manager, myGen, first.id, prompts.confirm, bytes);
+  }
+  return second;
+}
+
+/**
+ * Pairing confirmation. The first hold reads the UID. The second hold reads
+ * it again and, while that session is still open, writes `apartag://tag` and
+ * the Android Application Record. A read-only or non-NDEF tag comes back with
+ * `written: false` and the confirmed UID. Any other write failure does not
+ * confirm the tag.
+ */
+export function confirmAndWriteLauncher(
+  prompts: { first: string; confirm: string },
+  onStep?: (step: 'first' | 'writing') => void,
+): Promise<PairingRecord> {
+  const myGen = ++generation;
+  const cancel = activeCancel;
+  activeCancel = null;
+  cancel?.();
+  return enqueue(() => confirmAndWriteExclusive(myGen, prompts, onStep));
 }
 
 export async function confirmTag(
