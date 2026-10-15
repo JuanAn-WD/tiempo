@@ -65,7 +65,7 @@ export default function FocusScreen() {
   }, [state.locked, t]);
 
   return (
-    <Screen atmosphere={enforcing ? 'focus' : 'idle'}>
+    <Screen scroll atmosphere={enforcing ? 'focus' : 'idle'}>
       <View style={styles.topBar}>
         <BrandMark size={20} />
         <Badge
@@ -83,7 +83,8 @@ export default function FocusScreen() {
         </Text>
       </View>
 
-      <View style={styles.orbArea}>
+      <View style={styles.flexSpacer} />
+      <View style={styles.orbSlot}>
         <FocusOrb
           locked={enforcing}
           hint={hint}
@@ -91,9 +92,16 @@ export default function FocusScreen() {
           onPress={scanTag}
           onLongPress={__DEV__ ? () => void toggleLockWithTag(true) : undefined}
         />
-        <NfcNotice scope="toggle" onRetry={scanTag} />
-        <DeviceOnlyNotice notice="nfc" />
       </View>
+      {/*
+        Own slot under the orb, not inside the flexible timer area. The mode
+        cards used to paint over “Acerca el tag.” when that hint overflowed.
+      */}
+      <View style={styles.tagBanner} pointerEvents="box-none">
+        <NfcNotice prominent scope="toggle" onRetry={scanTag} />
+      </View>
+      <DeviceOnlyNotice notice="nfc" />
+      <View style={styles.flexSpacer} />
 
       <View style={styles.modeGrid}>
         {MODES.map((item) => {
@@ -173,12 +181,23 @@ const styles = StyleSheet.create({
     marginTop: 8,
     color: Palette.ink,
   },
-  orbArea: {
-    flex: 1,
-    justifyContent: 'center',
-    minHeight: 300,
+  flexSpacer: {
+    flexGrow: 1,
+    flexShrink: 1,
+    minHeight: 8,
+  },
+  orbSlot: {
+    flexShrink: 0,
+    alignItems: 'center',
+  },
+  tagBanner: {
+    flexShrink: 0,
+    zIndex: 30,
+    elevation: 24,
   },
   modeGrid: {
+    zIndex: 0,
+    elevation: 0,
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 8,

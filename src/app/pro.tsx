@@ -18,7 +18,12 @@ const PRO_FEATURES = [
   'pro.featureHistory',
 ] as const satisfies readonly TranslationKey[];
 
-const FREE_FEATURES = ['pro.freeBlock', 'pro.freeModes', 'pro.freeEmergency'] as const satisfies readonly TranslationKey[];
+const FREE_FEATURES = [
+  'pro.freeBlock',
+  'pro.freeModes',
+  'pro.freeEmergency',
+  'pro.freeUsage',
+] as const satisfies readonly TranslationKey[];
 
 function noticeStyle(notice: ProNotice) {
   if (notice === 'restore-done' || notice === 'restore-kept') return [styles.notice, styles.noticeOk];

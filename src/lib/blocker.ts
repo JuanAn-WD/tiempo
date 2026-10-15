@@ -7,6 +7,7 @@ import { translate } from '@/i18n/translate';
 import { androidLockDecision, type AndroidLockDecision } from '@/lib/android-lock';
 import { ownAppIds } from '@/lib/own-app';
 import { guardIosSelection, withoutOwnPackages } from '@/lib/self-block';
+import type { UsageBudgetConfig } from '@/lib/usage-budget';
 
 type AndroidBlockerModule = typeof import('expo-app-blocker') & {
   isMonitoring?: () => boolean;
@@ -124,6 +125,34 @@ export async function listAndroidApps(locale: Locale = 'es'): Promise<AndroidBlo
     return apps.filter((app) => allowed.has(app.packageName));
   } catch {
     return SUGGESTED;
+  }
+}
+
+export async function syncUsageBudget(config: UsageBudgetConfig): Promise<void> {
+  if (Platform.OS !== 'android') return;
+  try {
+    (await native()).setUsageBudget(config);
+  } catch {
+    /* Expo Go and web have no UsageBudget prefs */
+  }
+}
+
+export type UsageBudgetReading =
+  | { status: 'unavailable' }
+  | { status: 'ready'; usageGranted: boolean; usedMs: Record<string, number> };
+
+/** Today's foreground time. `usageGranted` is the same usage-access check as the lock. */
+export async function readUsageBudget(packages: string[]): Promise<UsageBudgetReading> {
+  if (Platform.OS !== 'android') return { status: 'unavailable' };
+  try {
+    const status = (await native()).getUsageBudgetStatus(packages);
+    const usedMs: Record<string, number> = {};
+    for (const row of status.apps) {
+      if (typeof row.usedMs === 'number' && row.usedMs > 0) usedMs[row.packageName] = row.usedMs;
+    }
+    return { status: 'ready', usageGranted: status.usageGranted, usedMs };
+  } catch {
+    return { status: 'unavailable' };
   }
 }
 
