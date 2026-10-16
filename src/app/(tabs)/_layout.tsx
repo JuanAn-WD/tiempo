@@ -16,6 +16,7 @@ export default function TabsLayout() {
       <Tabs.Screen name="index" options={{ title: t('tabs.focus') }} />
       <Tabs.Screen name="apps" options={{ title: t('tabs.apps') }} />
       <Tabs.Screen name="stats" options={{ title: t('tabs.time') }} />
+      <Tabs.Screen name="logros" options={{ title: t('tabs.logros') }} />
       <Tabs.Screen name="ajustes" options={{ title: t('tabs.settings') }} />
     </Tabs>
   );

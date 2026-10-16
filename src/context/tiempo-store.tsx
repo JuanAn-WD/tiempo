@@ -15,7 +15,22 @@ import { Alert, AppState, Platform } from 'react-native';
 import type { AndroidBlockableApp, IOSBlockedItem, PermissionStatus } from 'expo-app-blocker';
 
 import { useI18n, type Translate } from '@/i18n';
-import { refreshBlockedAttempts, watchBlockedAttempts } from '@/lib/blocked-attempts-sync';
+import {
+  getAttemptsSnapshot,
+  refreshBlockedAttempts,
+  subscribeAttempts,
+  watchBlockedAttempts,
+} from '@/lib/blocked-attempts-sync';
+import {
+  applyFocusSession,
+  applyResistedAttempts,
+  applyUnlockedSession,
+  deviceOffsetMinutes,
+  setGoalMinutes,
+  type AchievementId,
+  type GamificationState,
+} from '@/lib/gamification';
+import { publishUnlocks } from '@/lib/gamification-feed';
 import {
   applyAndroidOverlayTheme,
   getPermissions,
@@ -113,6 +128,7 @@ type TiempoContextValue = {
   setUsageStrict: (value: boolean) => void;
   setUsageLimitMinutes: (minutes: number) => void;
   setUsageOverride: (pkg: string, minutes: number | null) => void;
+  setFocusGoalMinutes: (minutes: number) => void;
   emergencyUnlock: () => Promise<boolean>;
   refreshEmergencyClock: () => Promise<void>;
   /** True when the wall clock is behind the last accepted timestamp. */
@@ -197,6 +213,28 @@ async function clearNativeLock() {
   await stopIosBlock();
 }
 
+function guardGamification(
+  run: () => { state: GamificationState; unlocked: AchievementId[] },
+  fallback: GamificationState,
+): { state: GamificationState; unlocked: AchievementId[] } {
+  try {
+    const result = run();
+    if (!result?.state) return { state: fallback, unlocked: [] };
+    return result;
+  } catch {
+    return { state: fallback, unlocked: [] };
+  }
+}
+
+function celebrate(ids: readonly AchievementId[]) {
+  if (ids.length === 0) return;
+  try {
+    publishUnlocks(ids);
+  } catch {
+    /* the overlay never blocks a lock or an unlock */
+  }
+}
+
 function lockedGuard(current: TiempoState, action: string, t: Translate) {
   if (!current.locked) return false;
   Alert.alert(t('alerts.locked.title'), t('alerts.locked.body', { action }));
@@ -239,13 +277,31 @@ export function TiempoProvider({ children }: { children: ReactNode }) {
           return;
         }
         if (!result.applied) return;
-        adopted = result.state;
-        if (result.state !== prev) {
-          stateRef.current = result.state;
-          setState(result.state);
-          await saveState(result.state);
+        let next = result.state;
+        let freshUnlocks: AchievementId[] = [];
+        if (result.applied === 'unlock') {
+          const endedAt = next.sessions[0]?.endedAt ?? Date.now();
+          const applied = guardGamification(
+            () =>
+              applyUnlockedSession(
+                prev.gamification,
+                prev.sessions,
+                next.sessions,
+                deviceOffsetMinutes(endedAt),
+              ),
+            prev.gamification,
+          );
+          freshUnlocks = applied.unlocked;
+          if (applied.state !== prev.gamification) next = { ...next, gamification: applied.state };
         }
-        setAndroidEnforcing(result.state.locked);
+        adopted = next;
+        if (next !== prev) {
+          stateRef.current = next;
+          setState(next);
+          await saveState(next);
+        }
+        setAndroidEnforcing(next.locked);
+        celebrate(freshUnlocks);
       });
       persistQueue.current = run.then(
         () => undefined,
@@ -464,6 +520,40 @@ export function TiempoProvider({ children }: { children: ReactNode }) {
     [],
   );
 
+  const resistedBaseline = useRef(true);
+  useEffect(() => {
+    if (!ready) return;
+    let cancel = false;
+    const apply = () => {
+      const snap = getAttemptsSnapshot();
+      if (!snap.hydrated) return;
+      const total = snap.ledger.total;
+      const silent = resistedBaseline.current;
+      resistedBaseline.current = false;
+      let freshUnlocks: AchievementId[] = [];
+      void persist((prev) => {
+        const applied = guardGamification(
+          () => applyResistedAttempts(prev.gamification, total, Date.now(), deviceOffsetMinutes()),
+          prev.gamification,
+        );
+        freshUnlocks = applied.unlocked;
+        if (applied.state === prev.gamification) return prev;
+        return { ...prev, gamification: applied.state };
+      }).then(
+        () => {
+          if (!cancel && !silent) celebrate(freshUnlocks);
+        },
+        () => undefined,
+      );
+    };
+    const unsubscribe = subscribeAttempts(apply);
+    apply();
+    return () => {
+      cancel = true;
+      unsubscribe();
+    };
+  }, [persist, ready]);
+
   useEffect(() => {
     watchBlockedAttempts();
     void refreshBlockedAttempts();
@@ -655,6 +745,7 @@ export function TiempoProvider({ children }: { children: ReactNode }) {
       setAndroidEnforcing(false);
       await clearNativeLock();
       let spent = false;
+      let freshUnlocks: AchievementId[] = [];
       await persist((prev) => {
         if (!prev.locked) return prev;
         const endedAt = Date.now();
@@ -662,6 +753,21 @@ export function TiempoProvider({ children }: { children: ReactNode }) {
         const consumed = options?.emergency ? consumeEmergency(snapshot(prev), endedAt) : null;
         if (options?.emergency && !consumed) return prev;
         spent = true;
+        const session = prev.lockedAt
+          ? {
+              mode: prev.mode,
+              startedAt: prev.lockedAt,
+              endedAt,
+              ...(options?.emergency ? { emergency: true as const } : {}),
+            }
+          : null;
+        const applied = session
+          ? guardGamification(
+              () => applyFocusSession(prev.gamification, session, deviceOffsetMinutes(endedAt)),
+              prev.gamification,
+            )
+          : { state: prev.gamification, unlocked: [] as AchievementId[] };
+        freshUnlocks = applied.unlocked;
         return {
           ...prev,
           ...(consumed
@@ -685,20 +791,12 @@ export function TiempoProvider({ children }: { children: ReactNode }) {
           locked: false,
           lockedAt: null,
           recoveredMs: prev.recoveredMs + recovered,
-          sessions: prev.lockedAt
-            ? [
-                {
-                  mode: prev.mode,
-                  startedAt: prev.lockedAt,
-                  endedAt,
-                  ...(options?.emergency ? { emergency: true as const } : {}),
-                },
-                ...prev.sessions,
-              ].slice(0, 40)
-            : prev.sessions,
+          sessions: session ? [session, ...prev.sessions].slice(0, 40) : prev.sessions,
+          gamification: applied.state,
         };
       });
       if (!spent) {
+        freshUnlocks = [];
         const current = stateRef.current;
         if (current.locked) {
           try {
@@ -710,6 +808,7 @@ export function TiempoProvider({ children }: { children: ReactNode }) {
         }
         return false;
       }
+      celebrate(freshUnlocks);
       return true;
     },
     [persist],
@@ -1225,6 +1324,25 @@ export function TiempoProvider({ children }: { children: ReactNode }) {
     [persist, t],
   );
 
+  const setFocusGoalMinutes = useCallback(
+    (minutes: number) => {
+      let freshUnlocks: AchievementId[] = [];
+      void persist((prev) => {
+        const applied = guardGamification(
+          () => setGoalMinutes(prev.gamification, minutes, Date.now(), deviceOffsetMinutes()),
+          prev.gamification,
+        );
+        freshUnlocks = applied.unlocked;
+        if (applied.state === prev.gamification) return prev;
+        return { ...prev, gamification: applied.state };
+      }).then(
+        () => celebrate(freshUnlocks),
+        () => undefined,
+      );
+    },
+    [persist],
+  );
+
   const setStrict = useCallback(
     (value: boolean, confirmation?: string) => {
       const current = stateRef.current;
@@ -1317,6 +1435,7 @@ export function TiempoProvider({ children }: { children: ReactNode }) {
       setUsageStrict,
       setUsageLimitMinutes,
       setUsageOverride,
+      setFocusGoalMinutes,
       emergencyUnlock,
       refreshEmergencyClock,
       clockSkewed,
@@ -1353,6 +1472,7 @@ export function TiempoProvider({ children }: { children: ReactNode }) {
       setStrict,
       setUsageLimitMinutes,
       setUsageOverride,
+      setFocusGoalMinutes,
       setUsageStrict,
       state,
       toggleLockWithMobileKey,

@@ -9,6 +9,7 @@ import { normalizeEmergencyFields } from '@/lib/emergency';
 import { sanitizeUsedNonces, type UsedPulseNonce } from '@/lib/mobile-key-mac';
 import { ownAppIds } from '@/lib/own-app';
 import { guardIosSelection, withoutOwnPackages } from '@/lib/self-block';
+import { emptyGamification, resolveGamification, type GamificationState } from '@/lib/gamification';
 import { sanitizeUsageBudget, USAGE_DEFAULT_MINUTES } from '@/lib/usage-budget';
 
 export type ModeId = 'trabajo' | 'estudio' | 'casa' | 'gym';
@@ -57,6 +58,11 @@ export type TiempoState = {
   usageLimitMinutes: number;
   /** Package name → minutes. Missing key uses `usageLimitMinutes`. */
   usageOverrides: Record<string, number>;
+  /**
+   * Points, streak, and badges. Missing on saves from before this field:
+   * the first load rebuilds it from sessions and recovered time.
+   */
+  gamification: GamificationState;
 };
 
 export const MODES: { id: ModeId; titleKey: TranslationKey; subtitleKey: TranslationKey; mark: string }[] = [
@@ -94,6 +100,7 @@ export const DEFAULT_STATE: TiempoState = {
   usageStrict: true,
   usageLimitMinutes: USAGE_DEFAULT_MINUTES,
   usageOverrides: {},
+  gamification: emptyGamification(),
 };
 
 const KEY = 'tiempo.state.v3';
@@ -159,6 +166,15 @@ export function sanitizeState(
     defaultMinutes: data.usageLimitMinutes,
     overrides: data.usageOverrides,
   });
+  const sessions = sanitizeSessions(data.sessions);
+  const recoveredMs = typeof data.recoveredMs === 'number' ? Math.max(0, data.recoveredMs) : 0;
+  let gamification = emptyGamification();
+  try {
+    // A broken progress blob must not discard the lock, the tag, or the sessions.
+    gamification = resolveGamification(data.gamification, sessions, recoveredMs);
+  } catch {
+    gamification = emptyGamification();
+  }
   return {
     ...DEFAULT_STATE,
     ...data,
@@ -179,8 +195,9 @@ export function sanitizeState(
     ),
     iosSelectionData: typeof data.iosSelectionData === 'string' ? data.iosSelectionData : '',
     iosItems: guardIosSelection(sanitizeIosItems(data.iosItems), ownAppIds()).items,
-    recoveredMs: typeof data.recoveredMs === 'number' ? Math.max(0, data.recoveredMs) : 0,
-    sessions: sanitizeSessions(data.sessions),
+    recoveredMs,
+    sessions,
+    gamification,
     onboarded: Boolean(data.onboarded),
     emergencyLeft: emergency.emergencyLeft,
     emergencyRefillAt: emergency.emergencyRefillAt,
