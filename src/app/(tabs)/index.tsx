@@ -14,8 +14,8 @@ import { FontFamily, Palette, Radius, Type } from '@/constants/theme';
 import { useTiempo } from '@/context/tiempo-store';
 import { useI18n } from '@/i18n';
 import { usePermissionRecord } from '@/lib/permission-ack';
-import { computeStreak, deviceOffsetMinutes, levelProgress } from '@/lib/gamification';
-import { LEVEL_NAME } from '@/lib/gamification-copy';
+import { deviceOffsetMinutes, localDayKey } from '@/lib/gamification';
+import { formatRecovered } from '@/lib/gamification-copy';
 import { formatClock, formatDuration, MODES } from '@/lib/storage';
 import { useNow } from '@/lib/use-now';
 
@@ -54,14 +54,17 @@ export default function FocusScreen() {
   const sessionMs =
     enforcing && state.lockedAt && clock?.at === state.lockedAt ? clock.ms : 0;
   const mode = MODES.find((item) => item.id === state.mode);
-  const now = useNow(state.gamification);
-  const level = levelProgress(state.gamification.xp);
-  const streak = computeStreak(state.gamification, now, deviceOffsetMinutes(now));
-  const levelName = t(LEVEL_NAME[level.id]);
-  const streakLabel = t(streak.streak === 1 ? 'gamification.streakOne' : 'gamification.streakCount', {
-    count: streak.streak,
+  const now = useNow(enforcing ? state.lockedAt : 0);
+  const offset = deviceOffsetMinutes(now);
+  const todayKey = localDayKey(now, offset);
+  const todayStored = state.gamification.days[todayKey]?.focusMinutes ?? 0;
+  const sessionMinutes = Math.floor(sessionMs / 60_000);
+  const todayLive = todayStored + (enforcing ? sessionMinutes : 0);
+  const strip = t('gamification.strip', {
+    session: formatRecovered(t, sessionMinutes),
+    today: formatRecovered(t, todayLive),
+    goal: formatRecovered(t, state.gamification.goalMinutes),
   });
-  const levelPct = Math.round(level.ratio * 100);
 
   useFocusEffect(
     useCallback(() => {
@@ -133,22 +136,11 @@ export default function FocusScreen() {
         })}
       </View>
 
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel={`${t('gamification.open')}. ${t('gamification.level', { level: level.level })} ${levelName}. ${streakLabel}. ${t('gamification.xp', { count: state.gamification.xp })}`}
-        accessibilityHint={t('gamification.stripHint')}
-        onPress={() => router.navigate('/logros')}
-        style={styles.gameStrip}>
-        <View style={styles.gameRow}>
-          <Text style={styles.gameLevel} numberOfLines={1}>
-            {t('gamification.level', { level: level.level })} · {levelName}
-          </Text>
-          <Text style={styles.gameStreak}>{streakLabel}</Text>
-        </View>
-        <View accessibilityElementsHidden importantForAccessibility="no-hide-descendants" style={styles.gameTrack}>
-          <View style={[styles.gameFill, { width: `${levelPct}%` }]} />
-        </View>
-      </Pressable>
+      {enforcing ? (
+        <Text accessibilityRole="text" style={styles.sessionStrip}>
+          {strip}
+        </Text>
+      ) : null}
 
       <View style={styles.statsRow}>
         <StatTile
@@ -282,41 +274,11 @@ const styles = StyleSheet.create({
   modeTitleOn: {
     color: Palette.ink,
   },
-  gameStrip: {
-    marginBottom: 14,
-    paddingVertical: 12,
-    paddingHorizontal: 14,
-    borderRadius: Radius.lg,
-    backgroundColor: Palette.surface,
-    borderWidth: 1,
-    borderColor: Palette.line,
-    gap: 8,
-  },
-  gameRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 8,
-  },
-  gameLevel: {
-    ...Type.label,
+  sessionStrip: {
+    ...Type.body,
     color: Palette.ink,
-    flex: 1,
-  },
-  gameStreak: {
-    ...Type.caption,
-    color: Palette.accentBright,
-  },
-  gameTrack: {
-    height: 6,
-    borderRadius: Radius.full,
-    backgroundColor: Palette.surfaceHigh,
-    overflow: 'hidden',
-  },
-  gameFill: {
-    height: '100%',
-    borderRadius: Radius.full,
-    backgroundColor: Palette.accent,
+    textAlign: 'center',
+    marginBottom: 14,
   },
   statsRow: {
     flexDirection: 'row',

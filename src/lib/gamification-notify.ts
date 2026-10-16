@@ -1,13 +1,15 @@
 import { Platform } from 'react-native';
 
-const CHANNEL_ID = 'apartag-logros';
+const CHANNEL_ID = 'apartag-progreso';
+const SUNDAY_ID = 'apartag-sunday-summary';
 let handlerReady = false;
 
 /**
- * Local notification for a new badge. Never asks for permission and never throws:
- * the unlock has already finished by the time this runs.
+ * One local note for Sunday 18:00. The text is a snapshot from the last time
+ * the app was open: the phone cannot refresh it while Apartag is closed.
+ * Never asks for permission and never throws.
  */
-export async function notifyAchievement(input: {
+export async function syncSundaySummary(input: {
   title: string;
   body: string;
   channelName: string;
@@ -21,7 +23,7 @@ export async function notifyAchievement(input: {
         handleNotification: async () => ({
           shouldShowBanner: true,
           shouldShowList: true,
-          shouldPlaySound: true,
+          shouldPlaySound: false,
           shouldSetBadge: false,
         }),
       });
@@ -35,23 +37,24 @@ export async function notifyAchievement(input: {
         importance: Notifications.AndroidImportance.DEFAULT,
       });
     }
+    await Notifications.cancelScheduledNotificationAsync(SUNDAY_ID).catch(() => undefined);
     await Notifications.scheduleNotificationAsync({
+      identifier: SUNDAY_ID,
       content: {
         title: input.title,
         body: input.body,
-        sound: 'default',
-        data: { kind: 'achievement' },
+        sound: false,
+        data: { kind: 'sunday-summary' },
       },
-      trigger:
-        Platform.OS === 'android'
-          ? {
-              type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
-              seconds: 1,
-              channelId: CHANNEL_ID,
-            }
-          : null,
+      trigger: {
+        type: Notifications.SchedulableTriggerInputTypes.WEEKLY,
+        weekday: 1,
+        hour: 18,
+        minute: 0,
+        channelId: CHANNEL_ID,
+      },
     });
   } catch {
-    /* a missed banner must not surface */
+    /* a missed Sunday note must not surface */
   }
 }

@@ -1,30 +1,36 @@
 import {
-  ACHIEVEMENT_IDS,
-  ACHIEVEMENT_MARK,
+  BADGE_IDS,
   DAY_HISTORY_CAP,
   DEFAULT_GOAL_MINUTES,
-  EMERGENCY_XP_PENALTY,
   LEVELS,
-  XP_PER_FOCUS_MINUTE,
-  XP_PER_RESISTED_ATTEMPT,
+  MIN_COUNTED_MINUTES,
+  QUIET_WINDOW_MS,
   addDays,
   applyFocusSession,
-  applyResistedAttempts,
   applyUnlockedSession,
+  challengeSnapshot,
   clampGoalMinutes,
-  computeStreak,
+  countedSessionMinutes,
+  dominantMode,
   emptyGamification,
+  evaluateProgress,
   isoWeekKeyFromDay,
   levelProgress,
   localDayKey,
   localHour,
+  noteAttempts,
+  plantResting,
   resolveGamification,
-  seedGamification,
+  rewardSnapshot,
   sanitizeGamification,
+  seedGamification,
   sessionFullMinutes,
+  setChallenge,
   setGoalMinutes,
+  setPurpose,
+  setReward,
   stepGoalMinutes,
-  weeklySummary,
+  weeklyProgress,
   type FocusSessionEvent,
   type GamificationState,
 } from './gamification';
@@ -51,352 +57,233 @@ function session(
   return { mode, startedAt, endedAt: startedAt + minutes * 60_000 };
 }
 
-function play(sessions: FocusSessionEvent[], offset = OFFSET): GamificationState {
-  return sessions.reduce(
-    (state, item) => applyFocusSession(state, item, offset).state,
-    emptyGamification(),
-  );
+function play(items: FocusSessionEvent[], base: GamificationState = emptyGamification()): GamificationState {
+  return items.reduce((state, item) => applyFocusSession(state, item, OFFSET).state, base);
 }
 
-function snapshot(state: GamificationState): string {
-  return JSON.stringify(state);
-}
-
-export function testGamification() {
-  check(ACHIEVEMENT_IDS.length === 12, 'about twelve achievements');
-  for (const id of ACHIEVEMENT_IDS) {
-    check(ACHIEVEMENT_MARK[id].length > 0, `mark for ${id}`);
-  }
-  check(LEVELS[0].minXp === 0, 'first level starts at 0');
-  check(LEVELS[LEVELS.length - 1].id === 'apartado', 'last level');
+export function testGamification(): void {
+  const fresh = emptyGamification();
+  check(fresh.v === 2, 'progress is version 2');
+  check(fresh.goalMinutes === DEFAULT_GOAL_MINUTES, 'default goal is 60');
+  check(fresh.recoveredMinutes === 0 && fresh.reward == null, 'a new profile is empty');
+  check(BADGE_IDS.length === 8, 'eight badges');
+  check(LEVELS.length === 6, 'six levels');
+  check(LEVELS[0].id === 'semilla' && LEVELS[0].minMinutes === 0, 'seed starts at 0');
+  check(LEVELS[1].minMinutes === 300, 'sprout is 5 hours');
+  check(LEVELS[2].minMinutes === 1200, 'root is 20 hours');
+  check(LEVELS[3].minMinutes === 3600, 'tree is 60 hours');
+  check(LEVELS[4].minMinutes === 9000, 'forest is 150 hours');
+  check(LEVELS[5].minMinutes === 18000, 'amber is 300 hours');
 
   check(isoWeekKeyFromDay('2026-01-01') === '2026-W01', '1 Jan 2026 is week 1');
-  check(isoWeekKeyFromDay('2025-12-29') === '2026-W01', 'Monday of that week stays in 2026-W01');
+  check(isoWeekKeyFromDay('2025-12-29') === '2026-W01', '29 Dec 2025 is week 1 of 2026');
   check(isoWeekKeyFromDay('2026-10-16') === '2026-W42', '16 Oct 2026 is week 42');
   check(isoWeekKeyFromDay('2026-10-19') === '2026-W43', '19 Oct 2026 is week 43');
-  check(addDays('2026-10-31', 1) === '2026-11-01', 'addDays crosses the month');
-  check(addDays('2026-01-01', -1) === '2025-12-31', 'addDays crosses the year');
+  check(localDayKey(Date.UTC(2026, 9, 16, 22, 0), 120) === '2026-10-17', 'positive offset rolls the local day');
+  check(localHour(Date.UTC(2026, 9, 16, 22, 0), 120) === 0, 'positive offset rolls the local hour');
+  check(addDays('2026-10-16', 3) === '2026-10-19', 'add days');
 
-  const madrid = 120;
-  const lateUtc = Date.UTC(2026, 9, 16, 22, 0);
-  check(localDayKey(lateUtc, madrid) === '2026-10-17', 'positive offset rolls the local day');
-  check(localHour(lateUtc, madrid) === 0, 'positive offset rolls the local hour');
-  check(localHour(at('2026-10-16', 22), 0) === 22, 'local hour 22');
-  check(localHour(at('2026-10-16', 4, 50), 0) === 4, 'local hour 4');
+  const short = session('2026-10-16', MIN_COUNTED_MINUTES - 1);
+  check(sessionFullMinutes(short) === 4, 'four whole minutes');
+  check(countedSessionMinutes(short) === 0, 'under five minutes does not count');
+  const ignored = applyFocusSession(fresh, short, OFFSET);
+  check(ignored.state === fresh, 'a short session does not change progress');
+  check(ignored.badges.length === 0 && ignored.levelUp == null, 'a short session celebrates nothing');
 
-  const fresh = emptyGamification();
-  const short = session('2026-10-16', 0, 'trabajo', 10);
-  short.endedAt = short.startedAt + 59_000;
-  const underAMinute = applyFocusSession(fresh, short, OFFSET);
-  check(underAMinute.state.xp === 0, '59 seconds award no XP');
-  check(underAMinute.state.sessionsCompleted === 1, 'a short session still counts');
-  check(underAMinute.state.focusMinutes === 0, 'no full minute yet');
-  check(underAMinute.unlocked.includes('first_session'), 'first session unlocks under a minute');
-  check(!underAMinute.unlocked.includes('hour_1'), 'one hour stays locked');
+  const five = applyFocusSession(fresh, session('2026-10-16', 5), OFFSET);
+  check(five.state.recoveredMinutes === 5, 'five minutes count');
+  check(five.state.days['2026-10-16'].focusMinutes === 5, 'the day keeps the minutes');
+  check(five.state.days['2026-10-16'].modes.trabajo === 5, 'the mode keeps the minutes');
+  check(five.badges.includes('first_lock'), 'the first counted session is the first lock');
+  check(five.levelUp == null, 'five minutes stays a seed');
+  check(five.state.startedAt === session('2026-10-16', 5).startedAt, 'the quiet window starts with the session');
 
-  const before = snapshot(fresh);
-  const quarter = applyFocusSession(fresh, session('2026-10-16', 25), OFFSET);
-  check(snapshot(fresh) === before, 'apply does not mutate the input');
-  check(quarter.state.xp === 25 * XP_PER_FOCUS_MINUTE, '25 minutes is 250 XP');
-  check(quarter.state.focusMinutes === 25, 'minutes accumulate');
-  check(quarter.state.days['2026-10-16'].focusMinutes === 25, 'minutes land on the end day');
-  check(quarter.state.modes.join() === 'trabajo', 'mode is remembered');
-  check(quarter.unlocked.includes('mode_trabajo'), 'trabajo badge');
+  const pause = applyFocusSession(five.state, { ...session('2026-10-16', 40), emergency: true }, OFFSET);
+  check(pause.state.recoveredMinutes === 5, 'a justified pause does not remove time');
+  check(pause.state.days['2026-10-16'].focusMinutes === 5, 'a pause does not count toward the day');
+  check(pause.badges.length === 0, 'a pause earns no badge');
+  check(pause.state.quietSince === session('2026-10-16', 40).endedAt, 'a pause restarts the quiet window');
+  check(pause.state.unlocked.first_lock != null, 'a pause does not revoke a badge');
 
-  const again = applyFocusSession(quarter.state, session('2026-10-16', 35, 'estudio', 18), OFFSET);
-  check(again.state.xp === 600, 'a second hour of minutes reaches 600 XP');
-  check(again.state.focusMinutes === 60, 'lifetime minutes');
-  check(again.unlocked.includes('hour_1'), 'one hour unlocks at 60 minutes');
-  check(again.state.unlocked.hour_1 != null, 'hour badge is stored');
-  const repeat = applyFocusSession(again.state, { ...session('2026-10-17', 1), mode: 'nope' }, OFFSET);
-  check(!repeat.unlocked.includes('hour_1'), 'an owned badge is not reported again');
-  check(repeat.state.modes.length === 2, 'an unknown mode is ignored');
+  const again = applyUnlockedSession(five.state, [session('2026-10-16', 5)], [session('2026-10-16', 5)], OFFSET);
+  check(again.state === five.state, 'the same session cannot be counted twice');
 
-  const broke = applyFocusSession(again.state, { mode: 'gym', startedAt: Number.NaN, endedAt: 1 }, OFFSET);
-  check(broke.state === again.state, 'a broken session is a no-op');
+  let attempts = noteAttempts(fresh, 100, at('2026-10-16', 12), OFFSET, { baseline: true });
+  check(attempts.state.attemptsNoted === 100, 'a baseline moves the cursor');
+  check(attempts.state.days['2026-10-16'] == null, 'a baseline is not written onto today');
+  check(attempts.state.recoveredMinutes === 0 && attempts.badges.length === 0, 'attempts are not progress');
+  attempts = noteAttempts(attempts.state, 100, at('2026-10-16', 13), OFFSET);
+  check(attempts.state.attemptsNoted === 100, 'the same total is a no-op');
+  attempts = noteAttempts(attempts.state, 107, at('2026-10-16', 18), OFFSET);
+  check(attempts.state.days['2026-10-16'].attempts === 7, 'only the new attempts land on today');
+  check(attempts.state.recoveredMinutes === 0, 'attempts still add no time');
+  const yesterday = noteAttempts(attempts.state, 112, at('2026-10-15', 18), OFFSET);
+  check(yesterday.state.days['2026-10-15'].attempts === 5, 'an older day can hold its own count');
 
-  const zero = applyEmergencyChain(0);
-  check(zero.xp === 0, 'a penalty cannot pass below 0');
-  check(zero.sessionsCompleted === 0, 'an emergency is not a completed session');
-  check(zero.unlocked.first_session == null, 'an emergency does not open the first badge');
-  check(zero.days['2026-10-16'] == null, 'a penalty with nothing to take writes no day');
+  const raiz = levelProgress(57 * 60);
+  check(raiz.id === 'raiz', '57 hours is still root');
+  check(raiz.remainingMinutes === 3 * 60, 'three hours left until tree');
+  check(levelProgress(0).id === 'semilla' && levelProgress(18000).id === 'ambar', 'the ends of the scale');
+  check(levelProgress(18000).remainingMinutes === 0 && levelProgress(18000).ratio === 1, 'amber is full');
 
-  const rich = applyFocusSession(fresh, session('2026-10-16', 10), OFFSET).state;
-  const penalized = applyFocusSession(
-    rich,
-    { ...session('2026-10-16', 30), emergency: true },
-    OFFSET,
-  );
-  check(penalized.state.xp === 100 - EMERGENCY_XP_PENALTY, 'emergency takes 20 XP and no minute XP');
-  check(penalized.state.focusMinutes === 10, 'emergency minutes are not focus');
-  check(penalized.state.days['2026-10-16'].focusMinutes === 10, 'the goal ignores the emergency');
-  check(penalized.state.days['2026-10-16'].xp === 100 - EMERGENCY_XP_PENALTY, 'the day keeps the net XP');
-  check(!penalized.unlocked.includes('mode_estudio'), 'emergency does not stamp a mode');
+  const hour = applyFocusSession(fresh, session('2026-10-01', 60), OFFSET);
+  check(hour.badges.includes('hour_1') && hour.levelUp == null, 'the first hour is a badge, still a seed');
+  const sprout = applyFocusSession(hour.state, session('2026-10-02', 240), OFFSET);
+  check(sprout.state.recoveredMinutes === 300 && sprout.levelUp === 'brote', 'five hours reaches sprout');
 
-  const tinyPenalty = applyFocusSession(
-    { ...rich, xp: 5 },
-    { ...session('2026-10-17', 40), emergency: true },
-    OFFSET,
-  );
-  check(tinyPenalty.state.xp === 0, 'a small balance is the whole penalty');
-  check(tinyPenalty.state.days['2026-10-17'].xp === -5, 'the day records only what was taken');
+  check(clampGoalMinutes(7) === 15 && clampGoalMinutes(999) === 240, 'the goal stays in range');
+  check(stepGoalMinutes(60, -1) === 45 && stepGoalMinutes(15, -1) === 15, 'the goal steps by 15');
 
-  let resisted = applyResistedAttempts(fresh, 40, at('2026-10-16', 12), OFFSET);
-  check(resisted.state.xp === 40 * XP_PER_RESISTED_ATTEMPT, 'each resisted attempt is 5 XP');
-  check(resisted.state.days['2026-10-16'].resisted === 40, 'attempts land on that day');
-  check(!resisted.unlocked.includes('resisted_100'), '40 is not 100');
-  const sameTotal = applyResistedAttempts(resisted.state, 40, at('2026-10-16', 13), OFFSET);
-  check(sameTotal.state === resisted.state, 'the same total does not pay twice');
-  const junk = applyResistedAttempts(resisted.state, -3, at('2026-10-16', 13), OFFSET);
-  check(junk.state === resisted.state, 'a bad total is ignored');
-  resisted = applyResistedAttempts(resisted.state, 100, at('2026-10-16', 18), OFFSET);
-  check(resisted.state.xp === 500, 'the delta from 40 to 100 is 60 attempts');
-  check(resisted.unlocked.includes('resisted_100'), '100 resisted attempts unlock');
-  check(resisted.state.resistedCounted === 100, 'the cursor remembers what was paid');
-
-  const spark = levelProgress(0);
-  check(spark.id === 'chispa' && spark.level === 1 && spark.ratio === 0, '0 XP is the first level');
-  const halfway = levelProgress(50);
-  check(halfway.id === 'chispa' && halfway.ratio === 0.5, '50 XP is half of the first span');
-  const presente = levelProgress(100);
-  check(presente.id === 'presente' && presente.ratio === 0 && presente.level === 2, 'a threshold starts the next level');
-  const top = levelProgress(12_000);
-  check(top.id === 'apartado' && top.ratio === 1 && top.nextXp == null, 'the last level is full');
-  check(levelProgress(11_999).id === 'silencio', 'one XP short stays on the previous level');
-
-  check(clampGoalMinutes(undefined) === DEFAULT_GOAL_MINUTES, 'the default goal is 60');
-  check(clampGoalMinutes(10) === 15, 'the goal steps up to the minimum');
-  check(clampGoalMinutes(250) === 240, 'the goal steps down to the maximum');
-  check(stepGoalMinutes(60, -1) === 45, 'goal steps by 15');
-  check(stepGoalMinutes(15, -1) === 15, 'the goal does not pass 15');
-  check(stepGoalMinutes(240, 1) === 240, 'the goal does not pass 240');
-
-  const mondayOnly = play([session('2026-10-12', 60)]);
-  const tuesdayNoon = computeStreak(mondayOnly, at('2026-10-13', 12), OFFSET);
-  check(tuesdayNoon.streak === 1, 'an open Tuesday keeps Monday');
-  check(tuesdayNoon.todayMet === false && tuesdayNoon.todayMinutes === 0, 'Tuesday is still open');
-  check(!tuesdayNoon.comodinUsedThisWeek, 'an open day does not spend the comodín');
-
-  const monToWed = play([
-    session('2026-10-12', 60),
-    session('2026-10-13', 60),
-    session('2026-10-14', 60),
-  ]);
-
-  const wednesday = computeStreak(monToWed, at('2026-10-14', 20), OFFSET);
-  check(wednesday.streak === 3, 'three goal days');
-  check(wednesday.comodinUsedThisWeek === false, 'no miss, comodín still free');
-
-  const throughFriday = play([
-    ...[session('2026-10-12', 60), session('2026-10-13', 60), session('2026-10-14', 60)],
-    session('2026-10-16', 60),
-  ]);
-  const friday = computeStreak(throughFriday, at('2026-10-16', 18), OFFSET);
-  check(friday.streak === 4, 'Thursday is bridged and Friday counts');
-  check(friday.comodinUsedThisWeek, 'the week spent its comodín on Thursday');
-  check(friday.comodinDay === '2026-10-15', 'the bridged day is Thursday');
-  check(!friday.savedDays.includes('2026-10-16'), 'a met day is not a comodín');
-
-  const emptyFriday = computeStreak(emptyGamification(), at('2026-10-16', 12), OFFSET);
-  check(emptyFriday.streak === 0 && !emptyFriday.comodinUsedThisWeek, 'empty history does not burn comodines');
-
-  const sunday = computeStreak(
-    play([
-      session('2026-10-12', 60),
-      session('2026-10-13', 60),
-      session('2026-10-14', 60),
-      session('2026-10-16', 60),
-    ]),
-    at('2026-10-18', 10),
-    OFFSET,
-  );
-  check(sunday.streak === 1, 'a second miss the same week keeps only Friday');
-  check(sunday.comodinDay === '2026-10-17', 'the comodín moves to the miss that still connects');
-
-  const acrossWeeks = play([
-    session('2026-10-12', 60),
-    session('2026-10-13', 60),
-    session('2026-10-14', 60),
-    session('2026-10-16', 60),
-    session('2026-10-17', 60),
-    session('2026-10-18', 60),
-    session('2026-10-20', 60),
-  ]);
-  const tuesdayNext = computeStreak(acrossWeeks, at('2026-10-20', 18), OFFSET);
-  check(tuesdayNext.streak === 7, 'one comodín per week bridges Thursday and Monday');
-  check(tuesdayNext.savedDays.includes('2026-10-15'), 'week 42 bridged Thursday');
-  check(tuesdayNext.savedDays.includes('2026-10-19'), 'week 43 bridged Monday');
-
-  let streakRun = emptyGamification();
-  let sawSeven = false;
-  for (let day = 1; day <= 30; day += 1) {
-    const key = `2026-09-${String(day).padStart(2, '0')}`;
-    const applied = applyFocusSession(streakRun, session(key, 60), OFFSET);
-    streakRun = applied.state;
-    if (day === 7) {
-      sawSeven = applied.unlocked.includes('streak_7');
-      check(computeStreak(streakRun, at(key, 18), OFFSET).streak === 7, 'day 7 streak');
-    }
+  const monday = '2026-10-12';
+  let week = fresh;
+  for (let index = 0; index < 5; index += 1) {
+    const day = addDays(monday, index);
+    const applied = applyFocusSession(week, session(day, 60), OFFSET);
+    week = applied.state;
+    if (index < 4) check(!applied.badges.includes('week_5'), 'four days are not a full week');
+    else check(applied.badges.includes('week_5'), 'the fifth day completes the week');
   }
-  check(sawSeven, 'seven goal days unlock the week badge');
-  check(streakRun.unlocked.streak_30 != null, 'thirty goal days unlock the month badge');
-  check(computeStreak(streakRun, at('2026-09-30', 18), OFFSET).streak === 30, 'the month streak is 30');
+  const friday = weeklyProgress(week, at('2026-10-16', 18), OFFSET);
+  check(friday.daysMet === 5 && friday.weekKey === '2026-W42', '5 of 7 on Friday');
+  check(friday.days[5].status === 'open' && friday.days[6].status === 'open', 'Saturday and Sunday are still ahead');
+  check(friday.freshStart === false, 'a week in progress is not a fresh start');
+  const saturday = weeklyProgress(week, at('2026-10-17', 12), OFFSET);
+  check(saturday.days[5].status === 'today' && saturday.daysMet === 5, 'today is not a miss while it is open');
+  const missed = weeklyProgress(week, at('2026-10-18', 12), OFFSET);
+  check(missed.days[5].status === 'missed', 'a past day under the goal is missed, with no wildcard');
 
-  const lowered = setGoalMinutes(play([session('2026-10-12', 30), session('2026-10-13', 30)]), 30, at('2026-10-13', 18), OFFSET);
-  check(lowered.state.goalMinutes === 30, 'the goal can drop to 30');
-  check(computeStreak(lowered.state, at('2026-10-13', 18), OFFSET).streak === 2, 'a lower goal recounts the days');
-  const sameGoal = setGoalMinutes(lowered.state, 30, at('2026-10-13', 18), OFFSET);
-  check(sameGoal.state === lowered.state, 'the same goal does nothing');
+  const nextMonday = weeklyProgress(week, at('2026-10-19', 9), OFFSET);
+  check(nextMonday.daysMet === 0 && nextMonday.freshStart === false, 'a completed week does not scold the next one');
+  const thin = play([session('2026-10-12', 60), session('2026-10-13', 60)]);
+  const afterThin = weeklyProgress(thin, at('2026-10-19', 9), OFFSET);
+  check(afterThin.freshStart === true, 'a new week after a short one starts clean');
 
-  const night = applyFocusSession(fresh, session('2026-10-16', 20, 'casa', 23), OFFSET);
-  check(night.state.nightOwl && night.unlocked.includes('night_owl'), 'a 20 minute session at 23:00 is night owl');
-  check(night.unlocked.includes('mode_casa'), 'casa badge');
-  const almostNight = applyFocusSession(fresh, session('2026-10-16', 14, 'casa', 23), OFFSET);
-  check(!almostNight.state.nightOwl, '14 night minutes are not enough');
-  const evening = applyFocusSession(fresh, session('2026-10-16', 20, 'casa', 21), OFFSET);
-  check(!evening.state.nightOwl, '21:00 is not night');
-  const hourFour = applyFocusSession(fresh, session('2026-10-16', 15, 'gym', 4), OFFSET);
-  check(hourFour.state.nightOwl && !hourFour.state.earlyBird, '04:00 is night, not early');
-  const hourFive = applyFocusSession(fresh, session('2026-10-16', 15, 'estudio', 5), OFFSET);
-  check(hourFive.state.earlyBird && hourFive.unlocked.includes('early_bird'), '05:00 is early bird');
-  check(hourFive.unlocked.includes('mode_estudio'), 'estudio badge');
-  check(!hourFive.state.nightOwl, '05:00 is not night');
-  const hourEight = applyFocusSession(fresh, session('2026-10-16', 15, 'estudio', 8), OFFSET);
-  check(!hourEight.state.earlyBird, '08:00 is not early');
-  const nightEmergency = applyFocusSession(
-    fresh,
-    { ...session('2026-10-16', 40, 'gym', 23), emergency: true },
+  let goals = fresh;
+  for (let index = 0; index < 7; index += 1) {
+    goals = applyFocusSession(goals, session(addDays('2026-09-01', index * 2), 60), OFFSET).state;
+  }
+  check(goals.goalDays === 7 && goals.unlocked.goal_7 != null, 'seven goal days need not be consecutive');
+  const raised = setGoalMinutes(goals, 120, at('2026-10-01', 8));
+  check(raised.state.goalDays === 7 && raised.state.unlocked.goal_7 != null, 'raising the goal does not take days back');
+  const lowDays = play(['2026-10-05', '2026-10-06', '2026-10-07', '2026-10-08', '2026-10-09'].map((day) => session(day, 30)));
+  check(lowDays.goalDays === 0, 'thirty minutes misses a sixty-minute goal');
+  const lowered = setGoalMinutes(lowDays, 30, at('2026-10-10', 8));
+  check(lowered.state.goalDays === 5, 'lowering the goal counts the days already stored');
+
+  const quietStart = applyFocusSession(fresh, session('2026-09-01', 30), OFFSET).state;
+  const tooSoon = evaluateProgress(quietStart, quietStart.quietSince! + QUIET_WINDOW_MS - 1);
+  check(tooSoon.state === quietStart && tooSoon.badges.length === 0, '29 days is not a quiet month');
+  const month = evaluateProgress(quietStart, quietStart.quietSince! + QUIET_WINDOW_MS);
+  check(month.badges.includes('month_quiet'), '30 quiet days earn the badge once');
+  const paused = applyFocusSession(month.state, { ...session('2026-10-16', 10), emergency: true }, OFFSET).state;
+  check(paused.unlocked.month_quiet != null, 'a later pause does not revoke the month');
+  check(paused.quietSince !== quietStart.quietSince, 'the pause starts a new quiet window');
+  const second = evaluateProgress(paused, paused.quietSince! + QUIET_WINDOW_MS);
+  check(second.badges.length === 0, 'the month badge does not fire twice');
+
+  const rewardBase = applyFocusSession(fresh, session('2026-10-01', 600), OFFSET).state;
+  const reward = setReward(rewardBase, { hours: 1, text: '  ese libro  ' }, at('2026-10-02', 9));
+  check(reward.state.reward?.baselineMinutes === 600, 'the reward starts from now, not from lifetime');
+  check(reward.state.reward?.text === 'ese libro', 'reward text is trimmed');
+  check(rewardSnapshot(reward.state)?.completed === false, 'one new hour is not already done');
+  const rewarded = applyFocusSession(reward.state, session('2026-10-02', 60), OFFSET);
+  check(rewarded.rewardCompleted === true, 'the new hour completes the reward');
+  check(rewarded.state.reward?.completedAt != null, 'the reward remembers when it was met');
+  check(setReward(fresh, { hours: 0, text: 'nada' }, 1).state === fresh, 'a zero-hour reward is ignored');
+
+  let challenged = setChallenge(fresh, { text: 'cenas', mode: 'casa', target: 3 }).state;
+  challenged = play([session('2026-10-12', 20, 'casa'), session('2026-10-13', 20, 'trabajo'), session('2026-10-14', 20, 'casa')], challenged);
+  const challenge = challengeSnapshot(challenged, at('2026-10-16', 12), OFFSET);
+  check(challenge?.days === 2 && challenge.met === false, 'the challenge counts distinct days of that mode');
+  const done = challengeSnapshot(
+    play([session('2026-10-15', 10, 'casa')], challenged),
+    at('2026-10-16', 12),
     OFFSET,
   );
-  check(!nightEmergency.state.nightOwl && !nightEmergency.state.earlyBird, 'an emergency night session earns neither');
-  check(hourFour.unlocked.includes('mode_gym'), 'deporte badge');
+  check(done?.days === 3 && done.met === true, 'the third home day meets the challenge');
+  check(setChallenge(fresh, { text: 'no', mode: 'casa', target: 8 }).state.challenge == null, 'a challenge target stays inside the week');
 
-  const madridNight = applyFocusSession(fresh, session('2026-10-16', 20, 'trabajo', 23, madrid), madrid);
-  check(localHour(madridNight.state ? session('2026-10-16', 20, 'trabajo', 23, madrid).startedAt : 0, madrid) === 23, 'madrid start hour');
-  check(madridNight.state.nightOwl, 'night owl follows the offset, not UTC');
-  check(madridNight.state.days['2026-10-16'].focusMinutes === 20, 'the session stays on the local end day');
+  const named = setPurpose(fresh, 'leer');
+  check(named.state.purpose === 'leer', 'purpose is stored');
+  check(setPurpose(named.state, 'nope' as 'leer').state.purpose == null, 'an unknown purpose clears');
 
-  let packed = emptyGamification();
+  const garden = play([session('2026-10-12', 40, 'casa'), session('2026-10-13', 10, 'trabajo')]);
+  check(dominantMode(garden, at('2026-10-16', 12), OFFSET) === 'casa', 'the plant follows this week’s main mode');
+  check(plantResting(garden, at('2026-10-16', 12), OFFSET, false) === true, 'a quiet today lets the plant rest');
+  check(plantResting(garden, at('2026-10-16', 12), OFFSET, true) === false, 'a running session is not rest');
+  check(plantResting(fresh, at('2026-10-16', 12), OFFSET, false) === false, 'a seed is not described as resting');
+
+  const legacy = {
+    xp: 90 * 10 + 4 * 5 - 20,
+    focusMinutes: 90,
+    resistedCounted: 4,
+    goalMinutes: 60,
+    sessionsCompleted: 2,
+    nightOwl: true,
+    earlyBird: true,
+    modes: ['casa'],
+    unlocked: {
+      first_session: 11,
+      hour_1: 12,
+      hour_10: 13,
+      streak_7: 14,
+      streak_30: 15,
+      resisted_100: 16,
+      mode_casa: 17,
+      night_owl: 18,
+      early_bird: 19,
+    },
+    days: {
+      '2026-10-12': { focusMinutes: 60, xp: 600, resisted: 4 },
+      '2026-10-13': { focusMinutes: 30, xp: -20, resisted: 0 },
+    },
+  };
+  const migrated = resolveGamification(
+    legacy,
+    [{ ...session('2026-10-13', 30, 'estudio'), emergency: true }, session('2026-10-12', 60, 'casa')],
+    0,
+    OFFSET,
+    at('2026-10-16', 12),
+  );
+  check(migrated.recoveredMinutes === 90, 'migration keeps focus minutes and ignores XP');
+  check(migrated.unlocked.first_lock === 11, 'the first session becomes the first lock');
+  check(migrated.unlocked.hour_1 === 12, 'the one-hour badge is kept');
+  check(migrated.unlocked.hour_10 === 13, 'the ten-hour badge is kept even if the minutes are lower');
+  check(migrated.unlocked.goal_7 === 14, 'the seven-day streak becomes the goal badge');
+  check(migrated.unlocked.month_quiet == null, 'a streak of 30 is not a quiet month');
+  check(!('resisted_100' in migrated.unlocked), 'attempt badges are dropped');
+  check(migrated.attemptsNoted === 4, 'the attempt cursor is kept so they are not counted again');
+  check(migrated.days['2026-10-12'].attempts === 0, 'old attempt points are not a day count');
+  check(migrated.days['2026-10-12'].modes.casa === 60, 'kept sessions fill the mode chart without adding minutes');
+  check(migrated.days['2026-10-12'].focusMinutes === 60, 'mode replay does not double the day');
+  check(migrated.quietSince === session('2026-10-13', 30, 'estudio').endedAt, 'the latest pause starts the quiet window');
+
+  const stored = { ...five.state, recoveredMinutes: 5 };
+  const replayed = resolveGamification(stored, [session('2026-10-16', 90)], 90 * 60_000, OFFSET);
+  check(replayed.recoveredMinutes === 5, 'a stored profile is not replayed');
+
+  const seeded = seedGamification(
+    [session('2026-10-16', 10), session('2026-10-16', 3), { ...session('2026-10-16', 20), emergency: true }],
+    33 * 60_000,
+    OFFSET,
+  );
+  check(seeded.recoveredMinutes === 13, 'recovered time tops up after pauses are removed');
+  check(seeded.days['2026-10-16'].focusMinutes === 10, 'the top-up does not invent a goal day');
+  check(seeded.unlocked.first_lock != null, 'seeded time still opens the first lock');
+
+  const junk = sanitizeGamification({ v: 2, days: 'nope', reward: 4, plant: 'gold', goalMinutes: 3 });
+  check(junk.recoveredMinutes === 0 && junk.plant === 'default' && junk.goalMinutes === 15, 'a broken profile repairs');
+  check(sanitizeGamification(null).v === 2, 'null sanitizes to empty progress');
+  check(resolveGamification(undefined, [session('2026-10-16', 10)], 0, OFFSET).recoveredMinutes === 10, 'a missing profile seeds');
+
+  let packed = fresh;
   for (let index = 0; index < DAY_HISTORY_CAP + 5; index += 1) {
-    const startedAt = Date.UTC(2024, 0, 1) + index * 86_400_000;
-    packed = applyFocusSession(
-      packed,
-      { mode: 'trabajo', startedAt, endedAt: startedAt + 60_000 },
-      OFFSET,
-    ).state;
+    packed = applyFocusSession(packed, session(addDays('2024-01-01', index), 60), OFFSET).state;
   }
   check(Object.keys(packed.days).length === DAY_HISTORY_CAP, 'day history stays capped');
-  check(packed.focusMinutes === DAY_HISTORY_CAP + 5, 'pruned days still count as lifetime minutes');
+  check(packed.goalDays > DAY_HISTORY_CAP, 'pruned days still count toward the goal total');
 
-  const week = play([session('2026-10-12', 60), session('2026-10-14', 30)]);
-  const withAttempts = applyResistedAttempts(week, 4, at('2026-10-14', 19), OFFSET).state;
-  const summary = weeklySummary(withAttempts, at('2026-10-16', 12), OFFSET);
-  check(summary.weekKey === '2026-W42', 'the summary is this ISO week');
-  check(summary.focusMinutes === 90, 'weekly focus minutes');
-  check(summary.resisted === 4, 'weekly resisted attempts');
-  check(summary.daysMet === 1, 'only Monday met a 60 minute goal');
-  check(summary.xp === 90 * XP_PER_FOCUS_MINUTE + 4 * XP_PER_RESISTED_ATTEMPT, 'weekly XP adds both sources');
-  const penalizedWeek = applyFocusSession(
-    withAttempts,
-    { ...session('2026-10-16', 5), emergency: true },
-    OFFSET,
-  ).state;
-  const afterPenalty = weeklySummary(penalizedWeek, at('2026-10-16', 21), OFFSET);
-  check(
-    afterPenalty.xp === 90 * XP_PER_FOCUS_MINUTE + 20 - EMERGENCY_XP_PENALTY,
-    'the weekly card subtracts the emergency penalty',
-  );
-  const onlyPenalty = weeklySummary(
-    applyFocusSession(fresh, { ...session('2026-10-16', 5), emergency: true }, OFFSET).state,
-    at('2026-10-16', 21),
-    OFFSET,
-  );
-  check(onlyPenalty.xp === 0, 'a penalty with no XP does not show a negative week');
-
-  const newestFirst: FocusSessionEvent[] = [
-    { ...session('2026-10-16', 1), emergency: true },
-    session('2026-10-15', 10),
-  ];
-  const seeded = seedGamification(newestFirst, 11 * 60_000, OFFSET);
-  check(seeded.xp === 100 - EMERGENCY_XP_PENALTY, 'replay applies the penalty after the earned XP');
-  check(seeded.focusMinutes === 10, 'retained sessions set the minutes');
-  check(seeded.unlocked.first_session != null, 'migration unlocks the first session quietly');
-  check(seeded.sessionsCompleted === 1, 'the emergency is not a completed session');
-
-  const fromRecovered = seedGamification([], 10 * 60 * 60_000, OFFSET);
-  check(fromRecovered.focusMinutes === 600, 'recovered time beyond the session list still counts');
-  check(fromRecovered.xp === 600 * XP_PER_FOCUS_MINUTE, 'that time pays XP');
-  check(fromRecovered.unlocked.hour_10 != null, 'ten hours unlock from recovered time');
-  check(fromRecovered.sessionsCompleted === 1, 'recovered time implies a completed session');
-  check(Object.keys(fromRecovered.days).length === 0, 'recovered time does not invent streak days');
-
-  const emergencyOnly = seedGamification([{ ...session('2026-10-16', 30), emergency: true }], 30 * 60_000, OFFSET);
-  check(emergencyOnly.xp === 0 && emergencyOnly.focusMinutes === 0, 'emergency time is removed from recovered time');
-  check(emergencyOnly.unlocked.first_session == null, 'emergency history does not unlock the first badge');
-
-  const kept = sanitizeGamification({
-    xp: 10,
-    goalMinutes: 60,
-    focusMinutes: 1,
-    sessionsCompleted: 1,
-    resistedCounted: 0,
-    modes: ['trabajo'],
-    nightOwl: false,
-    earlyBird: false,
-    unlocked: { first_session: 5 },
-    days: {},
-  });
-  const resolved = resolveGamification(kept, [session('2026-10-12', 60)], 60 * 60_000, OFFSET);
-  check(resolved.xp === 10, 'a stored blob is not replayed');
-  check(resolved.focusMinutes === 1, 'stored minutes stay');
-  const migrated = resolveGamification(undefined, [session('2026-10-12', 60, 'gym')], 0, OFFSET);
-  check(migrated.xp === 600, 'a missing blob replays the sessions');
-  check(migrated.unlocked.mode_gym != null, 'replay grants the mode badge');
-  check(resolveGamification(null, [], 0, OFFSET).xp === 0, 'null also migrates, from nothing');
-
-  const dirty = sanitizeGamification({
-    xp: -5,
-    goalMinutes: 10,
-    focusMinutes: 1.9,
-    sessionsCompleted: -2,
-    resistedCounted: 3.2,
-    modes: ['nope', 'gym', 'gym'],
-    nightOwl: 'yes',
-    earlyBird: 1,
-    unlocked: { nope: 4, hour_1: 0, hour_10: 8 },
-    days: {
-      bad: { focusMinutes: 5, xp: 1, resisted: 1 },
-      '2026-10-16': { focusMinutes: 9.8, xp: -4, resisted: 2 },
-    },
-  });
-  check(dirty.xp === 0, 'negative XP becomes 0');
-  check(dirty.goalMinutes === 15, 'a short goal clamps');
-  check(dirty.focusMinutes === 1, 'minutes floor');
-  check(dirty.sessionsCompleted === 0, 'negative sessions become 0');
-  check(dirty.resistedCounted === 3, 'resisted count floors');
-  check(dirty.modes.join() === 'gym', 'modes are known and unique');
-  check(dirty.nightOwl === false && dirty.earlyBird === false, 'flags must be boolean');
-  check(dirty.unlocked.hour_10 === 8 && dirty.unlocked.hour_1 == null, 'only positive known stamps survive');
-  check(dirty.days.bad == null, 'bad day keys drop');
-  check(dirty.days['2026-10-16'].focusMinutes === 9, 'day minutes floor');
-  check(dirty.days['2026-10-16'].xp === -4, 'a day may keep a penalty');
-  check(sanitizeGamification(null).goalMinutes === DEFAULT_GOAL_MINUTES, 'junk becomes the empty state');
-
-  const previousSessions = [session('2026-10-16', 10)];
-  const ended = { ...session('2026-10-16', 10), endedAt: at('2026-10-16', 10) + 20 * 60_000 };
-  const after = [ended, ...previousSessions];
-  const native = applyUnlockedSession(play(previousSessions), previousSessions, after, OFFSET);
-  check(native.state.focusMinutes === 30, 'the new head session is the only one applied');
-  const twice = applyUnlockedSession(native.state, after, after, OFFSET);
-  check(twice.state === native.state, 'the same head session does not pay again');
-  check(sessionFullMinutes(ended) === 20, 'full minutes ignore the leftover seconds');
-
-  const tenHours = applyFocusSession(play([session('2026-10-01', 599)]), session('2026-10-02', 1), OFFSET);
-  check(tenHours.unlocked.includes('hour_10'), '600 minutes unlock ten hours');
-  check(!applyFocusSession(fresh, session('2026-10-01', 599), OFFSET).unlocked.includes('hour_10'), '599 minutes do not');
-}
-
-function applyEmergencyChain(startingXp: number): GamificationState {
-  const base = { ...emptyGamification(), xp: startingXp };
-  return applyFocusSession(base, { ...session('2026-10-16', 45), emergency: true }, OFFSET).state;
+  const hundred = levelProgress(100 * 60);
+  check(hundred.id === 'arbol', '100 hours is a tree, not yet a forest');
+  check(applyFocusSession(play([session('2026-10-01', 100 * 60 - 5)]), session('2026-10-02', 5), OFFSET).badges.includes('hour_100'), '100 hours earns the badge');
 }

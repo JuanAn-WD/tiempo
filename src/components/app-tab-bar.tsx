@@ -36,11 +36,11 @@ const TABS: Record<
     android: 'schedule',
     web: 'schedule',
   },
-  logros: {
-    label: 'tabs.logros',
-    ios: 'trophy.fill',
-    android: 'emoji_events',
-    web: 'emoji_events',
+  progreso: {
+    label: 'tabs.progreso',
+    ios: 'leaf.fill',
+    android: 'park',
+    web: 'park',
   },
   ajustes: {
     label: 'tabs.settings',

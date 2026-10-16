@@ -1,37 +1,41 @@
 import * as Haptics from 'expo-haptics';
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { AccessibilityInfo, Modal, Pressable, StyleSheet, View } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
 
 import { Text } from '@/components/app-text';
 import { Palette, Radius, Type } from '@/constants/theme';
 import { useI18n } from '@/i18n';
-import { ACHIEVEMENT_IDS, ACHIEVEMENT_MARK, type AchievementId } from '@/lib/gamification';
-import { ACHIEVEMENT_BODY, ACHIEVEMENT_TITLE } from '@/lib/gamification-copy';
-import { subscribeUnlocks } from '@/lib/gamification-feed';
-import { notifyAchievement } from '@/lib/gamification-notify';
+import { BADGE_MARK, LEVELS } from '@/lib/gamification';
+import { BADGE_BODY, BADGE_TITLE, LEVEL_NAME, formatRecovered } from '@/lib/gamification-copy';
+import { subscribeCelebrations, type Celebration } from '@/lib/gamification-feed';
 
-const DISMISS_MS = 3600;
+const DISMISS_MS = 3200;
 
 export function AchievementCelebration() {
   const { t } = useI18n();
-  const [queue, setQueue] = useState<AchievementId[]>([]);
+  const [queue, setQueue] = useState<Celebration[]>([]);
   const [reduceMotion, setReduceMotion] = useState(false);
   const current = queue[0];
   const scale = useSharedValue(1);
 
-  useEffect(() => subscribeUnlocks((ids) => {
-    setQueue((existing) => {
-      const seen = new Set(existing);
-      const next = [...existing];
-      for (const id of ids) {
-        if (!ACHIEVEMENT_IDS.includes(id) || seen.has(id)) continue;
-        seen.add(id);
-        next.push(id);
-      }
-      return next.length === existing.length ? existing : next;
-    });
-  }), []);
+  useEffect(
+    () =>
+      subscribeCelebrations((items) => {
+        setQueue((existing) => {
+          const seen = new Set(existing.map((item) => `${item.kind}:${item.id}`));
+          const next = [...existing];
+          for (const item of items) {
+            const key = `${item.kind}:${item.id}`;
+            if (seen.has(key)) continue;
+            seen.add(key);
+            next.push(item);
+          }
+          return next.length === existing.length ? existing : next;
+        });
+      }),
+    [],
+  );
 
   useEffect(() => {
     let alive = true;
@@ -49,78 +53,53 @@ export function AchievementCelebration() {
     if (!current) return;
     if (reduceMotion) {
       scale.value = 1;
-      return;
+    } else {
+      scale.value = 0.86;
+      scale.value = withSpring(1, { damping: 14, stiffness: 180 });
     }
-    scale.value = 0.92;
-    scale.value = withSpring(1, { damping: 16, stiffness: 220 });
-  }, [current, reduceMotion, scale]);
-
-  useEffect(() => {
-    if (!current) return;
-    void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
-    void notifyAchievement({
-      title: t('gamification.notifyTitle', { title: t(ACHIEVEMENT_TITLE[current]) }),
-      body: t(ACHIEVEMENT_BODY[current]),
-      channelName: t('gamification.channel'),
-    });
-  }, [current, t]);
-
-  const dismiss = useCallback(() => {
-    setQueue((existing) => existing.slice(1));
-  }, []);
-
-  useEffect(() => {
-    if (!current) return;
+    void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     const timer = setTimeout(() => {
-      setQueue((existing) => (existing[0] === current ? existing.slice(1) : existing));
+      setQueue((existing) => existing.slice(1));
     }, DISMISS_MS);
     return () => clearTimeout(timer);
-  }, [current]);
+  }, [current, reduceMotion, scale]);
 
-  const cardStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: scale.value }],
-  }));
-
+  const style = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
   if (!current) return null;
-  const title = t(ACHIEVEMENT_TITLE[current]);
-  const body = t(ACHIEVEMENT_BODY[current]);
+
+  const title =
+    current.kind === 'level'
+      ? t('gamification.reached', {
+          name: t(LEVEL_NAME[current.id]),
+          time: formatRecovered(t, LEVELS.find((level) => level.id === current.id)?.minMinutes ?? 0),
+        })
+      : t(BADGE_TITLE[current.id]);
+  const body = current.kind === 'level' ? t('gamification.levelNote') : t(BADGE_BODY[current.id]);
+  const mark = current.kind === 'level' ? t(LEVEL_NAME[current.id]).slice(0, 1) : BADGE_MARK[current.id];
 
   return (
-    <Modal visible transparent animationType="fade" onRequestClose={dismiss} statusBarTranslucent>
-      <View style={styles.backdrop}>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={t('gamification.celebrationDismiss')}
-          style={StyleSheet.absoluteFill}
-          onPress={dismiss}
-        />
-        <Animated.View style={[styles.card, cardStyle]}>
+    <Modal transparent visible animationType="fade" onRequestClose={() => setQueue((existing) => existing.slice(1))}>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={t('gamification.celebrationDismiss')}
+        onPress={() => setQueue((existing) => existing.slice(1))}
+        style={styles.backdrop}>
+        <Animated.View style={[styles.card, style]}>
           <Text style={styles.kicker}>{t('gamification.kicker')}</Text>
-          <View
-            accessible
-            accessibilityLiveRegion="polite"
-            accessibilityLabel={`${title}. ${body}`}
-            style={styles.copy}>
-            <View style={styles.mark}>
-              <Text style={styles.markText}>{ACHIEVEMENT_MARK[current]}</Text>
-            </View>
-            <Text style={styles.title}>{title}</Text>
-            <Text style={styles.body}>{body}</Text>
+          <View style={styles.mark}>
+            <Text style={styles.markText}>{mark}</Text>
           </View>
-          {queue.length > 1 ? (
-            <Text style={styles.progress}>
-              {t('gamification.celebrationProgress', { index: 1, total: queue.length })}
-            </Text>
-          ) : null}
+          <Text style={styles.title}>{title}</Text>
+          <Text style={styles.body}>{body}</Text>
           <Pressable
             accessibilityRole="button"
             accessibilityLabel={t('gamification.celebrationDismiss')}
-            style={styles.button}
-            onPress={dismiss}>
+            onPress={() => setQueue((existing) => existing.slice(1))}
+            style={styles.button}>
             <Text style={styles.buttonLabel}>{t('gamification.celebrationDismiss')}</Text>
           </Pressable>
         </Animated.View>
-      </View>
+      </Pressable>
     </Modal>
   );
 }
@@ -128,47 +107,43 @@ export function AchievementCelebration() {
 const styles = StyleSheet.create({
   backdrop: {
     flex: 1,
-    backgroundColor: 'rgba(7,6,5,0.72)',
+    backgroundColor: 'rgba(11,10,9,0.72)',
     alignItems: 'center',
     justifyContent: 'center',
-    padding: 24,
+    padding: 28,
   },
   card: {
     width: '100%',
     maxWidth: 360,
-    backgroundColor: Palette.surface,
+    backgroundColor: Palette.bgElevated,
     borderRadius: Radius.xl,
     borderWidth: 1,
-    borderColor: 'rgba(212,146,58,0.45)',
+    borderColor: Palette.lineStrong,
     padding: 24,
+    alignItems: 'center',
   },
   kicker: {
     ...Type.kicker,
     color: Palette.accentBright,
   },
-  copy: {
-    alignItems: 'center',
-    marginTop: 18,
-  },
   mark: {
-    width: 84,
-    height: 84,
-    borderRadius: 42,
+    marginTop: 16,
+    width: 64,
+    height: 64,
+    borderRadius: 32,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: Palette.accentSoft,
-    borderWidth: 1,
-    borderColor: 'rgba(212,146,58,0.4)',
   },
   markText: {
-    ...Type.title,
+    ...Type.labelBold,
     color: Palette.accentBright,
   },
   title: {
-    ...Type.displayL,
+    ...Type.title,
     color: Palette.ink,
     textAlign: 'center',
-    marginTop: 16,
+    marginTop: 14,
   },
   body: {
     ...Type.body,
@@ -176,22 +151,13 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: 8,
   },
-  progress: {
-    ...Type.caption,
-    color: Palette.faintText,
-    textAlign: 'center',
-    marginTop: 16,
-  },
   button: {
     marginTop: 18,
-    minHeight: 48,
-    borderRadius: Radius.full,
-    backgroundColor: Palette.accent,
-    alignItems: 'center',
-    justifyContent: 'center',
+    paddingVertical: 10,
+    paddingHorizontal: 18,
   },
   buttonLabel: {
-    ...Type.label,
-    color: Palette.accentText,
+    ...Type.labelBold,
+    color: Palette.accentBright,
   },
 });

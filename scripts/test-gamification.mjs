@@ -1,5 +1,5 @@
 /**
- * XP, streak, and achievement rules. Pure TypeScript, no native modules.
+ * Reclaimed time, weekly streak, and badge rules. Pure TypeScript, no native modules.
  */
 import fs from 'fs';
 import path from 'path';

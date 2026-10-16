@@ -59,8 +59,9 @@ export type TiempoState = {
   /** Package name → minutes. Missing key uses `usageLimitMinutes`. */
   usageOverrides: Record<string, number>;
   /**
-   * Points, streak, and badges. Missing on saves from before this field:
-   * the first load rebuilds it from sessions and recovered time.
+   * Reclaimed time, weekly streak, and badges. Missing on saves from before
+   * this field: the first load rebuilds it from sessions and recovered time.
+   * The first gamification shape (XP) migrates without replaying.
    */
   gamification: GamificationState;
 };

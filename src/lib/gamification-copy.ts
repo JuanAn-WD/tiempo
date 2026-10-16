@@ -1,43 +1,63 @@
-import type { TranslationKey } from '@/i18n/translate';
-import type { AchievementId, LevelId } from '@/lib/gamification';
+import type { Translate } from '@/i18n';
 
-export const LEVEL_NAME: Record<LevelId, TranslationKey> = {
-  chispa: 'gamification.levels.chispa',
-  presente: 'gamification.levels.presente',
-  foco: 'gamification.levels.foco',
-  constante: 'gamification.levels.constante',
-  guardian: 'gamification.levels.guardian',
-  ritual: 'gamification.levels.ritual',
-  silencio: 'gamification.levels.silencio',
-  apartado: 'gamification.levels.apartado',
+import { minuteParts, type BadgeId, type LevelId, type PlantId, type PurposeId, type SkyId } from '@/lib/gamification';
+
+export const LEVEL_NAME: Record<LevelId, 'gamification.levels.semilla' | 'gamification.levels.brote' | 'gamification.levels.raiz' | 'gamification.levels.arbol' | 'gamification.levels.bosque' | 'gamification.levels.ambar'> = {
+  semilla: 'gamification.levels.semilla',
+  brote: 'gamification.levels.brote',
+  raiz: 'gamification.levels.raiz',
+  arbol: 'gamification.levels.arbol',
+  bosque: 'gamification.levels.bosque',
+  ambar: 'gamification.levels.ambar',
 };
 
-export const ACHIEVEMENT_TITLE: Record<AchievementId, TranslationKey> = {
-  first_session: 'gamification.achievements.first_session.title',
+export const BADGE_TITLE: Record<BadgeId, `gamification.achievements.${BadgeId}.title`> = {
+  first_lock: 'gamification.achievements.first_lock.title',
   hour_1: 'gamification.achievements.hour_1.title',
+  goal_7: 'gamification.achievements.goal_7.title',
+  week_5: 'gamification.achievements.week_5.title',
   hour_10: 'gamification.achievements.hour_10.title',
-  streak_7: 'gamification.achievements.streak_7.title',
-  streak_30: 'gamification.achievements.streak_30.title',
-  resisted_100: 'gamification.achievements.resisted_100.title',
-  mode_trabajo: 'gamification.achievements.mode_trabajo.title',
-  mode_estudio: 'gamification.achievements.mode_estudio.title',
-  mode_casa: 'gamification.achievements.mode_casa.title',
-  mode_gym: 'gamification.achievements.mode_gym.title',
-  night_owl: 'gamification.achievements.night_owl.title',
-  early_bird: 'gamification.achievements.early_bird.title',
+  hour_50: 'gamification.achievements.hour_50.title',
+  hour_100: 'gamification.achievements.hour_100.title',
+  month_quiet: 'gamification.achievements.month_quiet.title',
 };
 
-export const ACHIEVEMENT_BODY: Record<AchievementId, TranslationKey> = {
-  first_session: 'gamification.achievements.first_session.body',
+export const BADGE_BODY: Record<BadgeId, `gamification.achievements.${BadgeId}.body`> = {
+  first_lock: 'gamification.achievements.first_lock.body',
   hour_1: 'gamification.achievements.hour_1.body',
+  goal_7: 'gamification.achievements.goal_7.body',
+  week_5: 'gamification.achievements.week_5.body',
   hour_10: 'gamification.achievements.hour_10.body',
-  streak_7: 'gamification.achievements.streak_7.body',
-  streak_30: 'gamification.achievements.streak_30.body',
-  resisted_100: 'gamification.achievements.resisted_100.body',
-  mode_trabajo: 'gamification.achievements.mode_trabajo.body',
-  mode_estudio: 'gamification.achievements.mode_estudio.body',
-  mode_casa: 'gamification.achievements.mode_casa.body',
-  mode_gym: 'gamification.achievements.mode_gym.body',
-  night_owl: 'gamification.achievements.night_owl.body',
-  early_bird: 'gamification.achievements.early_bird.body',
+  hour_50: 'gamification.achievements.hour_50.body',
+  hour_100: 'gamification.achievements.hour_100.body',
+  month_quiet: 'gamification.achievements.month_quiet.body',
 };
+
+export const PURPOSE_NAME: Record<PurposeId, `gamification.purposes.${PurposeId}`> = {
+  leer: 'gamification.purposes.leer',
+  familia: 'gamification.purposes.familia',
+  deporte: 'gamification.purposes.deporte',
+  descansar: 'gamification.purposes.descansar',
+  otro: 'gamification.purposes.otro',
+};
+
+export const PLANT_NAME: Record<PlantId, `gamification.plants.${PlantId}`> = {
+  default: 'gamification.plants.default',
+  olive: 'gamification.plants.olive',
+  fern: 'gamification.plants.fern',
+  clay: 'gamification.plants.clay',
+};
+
+export const SKY_NAME: Record<SkyId, `gamification.skies.${SkyId}`> = {
+  default: 'gamification.skies.default',
+  dawn: 'gamification.skies.dawn',
+  dusk: 'gamification.skies.dusk',
+  night: 'gamification.skies.night',
+};
+
+export function formatRecovered(t: Translate, minutes: number): string {
+  const parts = minuteParts(minutes);
+  if (parts.hours <= 0) return t('gamification.timeMinutes', { count: parts.minutes });
+  if (parts.minutes === 0) return t('gamification.timeHours', { hours: parts.hours });
+  return t('gamification.timeHoursMinutes', { hours: parts.hours, minutes: parts.minutes });
+}

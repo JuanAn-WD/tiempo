@@ -59,6 +59,7 @@ function Gate({ fontsReady }: { fontsReady: boolean }) {
         <Stack.Screen name="permissions" options={{ presentation: 'modal' }} />
         <Stack.Screen name="blocked" options={{ presentation: 'modal' }} />
         <Stack.Screen name="emergency" options={{ presentation: 'modal' }} />
+        <Stack.Screen name="session-done" options={{ presentation: 'modal' }} />
         <Stack.Screen name="scan-key" options={{ presentation: 'modal' }} />
         <Stack.Screen name="pair-key" options={{ presentation: 'modal' }} />
         <Stack.Screen name="claim-key" options={{ presentation: 'modal' }} />

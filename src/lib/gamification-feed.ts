@@ -1,27 +1,36 @@
-import type { AchievementId } from '@/lib/gamification';
+import type { BadgeId, LevelId } from '@/lib/gamification';
 
-type Listener = (ids: readonly AchievementId[]) => void;
+export type Celebration =
+  | { kind: 'badge'; id: BadgeId }
+  | { kind: 'level'; id: LevelId };
+
+type Listener = (items: readonly Celebration[]) => void;
 
 const listeners = new Set<Listener>();
-let pending: AchievementId[] = [];
+let pending: Celebration[] = [];
 
-function dedupe(ids: readonly AchievementId[]): AchievementId[] {
-  const seen = new Set<AchievementId>();
-  const out: AchievementId[] = [];
-  for (const id of ids) {
-    if (seen.has(id)) continue;
-    seen.add(id);
-    out.push(id);
+function keyOf(item: Celebration): string {
+  return `${item.kind}:${item.id}`;
+}
+
+export function dedupeCelebrations(items: readonly Celebration[]): Celebration[] {
+  const seen = new Set<string>();
+  const out: Celebration[] = [];
+  for (const item of items) {
+    const key = keyOf(item);
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(item);
   }
   return out;
 }
 
-/** Tell the overlay about badges just earned. Safe to call when it is not mounted yet. */
-export function publishUnlocks(ids: readonly AchievementId[]) {
-  const fresh = dedupe(ids);
+/** Tell the overlay about a level or a badge. Safe to call before it is mounted. */
+export function publishCelebrations(items: readonly Celebration[]) {
+  const fresh = dedupeCelebrations(items);
   if (fresh.length === 0) return;
   if (listeners.size === 0) {
-    pending = dedupe([...pending, ...fresh]);
+    pending = dedupeCelebrations([...pending, ...fresh]);
     return;
   }
   for (const listener of listeners) {
@@ -33,7 +42,7 @@ export function publishUnlocks(ids: readonly AchievementId[]) {
   }
 }
 
-export function subscribeUnlocks(listener: Listener): () => void {
+export function subscribeCelebrations(listener: Listener): () => void {
   listeners.add(listener);
   if (pending.length > 0) {
     const batch = pending;
@@ -41,7 +50,7 @@ export function subscribeUnlocks(listener: Listener): () => void {
     try {
       listener(batch);
     } catch {
-      pending = dedupe([...batch, ...pending]);
+      pending = dedupeCelebrations([...batch, ...pending]);
     }
   }
   return () => {
