@@ -1,17 +1,22 @@
-import { forwardRef } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { forwardRef, useMemo } from 'react';
+import { Image, StyleSheet, View } from 'react-native';
 
 import { Text } from '@/components/app-text';
-import { TREE_SKY, TreeArt } from '@/components/tree-art';
+import { SKY } from '@/components/tree-picture';
 import { Palette, Radius, Type } from '@/constants/theme';
-import type { FocusModeId, PlantId, SkyId } from '@/lib/gamification';
+import type { PlantId } from '@/lib/gamification';
+import { pngDataUri, upscaleNearest } from '@/lib/png-data';
+import { SPRITE, rasterScene } from '@/lib/tree-pixels';
+import type { TimeSky } from '@/lib/tree-growth';
+
+const SCALE = 4;
 
 type Props = {
-  planted: boolean;
-  growth: number;
-  mode: FocusModeId | null;
-  plant: PlantId;
-  sky: SkyId;
+  species: PlantId;
+  stage: number;
+  substage: number;
+  fruits: number;
+  sky: TimeSky;
   brand: string;
   streak: string;
   week: string;
@@ -19,15 +24,31 @@ type Props = {
 };
 
 export const ShareCard = forwardRef<View, Props>(function ShareCard(
-  { planted, growth, mode, plant, sky, brand, streak, week, tagline },
+  { species, stage, substage, fruits, sky, brand, streak, week, tagline },
   ref,
 ) {
+  const uri = useMemo(() => {
+    const rgba = rasterScene({
+      species,
+      stage,
+      substage,
+      season: 'summer',
+      fruits,
+      sleeping: false,
+      surprises: [],
+      marks: [],
+      sway: 0,
+    });
+    const big = upscaleNearest(rgba, SPRITE, SCALE);
+    return pngDataUri(SPRITE * SCALE, SPRITE * SCALE, big);
+  }, [species, stage, substage, fruits]);
+
   return (
-    <View ref={ref} collapsable={false} style={[styles.card, { backgroundColor: TREE_SKY[sky] }]}>
+    <View ref={ref} collapsable={false} style={[styles.card, { backgroundColor: SKY[sky][1] }]}>
       <Text allowFontScaling={false} style={styles.brand}>
         {brand}
       </Text>
-      <TreeArt growth={growth} planted={planted} mode={mode} plant={plant} height={180} />
+      <Image source={{ uri }} style={styles.tree} accessibilityIgnoresInvertColors />
       <Text allowFontScaling={false} style={styles.streak}>
         {streak}
       </Text>
@@ -50,6 +71,12 @@ const styles = StyleSheet.create({
     borderRadius: Radius.xl,
     borderWidth: 1,
     borderColor: Palette.line,
+    alignItems: 'center',
+  },
+  tree: {
+    width: SPRITE * SCALE,
+    height: SPRITE * SCALE,
+    marginVertical: 4,
   },
   brand: {
     ...Type.title,

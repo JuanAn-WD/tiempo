@@ -3,6 +3,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import { Text } from '@/components/app-text';
+import { TreePicture } from '@/components/tree-picture';
 import { DeviceOnlyNotice } from '@/components/device-only-notice';
 import { EmergencyEntry } from '@/components/emergency-entry';
 import { FocusOrb } from '@/components/focus-orb';
@@ -14,8 +15,10 @@ import { FontFamily, Palette, Radius, Type } from '@/constants/theme';
 import { useTiempo } from '@/context/tiempo-store';
 import { useI18n } from '@/i18n';
 import { usePermissionRecord } from '@/lib/permission-ack';
-import { deviceOffsetMinutes, localDayKey } from '@/lib/gamification';
-import { formatRecovered } from '@/lib/gamification-copy';
+import { usePro } from '@/context/pro-store';
+import { FREE_PLANT, deviceOffsetMinutes, localDayKey } from '@/lib/gamification';
+import { LEVEL_NAME, formatRecovered } from '@/lib/gamification-copy';
+import { describeTree } from '@/lib/tree-growth';
 import { formatClock, formatDuration, MODES } from '@/lib/storage';
 import { useNow } from '@/lib/use-now';
 
@@ -31,6 +34,7 @@ export default function FocusScreen() {
     }
     void toggleLockWithTag(false);
   };
+  const { isPro } = usePro();
   const { locale, t } = useI18n();
   const [clock, setClock] = useState<{ at: number; ms: number } | null>(null);
   const promptedPermissions = useRef(false);
@@ -56,6 +60,7 @@ export default function FocusScreen() {
   const mode = MODES.find((item) => item.id === state.mode);
   const now = useNow(enforcing ? state.lockedAt : 0);
   const offset = deviceOffsetMinutes(now);
+  const tree = describeTree(state.gamification, now, offset, isPro);
   const todayKey = localDayKey(now, offset);
   const todayStored = state.gamification.days[todayKey]?.focusMinutes ?? 0;
   const sessionMinutes = Math.floor(sessionMs / 60_000);
@@ -96,6 +101,28 @@ export default function FocusScreen() {
           {unarmed ? t('focus.titleUnarmed') : enforcing ? t('focus.titleLocked') : t('focus.titleIdle')}
         </Text>
       </View>
+
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={t('gamification.tree.mini')}
+        onPress={() => router.push('/progreso')}
+        style={styles.mini}>
+        <TreePicture
+          compact
+          paused
+          width={52}
+          species={isPro ? tree.species : FREE_PLANT}
+          stage={tree.stretch.index}
+          substage={tree.stretch.substage}
+          season={tree.season}
+          sky={tree.sky}
+          fruits={tree.fruits}
+          sleeping={tree.sleeping}
+          surprises={tree.surprises}
+          marks={[]}
+        />
+        <Text style={styles.miniLabel}>{t(LEVEL_NAME[tree.stretch.id])}</Text>
+      </Pressable>
 
       <View style={styles.flexSpacer} />
       <View style={styles.orbSlot}>
@@ -190,6 +217,19 @@ const styles = StyleSheet.create({
   },
   heroCopy: {
     marginBottom: 8,
+  },
+  mini: {
+    alignSelf: 'flex-start',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 8,
+    paddingRight: 10,
+    borderRadius: Radius.md,
+  },
+  miniLabel: {
+    ...Type.caption,
+    color: Palette.muted,
   },
   kicker: {
     ...Type.kicker,

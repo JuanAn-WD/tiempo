@@ -13,6 +13,11 @@
  * Unused time does not shrink it. A justified pause adds nothing and subtracts
  * nothing.
  *
+ * `plant` is the species chosen for the next seed. `sprout` is the species of
+ * the tree that is growing now; it changes only when a finished tree is
+ * planted and a new seed starts. `grove` lists finished trees. Saves from
+ * before those fields existed keep their minutes and rebuild the list.
+ *
  * The daily streak counts consecutive days that met the goal. One comodín per
  * ISO week bridges a single missed day. A justified pause is skipped: it does
  * not break the streak and does not spend the comodín. Today, while it is still
@@ -93,6 +98,29 @@ export type SkyId = (typeof SKY_IDS)[number];
 export const FREE_PLANT: PlantId = 'default';
 export const FREE_SKY: SkyId = 'default';
 
+/** Visitors at fixed hours inside the current tree. Not bought, not forced. */
+export const SURPRISE_IDS = ['mushroom', 'butterfly', 'bird', 'squirrel'] as const;
+export type SurpriseId = (typeof SURPRISE_IDS)[number];
+
+export const SURPRISE_HOURS: readonly { id: SurpriseId; hours: number }[] = [
+  { id: 'mushroom', hours: 10 },
+  { id: 'butterfly', hours: 40 },
+  { id: 'bird', hours: 90 },
+  { id: 'squirrel', hours: 180 },
+];
+
+export function surprisesAt(intoMinutes: number): SurpriseId[] {
+  const hours = Math.max(0, intoMinutes) / 60;
+  return SURPRISE_HOURS.filter((item) => hours >= item.hours).map((item) => item.id);
+}
+
+export type GroveTree = {
+  /** When this tree joined the forest. 0 if the save had no date. */
+  at: number;
+  plant: PlantId;
+  surprises: SurpriseId[];
+};
+
 export type DayProgress = {
   focusMinutes: number;
   modes: Partial<Record<FocusModeId, number>>;
@@ -135,8 +163,13 @@ export type GamificationState = {
   purpose: PurposeId | null;
   reward: Reward | null;
   challenge: Challenge | null;
+  /** Species chosen for the next seed. Pro. Does not repaint the current tree. */
   plant: PlantId;
+  /** Species of the tree that is growing now. */
+  sprout: PlantId;
   sky: SkyId;
+  /** Trees already planted in the forest, oldest first. */
+  grove: GroveTree[];
 };
 
 export type FocusSessionEvent = {
@@ -243,7 +276,9 @@ export function emptyGamification(): GamificationState {
     reward: null,
     challenge: null,
     plant: FREE_PLANT,
+    sprout: FREE_PLANT,
     sky: FREE_SKY,
+    grove: [],
   };
 }
 
@@ -758,6 +793,18 @@ function finish(before: GamificationState, draft: GamificationState, at: number)
   } else if (afterTree.index > 0) {
     levelUp = afterTree.id;
   }
+  if (treesCompleted > 0) {
+    const grown = before.sprout ?? before.plant;
+    const planted: GroveTree[] = [];
+    for (let index = 0; index < treesCompleted; index += 1) {
+      planted.push({ at: when, plant: grown, surprises: surprisesAt(TREE_MINUTES) });
+    }
+    next = {
+      ...next,
+      grove: [...(next.grove ?? []), ...planted].slice(-afterTree.forest),
+      sprout: next.plant,
+    };
+  }
   if (badges.length === 0 && !rewardCompleted && levelUp == null && treesCompleted === 0 && next === before) {
     return unchanged(before);
   }
@@ -857,12 +904,14 @@ function readStored(raw: Record<string, unknown>): GamificationState {
   const reward = sanitizeReward(raw.reward);
   const challenge = sanitizeChallenge(raw.challenge);
   const plant = PLANT_IDS.find((id) => id === raw.plant) ?? FREE_PLANT;
+  const sprout = PLANT_IDS.find((id) => id === raw.sprout) ?? plant;
   const sky = SKY_IDS.find((id) => id === raw.sky) ?? FREE_SKY;
   const purpose = PURPOSE_IDS.find((id) => id === raw.purpose) ?? null;
+  const recoveredMinutes = nonNegMinutes(raw.recoveredMinutes);
   return {
     v: 3,
     goalMinutes: clampGoalMinutes(raw.goalMinutes),
-    recoveredMinutes: nonNegMinutes(raw.recoveredMinutes),
+    recoveredMinutes,
     startedAt: positiveStamp(raw.startedAt),
     quietSince: positiveStamp(raw.quietSince),
     unlocked: sanitizeUnlocked(raw.unlocked),
@@ -874,8 +923,39 @@ function readStored(raw: Record<string, unknown>): GamificationState {
     reward,
     challenge,
     plant,
+    sprout,
     sky,
+    grove: sanitizeGrove(raw.grove, Math.floor(recoveredMinutes / TREE_MINUTES), sprout),
   };
+}
+
+function sanitizeSurprises(raw: unknown): SurpriseId[] {
+  if (!Array.isArray(raw)) return [];
+  return SURPRISE_IDS.filter((id) => raw.includes(id));
+}
+
+function sanitizeGrove(raw: unknown, forest: number, plant: PlantId): GroveTree[] {
+  const parsed: GroveTree[] = [];
+  if (Array.isArray(raw)) {
+    for (const row of raw) {
+      if (!isRecord(row)) continue;
+      const treePlant = PLANT_IDS.find((id) => id === row.plant) ?? plant;
+      const at = positiveStamp(row.at) ?? 0;
+      const surprises = sanitizeSurprises(row.surprises);
+      parsed.push({
+        at,
+        plant: treePlant,
+        surprises: surprises.length > 0 ? surprises : surprisesAt(TREE_MINUTES),
+      });
+    }
+  }
+  const kept = parsed.slice(-Math.max(0, forest));
+  const missing = Math.max(0, forest - kept.length);
+  const filler: GroveTree[] = [];
+  for (let index = 0; index < missing; index += 1) {
+    filler.push({ at: 0, plant, surprises: surprisesAt(TREE_MINUTES) });
+  }
+  return [...filler, ...kept];
 }
 
 function sanitizeUnlocked(raw: unknown): GamificationState['unlocked'] {
@@ -1098,6 +1178,7 @@ function cloneState(state: GamificationState): GamificationState {
     goalMarked: [...state.goalMarked],
     reward: state.reward ? { ...state.reward } : null,
     challenge: state.challenge ? { ...state.challenge } : null,
+    grove: (state.grove ?? []).map((tree) => ({ ...tree, surprises: [...tree.surprises] })),
   };
 }
 
