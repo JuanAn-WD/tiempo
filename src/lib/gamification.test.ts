@@ -5,11 +5,13 @@ import {
   LEVELS,
   MIN_COUNTED_MINUTES,
   QUIET_WINDOW_MS,
+  TREE_MINUTES,
   addDays,
   applyFocusSession,
   applyUnlockedSession,
   challengeSnapshot,
   clampGoalMinutes,
+  computeStreak,
   countedSessionMinutes,
   dominantMode,
   emptyGamification,
@@ -19,7 +21,6 @@ import {
   localDayKey,
   localHour,
   noteAttempts,
-  plantResting,
   resolveGamification,
   rewardSnapshot,
   sanitizeGamification,
@@ -63,17 +64,18 @@ function play(items: FocusSessionEvent[], base: GamificationState = emptyGamific
 
 export function testGamification(): void {
   const fresh = emptyGamification();
-  check(fresh.v === 2, 'progress is version 2');
+  check(fresh.v === 3, 'progress is version 3');
   check(fresh.goalMinutes === DEFAULT_GOAL_MINUTES, 'default goal is 60');
   check(fresh.recoveredMinutes === 0 && fresh.reward == null, 'a new profile is empty');
   check(BADGE_IDS.length === 8, 'eight badges');
   check(LEVELS.length === 6, 'six levels');
   check(LEVELS[0].id === 'semilla' && LEVELS[0].minMinutes === 0, 'seed starts at 0');
   check(LEVELS[1].minMinutes === 300, 'sprout is 5 hours');
-  check(LEVELS[2].minMinutes === 1200, 'root is 20 hours');
-  check(LEVELS[3].minMinutes === 3600, 'tree is 60 hours');
-  check(LEVELS[4].minMinutes === 9000, 'forest is 150 hours');
-  check(LEVELS[5].minMinutes === 18000, 'amber is 300 hours');
+  check(LEVELS[2].id === 'planton' && LEVELS[2].minMinutes === 1200, 'sapling is 20 hours');
+  check(LEVELS[3].id === 'joven' && LEVELS[3].minMinutes === 3600, 'young tree is 60 hours');
+  check(LEVELS[4].id === 'arbol' && LEVELS[4].minMinutes === 9000, 'tree is 150 hours');
+  check(LEVELS[5].id === 'maduro' && LEVELS[5].minMinutes === 14400, 'mature tree is 240 hours');
+  check(TREE_MINUTES === 18000, 'a tree is complete at 300 hours');
 
   check(isoWeekKeyFromDay('2026-01-01') === '2026-W01', '1 Jan 2026 is week 1');
   check(isoWeekKeyFromDay('2025-12-29') === '2026-W01', '29 Dec 2025 is week 1 of 2026');
@@ -101,7 +103,8 @@ export function testGamification(): void {
   const pause = applyFocusSession(five.state, { ...session('2026-10-16', 40), emergency: true }, OFFSET);
   check(pause.state.recoveredMinutes === 5, 'a justified pause does not remove time');
   check(pause.state.days['2026-10-16'].focusMinutes === 5, 'a pause does not count toward the day');
-  check(pause.badges.length === 0, 'a pause earns no badge');
+  check(pause.state.days['2026-10-16'].pause === true, 'a pause is marked on that day');
+  check(pause.badges.length === 0 && pause.treesCompleted === 0, 'a pause earns no badge and no tree');
   check(pause.state.quietSince === session('2026-10-16', 40).endedAt, 'a pause restarts the quiet window');
   check(pause.state.unlocked.first_lock != null, 'a pause does not revoke a badge');
 
@@ -120,11 +123,21 @@ export function testGamification(): void {
   const yesterday = noteAttempts(attempts.state, 112, at('2026-10-15', 18), OFFSET);
   check(yesterday.state.days['2026-10-15'].attempts === 5, 'an older day can hold its own count');
 
-  const raiz = levelProgress(57 * 60);
-  check(raiz.id === 'raiz', '57 hours is still root');
-  check(raiz.remainingMinutes === 3 * 60, 'three hours left until tree');
-  check(levelProgress(0).id === 'semilla' && levelProgress(18000).id === 'ambar', 'the ends of the scale');
-  check(levelProgress(18000).remainingMinutes === 0 && levelProgress(18000).ratio === 1, 'amber is full');
+  const mid = levelProgress(10 * 60);
+  check(mid.id === 'brote', '10 hours is still a sprout');
+  check(mid.forest === 0 && mid.into === 600, '10 hours sits inside the first tree');
+  check(Math.abs(mid.overall - 600 / TREE_MINUTES) < 1e-12, 'growth is the fraction of the tree');
+  check(Math.abs(mid.ratio - (600 - 300) / (1200 - 300)) < 1e-12, 'growth is smooth inside the stage');
+  const sapling = levelProgress(57 * 60);
+  check(sapling.id === 'planton', '57 hours is a sapling');
+  check(sapling.remainingMinutes === 3 * 60, 'three hours left until the young tree');
+  const mature = levelProgress(299 * 60);
+  check(mature.id === 'maduro' && mature.forest === 0, '299 hours is a mature tree, still growing');
+  check(mature.remainingMinutes === 60, 'one hour left before the forest');
+  const planted = levelProgress(TREE_MINUTES);
+  check(planted.forest === 1 && planted.into === 0 && planted.id === 'semilla', '300 hours plants a new seed');
+  check(planted.overall === 0, 'a completed tree does not stay stuck at mature');
+  check(levelProgress(0).id === 'semilla' && levelProgress(0).forest === 0, 'nothing planted is still a seed count of zero');
 
   const hour = applyFocusSession(fresh, session('2026-10-01', 60), OFFSET);
   check(hour.badges.includes('hour_1') && hour.levelUp == null, 'the first hour is a badge, still a seed');
@@ -146,17 +159,13 @@ export function testGamification(): void {
   const friday = weeklyProgress(week, at('2026-10-16', 18), OFFSET);
   check(friday.daysMet === 5 && friday.weekKey === '2026-W42', '5 of 7 on Friday');
   check(friday.days[5].status === 'open' && friday.days[6].status === 'open', 'Saturday and Sunday are still ahead');
-  check(friday.freshStart === false, 'a week in progress is not a fresh start');
   const saturday = weeklyProgress(week, at('2026-10-17', 12), OFFSET);
   check(saturday.days[5].status === 'today' && saturday.daysMet === 5, 'today is not a miss while it is open');
   const missed = weeklyProgress(week, at('2026-10-18', 12), OFFSET);
-  check(missed.days[5].status === 'missed', 'a past day under the goal is missed, with no wildcard');
+  check(missed.days[5].status === 'grace', 'the one missed day of a living week is the comodín');
 
   const nextMonday = weeklyProgress(week, at('2026-10-19', 9), OFFSET);
-  check(nextMonday.daysMet === 0 && nextMonday.freshStart === false, 'a completed week does not scold the next one');
-  const thin = play([session('2026-10-12', 60), session('2026-10-13', 60)]);
-  const afterThin = weeklyProgress(thin, at('2026-10-19', 9), OFFSET);
-  check(afterThin.freshStart === true, 'a new week after a short one starts clean');
+  check(nextMonday.daysMet === 0, 'a new week starts its own 5 of 7');
 
   let goals = fresh;
   for (let index = 0; index < 7; index += 1) {
@@ -208,10 +217,9 @@ export function testGamification(): void {
   check(setPurpose(named.state, 'nope' as 'leer').state.purpose == null, 'an unknown purpose clears');
 
   const garden = play([session('2026-10-12', 40, 'casa'), session('2026-10-13', 10, 'trabajo')]);
-  check(dominantMode(garden, at('2026-10-16', 12), OFFSET) === 'casa', 'the plant follows this week’s main mode');
-  check(plantResting(garden, at('2026-10-16', 12), OFFSET, false) === true, 'a quiet today lets the plant rest');
-  check(plantResting(garden, at('2026-10-16', 12), OFFSET, true) === false, 'a running session is not rest');
-  check(plantResting(fresh, at('2026-10-16', 12), OFFSET, false) === false, 'a seed is not described as resting');
+  check(dominantMode(garden, at('2026-10-16', 12), OFFSET) === 'casa', 'the tree follows this week’s main mode');
+  const quietLater = levelProgress(garden.recoveredMinutes);
+  check(quietLater.into === 50 && quietLater.forest === 0, 'a quiet day does not shrink the tree');
 
   const legacy = {
     xp: 90 * 10 + 4 * 5 - 20,
@@ -257,6 +265,9 @@ export function testGamification(): void {
   check(migrated.days['2026-10-12'].modes.casa === 60, 'kept sessions fill the mode chart without adding minutes');
   check(migrated.days['2026-10-12'].focusMinutes === 60, 'mode replay does not double the day');
   check(migrated.quietSince === session('2026-10-13', 30, 'estudio').endedAt, 'the latest pause starts the quiet window');
+  check(migrated.days['2026-10-13'].pause === true, 'a kept pause is stamped onto its day');
+  check(migrated.days['2026-10-13'].focusMinutes === 30, 'stamping a pause does not change the stored minutes');
+  check(migrated.v === 3, 'a legacy profile becomes version 3');
 
   const stored = { ...five.state, recoveredMinutes: 5 };
   const replayed = resolveGamification(stored, [session('2026-10-16', 90)], 90 * 60_000, OFFSET);
@@ -273,7 +284,8 @@ export function testGamification(): void {
 
   const junk = sanitizeGamification({ v: 2, days: 'nope', reward: 4, plant: 'gold', goalMinutes: 3 });
   check(junk.recoveredMinutes === 0 && junk.plant === 'default' && junk.goalMinutes === 15, 'a broken profile repairs');
-  check(sanitizeGamification(null).v === 2, 'null sanitizes to empty progress');
+  check(junk.v === 3, 'a version 2 profile upgrades without replay');
+  check(sanitizeGamification(null).v === 3, 'null sanitizes to empty progress');
   check(resolveGamification(undefined, [session('2026-10-16', 10)], 0, OFFSET).recoveredMinutes === 10, 'a missing profile seeds');
 
   let packed = fresh;
@@ -284,6 +296,50 @@ export function testGamification(): void {
   check(packed.goalDays > DAY_HISTORY_CAP, 'pruned days still count toward the goal total');
 
   const hundred = levelProgress(100 * 60);
-  check(hundred.id === 'arbol', '100 hours is a tree, not yet a forest');
+  check(hundred.id === 'joven', '100 hours is a young tree');
   check(applyFocusSession(play([session('2026-10-01', 100 * 60 - 5)]), session('2026-10-02', 5), OFFSET).badges.includes('hour_100'), '100 hours earns the badge');
+
+  const near = play([session('2026-10-01', TREE_MINUTES - 10)]);
+  const finished = applyFocusSession(near, session('2026-10-02', 10), OFFSET);
+  check(finished.treesCompleted === 1 && finished.levelUp == null, 'finishing a tree plants a seed and does not also level it');
+  check(levelProgress(finished.state.recoveredMinutes).forest === 1, 'the finished tree is in the forest');
+  const carried = applyFocusSession(near, session('2026-10-02', 400), OFFSET);
+  check(carried.treesCompleted === 1 && carried.levelUp === 'brote', 'minutes past 300 hours grow the new seed');
+
+  let chain = fresh;
+  for (const day of ['2026-10-12', '2026-10-13', '2026-10-15']) {
+    chain = applyFocusSession(chain, session(day, 60), OFFSET).state;
+  }
+  const pausedDay = applyFocusSession(chain, { ...session('2026-10-14', 30), emergency: true }, OFFSET);
+  check(pausedDay.state.recoveredMinutes === 180, 'the pause in the middle adds no growth');
+  const held = computeStreak(pausedDay.state, at('2026-10-16', 12), OFFSET);
+  check(held.streak === 3 && held.graceAvailable && held.graceDay == null, 'a pause keeps the streak and does not spend the comodín');
+  const pauseWeek = weeklyProgress(pausedDay.state, at('2026-10-16', 12), OFFSET);
+  check(pauseWeek.days[2].status === 'pause' && pauseWeek.daysMet === 3, 'the pause day is marked and is not a goal day');
+
+  const bridgedState = play([session('2026-10-12', 60), session('2026-10-14', 60)]);
+  const bridged = computeStreak(bridgedState, at('2026-10-15', 12), OFFSET);
+  check(bridged.streak === 2 && bridged.graceDay === '2026-10-13' && !bridged.graceAvailable, 'one miss in the week is bridged');
+  const bridgeWeek = weeklyProgress(bridgedState, at('2026-10-15', 12), OFFSET);
+  check(bridgeWeek.days[1].status === 'grace' && bridgeWeek.daysMet === 2, 'the bridged day is not a fifth goal day');
+
+  const openToday = computeStreak(play([session('2026-10-12', 60)]), at('2026-10-13', 10), OFFSET);
+  check(openToday.streak === 1 && openToday.graceAvailable && openToday.graceDay == null, 'today, still short, does not spend the comodín');
+  check(weeklyProgress(play([session('2026-10-12', 60)]), at('2026-10-13', 10), OFFSET).days[1].status === 'today', 'today stays open');
+
+  const twoMisses = computeStreak(play([session('2026-10-12', 60), session('2026-10-15', 60)]), at('2026-10-16', 12), OFFSET);
+  check(twoMisses.streak === 1 && twoMisses.graceAvailable, 'a second miss in the same week breaks the chain');
+  const brokenWeek = weeklyProgress(play([session('2026-10-12', 60), session('2026-10-15', 60)]), at('2026-10-16', 12), OFFSET);
+  check(brokenWeek.days[1].status === 'missed' && brokenWeek.days[2].status === 'missed', 'two misses stay misses');
+
+  const upgraded = resolveGamification(
+    { v: 2, recoveredMinutes: 90, goalMinutes: 60, days: { '2026-10-12': { focusMinutes: 90, modes: { trabajo: 90 }, attempts: 0 } } },
+    [{ ...session('2026-10-13', 20), emergency: true }],
+    0,
+    OFFSET,
+  );
+  check(upgraded.v === 3 && upgraded.recoveredMinutes === 90, 'a stored profile keeps its minutes');
+  check(upgraded.days['2026-10-12'].focusMinutes === 90, 'the upgrade does not replay sessions into the total');
+  check(upgraded.days['2026-10-13'].pause === true && upgraded.days['2026-10-13'].focusMinutes === 0, 'the upgrade stamps the pause day');
+  check(noteAttempts(upgraded, 3, at('2026-10-16', 12), OFFSET).state.recoveredMinutes === 90, 'attempts do not move the tree');
 }

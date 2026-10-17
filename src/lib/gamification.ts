@@ -7,13 +7,21 @@
  * attempts are a neutral day count: they do not move the level, the streak,
  * or the badges.
  *
- * Levels are six names over accumulated hours. The weekly streak is how many
- * of the 7 days met the daily goal. There is no wildcard and no punishment
- * for a missed day. Badges, once earned, stay earned.
+ * One tree grows with that time. Its life is 300 hours: seed, sprout, sapling,
+ * young tree, tree, mature tree, with a smooth ratio between those stages.
+ * At 300 hours the tree joins a personal forest and a new seed is planted.
+ * Unused time does not shrink it. A justified pause adds nothing and subtracts
+ * nothing.
  *
- * Saves from the first gamification (XP, comodín, 12 badges) migrate once:
- * lifetime minutes come from `focusMinutes`, never from XP, so attempt points
- * and the old emergency penalty are ignored. Equivalent badges are kept.
+ * The daily streak counts consecutive days that met the goal. One comodín per
+ * ISO week bridges a single missed day. A justified pause is skipped: it does
+ * not break the streak and does not spend the comodín. Today, while it is still
+ * short of the goal, is not a miss. The weekly view stays 5 of 7 real goal days.
+ * Badges, once earned, stay earned.
+ *
+ * Saves from the recovered-time profile (v2) upgrade in place: minutes stay,
+ * and retained pause sessions are stamped onto their days. Saves from the first
+ * gamification (XP, 12 badges) migrate once from `focusMinutes`, never from XP.
  * Older saves with no progress field are seeded from sessions and recovered
  * time, without inventing goal days for the top-up.
  */
@@ -58,13 +66,17 @@ export const BADGE_MARK: Record<BadgeId, string> = {
   month_quiet: '30',
 };
 
+/** One tree is complete at 300 hours, then it joins the forest. */
+export const TREE_MINUTES = 300 * 60;
+
+/** Stage starts within the current tree. Mature runs until `TREE_MINUTES`. */
 export const LEVELS = [
   { id: 'semilla', minMinutes: 0 },
   { id: 'brote', minMinutes: 5 * 60 },
-  { id: 'raiz', minMinutes: 20 * 60 },
-  { id: 'arbol', minMinutes: 60 * 60 },
-  { id: 'bosque', minMinutes: 150 * 60 },
-  { id: 'ambar', minMinutes: 300 * 60 },
+  { id: 'planton', minMinutes: 20 * 60 },
+  { id: 'joven', minMinutes: 60 * 60 },
+  { id: 'arbol', minMinutes: 150 * 60 },
+  { id: 'maduro', minMinutes: 240 * 60 },
 ] as const;
 
 export type LevelId = (typeof LEVELS)[number]['id'];
@@ -85,6 +97,8 @@ export type DayProgress = {
   focusMinutes: number;
   modes: Partial<Record<FocusModeId, number>>;
   attempts: number;
+  /** A justified pause landed on this day. It does not add minutes. */
+  pause?: boolean;
 };
 
 export type Reward = {
@@ -104,7 +118,7 @@ export type Challenge = {
 };
 
 export type GamificationState = {
-  v: 2;
+  v: 3;
   goalMinutes: number;
   recoveredMinutes: number;
   startedAt: number | null;
@@ -135,11 +149,14 @@ export type FocusSessionEvent = {
 export type ProgressResult = {
   state: GamificationState;
   badges: BadgeId[];
+  /** Stage reached inside the current tree. Null when a finished tree resets to seed. */
   levelUp: LevelId | null;
+  /** Trees that joined the forest on this call. */
+  treesCompleted: number;
   rewardCompleted: boolean;
 };
 
-export type DayMark = 'met' | 'missed' | 'today' | 'open';
+export type DayMark = 'met' | 'grace' | 'pause' | 'missed' | 'today' | 'open';
 
 export type WeeklyProgress = {
   weekKey: string;
@@ -149,20 +166,38 @@ export type WeeklyProgress = {
   todayKey: string;
   todayMinutes: number;
   todayMet: boolean;
-  /** New week, and the previous one did not reach 5 of 7. */
-  freshStart: boolean;
   days: { key: string; status: DayMark; minutes: number }[];
   modes: Partial<Record<FocusModeId, number>>;
 };
 
 export type LevelProgress = {
+  /** Completed trees already in the forest. */
+  forest: number;
+  /** Minutes into the tree that is growing now. */
+  into: number;
+  /** 0–1 across the current tree. Exact completion is a new seed at 0. */
+  overall: number;
   index: number;
   id: LevelId;
+  /** Stage start, in minutes, inside the current tree. */
   minMinutes: number;
   nextId: LevelId | null;
+  /** Next stage start, or `TREE_MINUTES` while the tree is mature. */
   nextMinutes: number | null;
   remainingMinutes: number;
+  /** 0–1 inside the current stage. */
   ratio: number;
+};
+
+export type StreakSnapshot = {
+  streak: number;
+  todayKey: string;
+  todayMinutes: number;
+  todayMet: boolean;
+  /** False once this ISO week has bridged a miss in the living chain. */
+  graceAvailable: boolean;
+  graceDay: string | null;
+  savedDays: string[];
 };
 
 export type RewardSnapshot = {
@@ -183,6 +218,7 @@ export type ChallengeSnapshot = {
 };
 
 const DAY_KEY = /^(\d{4})-(\d{2})-(\d{2})$/;
+const DAY_WALK_CAP = 500;
 
 const LEGACY_BADGES: Record<string, BadgeId> = {
   first_session: 'first_lock',
@@ -193,7 +229,7 @@ const LEGACY_BADGES: Record<string, BadgeId> = {
 
 export function emptyGamification(): GamificationState {
   return {
-    v: 2,
+    v: 3,
     goalMinutes: DEFAULT_GOAL_MINUTES,
     recoveredMinutes: 0,
     startedAt: null,
@@ -292,23 +328,67 @@ export function countedSessionMinutes(session: FocusSessionEvent): number {
 
 export function levelProgress(recoveredMinutes: number): LevelProgress {
   const safe = nonNegMinutes(recoveredMinutes);
+  const forest = Math.floor(safe / TREE_MINUTES);
+  const into = safe % TREE_MINUTES;
   let index = 0;
   for (let i = 0; i < LEVELS.length; i += 1) {
-    if (safe >= LEVELS[i].minMinutes) index = i;
+    if (into >= LEVELS[i].minMinutes) index = i;
   }
   const current = LEVELS[index];
   const next = LEVELS[index + 1] ?? null;
-  const span = next ? next.minMinutes - current.minMinutes : 1;
-  const into = safe - current.minMinutes;
-  const ratio = next ? Math.min(1, into / span) : 1;
+  const nextBoundary = next ? next.minMinutes : TREE_MINUTES;
+  const span = Math.max(1, nextBoundary - current.minMinutes);
+  const ratio = Math.min(1, (into - current.minMinutes) / span);
   return {
+    forest,
+    into,
+    overall: into / TREE_MINUTES,
     index,
     id: current.id,
     minMinutes: current.minMinutes,
     nextId: next ? next.id : null,
-    nextMinutes: next ? next.minMinutes : null,
-    remainingMinutes: next ? Math.max(0, next.minMinutes - safe) : 0,
+    nextMinutes: nextBoundary,
+    remainingMinutes: Math.max(0, nextBoundary - into),
     ratio,
+  };
+}
+
+export function computeStreak(state: GamificationState, at: number, offsetMinutes: number): StreakSnapshot {
+  const todayKey = localDayKey(at, offsetMinutes);
+  const todayMinutes = state.days[todayKey]?.focusMinutes ?? 0;
+  const todayMet = todayMinutes >= state.goalMinutes;
+  const savedDays: string[] = [];
+  const usedWeeks = new Set<string>();
+  let streak = 0;
+  let cursor = todayMet ? todayKey : addDays(todayKey, -1);
+
+  for (let guard = 0; guard < DAY_WALK_CAP; guard += 1) {
+    if (dayMet(state, cursor)) {
+      streak += 1;
+      cursor = addDays(cursor, -1);
+      continue;
+    }
+    if (dayPause(state, cursor)) {
+      cursor = addDays(cursor, -1);
+      continue;
+    }
+    const week = isoWeekKeyFromDay(cursor);
+    if (usedWeeks.has(week) || !connects(addDays(cursor, -1), usedWeeks, week, state)) break;
+    usedWeeks.add(week);
+    savedDays.push(cursor);
+    cursor = addDays(cursor, -1);
+  }
+
+  const thisWeek = isoWeekKeyFromDay(todayKey);
+  const graceDay = savedDays.find((day) => isoWeekKeyFromDay(day) === thisWeek) ?? null;
+  return {
+    streak,
+    todayKey,
+    todayMinutes,
+    todayMet,
+    graceAvailable: graceDay == null,
+    graceDay,
+    savedDays,
   };
 }
 
@@ -330,18 +410,10 @@ export function weeklyProgress(state: GamificationState, at: number, offsetMinut
     focusMinutes += minutes;
     const met = minutes >= state.goalMinutes;
     if (met) daysMet += 1;
-    let status: DayMark;
-    if (key > todayKey) status = 'open';
-    else if (met) status = 'met';
-    else if (key === todayKey) status = 'today';
-    else status = 'missed';
-    return { key, status, minutes };
+    return { key, minutes, met };
   });
+  const grace = new Set(computeStreak(state, at, offsetMinutes).savedDays);
   const todayMinutes = state.days[todayKey]?.focusMinutes ?? 0;
-  const previousMonday = addDays(days[0], -7);
-  const previous = Array.from({ length: 7 }, (_, index) => addDays(previousMonday, index));
-  const previousMet = previous.filter((key) => (state.days[key]?.focusMinutes ?? 0) >= state.goalMinutes).length;
-  const anyBefore = Object.keys(state.days).some((key) => key < days[0]);
   return {
     weekKey: isoWeekKeyFromDay(todayKey),
     focusMinutes,
@@ -350,8 +422,11 @@ export function weeklyProgress(state: GamificationState, at: number, offsetMinut
     todayKey,
     todayMinutes,
     todayMet: todayMinutes >= state.goalMinutes,
-    freshStart: daysMet === 0 && anyBefore && previousMet < 5,
-    days: marks,
+    days: marks.map((day) => ({
+      key: day.key,
+      minutes: day.minutes,
+      status: dayStatus(state, day.key, todayKey, day.met, grace),
+    })),
     modes,
   };
 }
@@ -368,13 +443,6 @@ export function dominantMode(state: GamificationState, at: number, offsetMinutes
     }
   }
   return leadingMode(life);
-}
-
-/** The plant keeps its size. Resting is only a caption, never a wilt. */
-export function plantResting(state: GamificationState, at: number, offsetMinutes: number, locked: boolean): boolean {
-  if (locked || state.recoveredMinutes <= 0) return false;
-  const today = localDayKey(at, offsetMinutes);
-  return (state.days[today]?.focusMinutes ?? 0) === 0;
 }
 
 export function rewardSnapshot(state: GamificationState): RewardSnapshot | null {
@@ -419,6 +487,7 @@ export function applyFocusSession(
   if (session.emergency === true) {
     const next = cloneState(state);
     next.quietSince = session.endedAt;
+    next.days = markPause(next.days, localDayKey(session.endedAt, offsetMinutes));
     return finish(state, next, session.endedAt);
   }
   const minutes = countedSessionMinutes(session);
@@ -446,10 +515,10 @@ export function noteAttempts(
   if (safeTotal <= state.attemptsNoted) return unchanged(state);
   const next = cloneState(state);
   next.attemptsNoted = safeTotal;
-  if (options?.baseline) return { state: next, badges: [], levelUp: null, rewardCompleted: false };
+  if (options?.baseline) return idle(next);
   const when = Number.isFinite(at) ? at : 0;
   next.days = addAttempts(next.days, localDayKey(when, offsetMinutes), safeTotal - state.attemptsNoted);
-  return { state: next, badges: [], levelUp: null, rewardCompleted: false };
+  return idle(next);
 }
 
 export function setGoalMinutes(
@@ -467,7 +536,7 @@ export function setGoalMinutes(
 export function setPurpose(state: GamificationState, purpose: PurposeId | null): ProgressResult {
   const nextPurpose = purpose && PURPOSE_IDS.includes(purpose) ? purpose : null;
   if (nextPurpose === state.purpose) return unchanged(state);
-  return { state: { ...state, purpose: nextPurpose }, badges: [], levelUp: null, rewardCompleted: false };
+  return idle({ ...state, purpose: nextPurpose });
 }
 
 export function setReward(
@@ -477,7 +546,7 @@ export function setReward(
 ): ProgressResult {
   if (input == null) {
     if (!state.reward) return unchanged(state);
-    return { state: { ...state, reward: null }, badges: [], levelUp: null, rewardCompleted: false };
+    return idle({ ...state, reward: null });
   }
   const text = cleanText(input.text);
   const hours = clampRewardHours(input.hours);
@@ -491,7 +560,7 @@ export function setReward(
     createdAt: when,
     completedAt: null,
   };
-  return { state: next, badges: [], levelUp: null, rewardCompleted: false };
+  return idle(next);
 }
 
 export function setChallenge(
@@ -500,7 +569,7 @@ export function setChallenge(
 ): ProgressResult {
   if (input == null) {
     if (!state.challenge) return unchanged(state);
-    return { state: { ...state, challenge: null }, badges: [], levelUp: null, rewardCompleted: false };
+    return idle({ ...state, challenge: null });
   }
   const text = cleanText(input.text);
   const mode = focusMode(input.mode);
@@ -508,17 +577,17 @@ export function setChallenge(
   if (!text || !mode || target == null) return unchanged(state);
   const next = cloneState(state);
   next.challenge = { text, mode, target };
-  return { state: next, badges: [], levelUp: null, rewardCompleted: false };
+  return idle(next);
 }
 
 export function setPlant(state: GamificationState, plant: PlantId): ProgressResult {
   if (!PLANT_IDS.includes(plant) || plant === state.plant) return unchanged(state);
-  return { state: { ...state, plant }, badges: [], levelUp: null, rewardCompleted: false };
+  return idle({ ...state, plant });
 }
 
 export function setSky(state: GamificationState, sky: SkyId): ProgressResult {
   if (!SKY_IDS.includes(sky) || sky === state.sky) return unchanged(state);
-  return { state: { ...state, sky }, badges: [], levelUp: null, rewardCompleted: false };
+  return idle({ ...state, sky });
 }
 
 /**
@@ -554,7 +623,8 @@ export function applyUnlockedSession(
 }
 
 export function sanitizeGamification(raw: unknown): GamificationState {
-  if (isV2(raw)) return sanitizeV2(raw);
+  if (isV3(raw)) return sanitizeV3(raw);
+  if (isV2(raw)) return upgradeV2(raw, []);
   if (isLegacy(raw)) return migrateLegacy(raw, []);
   return emptyGamification();
 }
@@ -571,7 +641,8 @@ export function resolveGamification(
   now?: number,
 ): GamificationState {
   if (raw == null) return seedGamification(sessions, recoveredMs, offsetMinutes);
-  if (isV2(raw)) return sanitizeV2(raw);
+  if (isV3(raw)) return sanitizeV3(raw);
+  if (isV2(raw)) return upgradeV2(raw, sessions, offsetMinutes);
   if (isLegacy(raw)) return migrateLegacy(raw, sessions, offsetMinutes, now);
   return emptyGamification();
 }
@@ -622,20 +693,27 @@ function migrateLegacy(
   let startedAt: number | null = null;
   let lastPause: number | null = null;
   for (const session of orderedSessions(sessions)) {
+    const offset = offsetMinutes ?? deviceOffsetMinutes(session.endedAt);
+    const key = localDayKey(session.endedAt, offset);
     if (session.emergency === true) {
       lastPause = session.endedAt;
+      const current = days[key] ?? { focusMinutes: 0, modes: {}, attempts: 0 };
+      days[key] = { ...current, pause: true };
       continue;
     }
     const minutes = countedSessionMinutes(session);
     if (minutes <= 0) continue;
     if (startedAt == null) startedAt = session.startedAt;
-    const offset = offsetMinutes ?? deviceOffsetMinutes(session.endedAt);
-    const key = localDayKey(session.endedAt, offset);
     const mode = focusMode(session.mode);
     const current = days[key] ?? { focusMinutes: 0, modes: {}, attempts: 0 };
     const modes = { ...current.modes };
     if (mode) modes[mode] = (modes[mode] ?? 0) + minutes;
-    days[key] = { focusMinutes: current.focusMinutes, modes, attempts: current.attempts };
+    days[key] = {
+      focusMinutes: current.focusMinutes,
+      modes,
+      attempts: current.attempts,
+      ...(current.pause ? { pause: true } : {}),
+    };
   }
   const built: GamificationState = {
     ...emptyGamification(),
@@ -671,11 +749,19 @@ function finish(before: GamificationState, draft: GamificationState, at: number)
       rewardCompleted = true;
     }
   }
-  const beforeLevel = levelProgress(before.recoveredMinutes).index;
-  const afterLevel = levelProgress(next.recoveredMinutes).index;
-  const levelUp = afterLevel > beforeLevel ? LEVELS[afterLevel].id : null;
-  if (badges.length === 0 && !rewardCompleted && levelUp == null && next === before) return unchanged(before);
-  return { state: next, badges, levelUp, rewardCompleted };
+  const beforeTree = levelProgress(before.recoveredMinutes);
+  const afterTree = levelProgress(next.recoveredMinutes);
+  const treesCompleted = Math.max(0, afterTree.forest - beforeTree.forest);
+  let levelUp: LevelId | null = null;
+  if (treesCompleted === 0) {
+    if (afterTree.index > beforeTree.index) levelUp = afterTree.id;
+  } else if (afterTree.index > 0) {
+    levelUp = afterTree.id;
+  }
+  if (badges.length === 0 && !rewardCompleted && levelUp == null && treesCompleted === 0 && next === before) {
+    return unchanged(before);
+  }
+  return { state: next, badges, levelUp, treesCompleted, rewardCompleted };
 }
 
 function badgeChecks(state: GamificationState, at: number): [BadgeId, boolean][] {
@@ -724,11 +810,19 @@ function syncGoalDays(state: GamificationState): GamificationState {
 }
 
 function unchanged(state: GamificationState): ProgressResult {
-  return { state, badges: [], levelUp: null, rewardCompleted: false };
+  return idle(state);
+}
+
+function idle(state: GamificationState): ProgressResult {
+  return { state, badges: [], levelUp: null, treesCompleted: 0, rewardCompleted: false };
 }
 
 function isRecord(raw: unknown): raw is Record<string, unknown> {
   return !!raw && typeof raw === 'object' && !Array.isArray(raw);
+}
+
+function isV3(raw: unknown): raw is Record<string, unknown> {
+  return isRecord(raw) && raw.v === 3;
 }
 
 function isV2(raw: unknown): raw is Record<string, unknown> {
@@ -736,7 +830,7 @@ function isV2(raw: unknown): raw is Record<string, unknown> {
 }
 
 function isLegacy(raw: unknown): raw is object {
-  if (!isRecord(raw) || raw.v === 2) return false;
+  if (!isRecord(raw) || raw.v === 2 || raw.v === 3) return false;
   return (
     'xp' in raw ||
     'focusMinutes' in raw ||
@@ -747,15 +841,26 @@ function isLegacy(raw: unknown): raw is object {
   );
 }
 
-function sanitizeV2(raw: Record<string, unknown>): GamificationState {
-  const empty = emptyGamification();
+function sanitizeV3(raw: Record<string, unknown>): GamificationState {
+  return readStored(raw);
+}
+
+function upgradeV2(
+  raw: Record<string, unknown>,
+  sessions: readonly FocusSessionEvent[],
+  offsetMinutes?: number,
+): GamificationState {
+  return stampPauses(readStored(raw), sessions, offsetMinutes);
+}
+
+function readStored(raw: Record<string, unknown>): GamificationState {
   const reward = sanitizeReward(raw.reward);
   const challenge = sanitizeChallenge(raw.challenge);
   const plant = PLANT_IDS.find((id) => id === raw.plant) ?? FREE_PLANT;
   const sky = SKY_IDS.find((id) => id === raw.sky) ?? FREE_SKY;
   const purpose = PURPOSE_IDS.find((id) => id === raw.purpose) ?? null;
   return {
-    v: 2,
+    v: 3,
     goalMinutes: clampGoalMinutes(raw.goalMinutes),
     recoveredMinutes: nonNegMinutes(raw.recoveredMinutes),
     startedAt: positiveStamp(raw.startedAt),
@@ -769,7 +874,7 @@ function sanitizeV2(raw: Record<string, unknown>): GamificationState {
     reward,
     challenge,
     plant,
-    sky: sky ?? empty.sky,
+    sky,
   };
 }
 
@@ -845,6 +950,7 @@ function sanitizeDay(raw: unknown): DayProgress {
     focusMinutes: nonNegMinutes(row.focusMinutes),
     modes,
     attempts: nonNegMinutes(row.attempts),
+    ...(row.pause === true ? { pause: true } : {}),
   };
 }
 
@@ -871,7 +977,12 @@ function addFocusDay(
   if (mode) modes[mode] = (modes[mode] ?? 0) + minutes;
   return pruneDays({
     ...days,
-    [key]: { focusMinutes: current.focusMinutes + minutes, modes, attempts: current.attempts },
+    [key]: {
+      focusMinutes: current.focusMinutes + minutes,
+      modes,
+      attempts: current.attempts,
+      ...(current.pause ? { pause: true } : {}),
+    },
   });
 }
 
@@ -879,8 +990,87 @@ function addAttempts(days: Record<string, DayProgress>, key: string, delta: numb
   const current = days[key] ?? { focusMinutes: 0, modes: {}, attempts: 0 };
   return pruneDays({
     ...days,
-    [key]: { ...current, modes: { ...current.modes }, attempts: current.attempts + delta },
+    [key]: {
+      focusMinutes: current.focusMinutes,
+      modes: { ...current.modes },
+      attempts: current.attempts + delta,
+      ...(current.pause ? { pause: true } : {}),
+    },
   });
+}
+
+function markPause(days: Record<string, DayProgress>, key: string): Record<string, DayProgress> {
+  const current = days[key];
+  if (current?.pause) return days;
+  const base = current ?? { focusMinutes: 0, modes: {}, attempts: 0 };
+  return pruneDays({
+    ...days,
+    [key]: { focusMinutes: base.focusMinutes, modes: { ...base.modes }, attempts: base.attempts, pause: true },
+  });
+}
+
+function stampPauses(
+  state: GamificationState,
+  sessions: readonly FocusSessionEvent[],
+  offsetMinutes?: number,
+): GamificationState {
+  let days = state.days;
+  let changed = false;
+  for (const session of sessions) {
+    if (session.emergency !== true || !Number.isFinite(session.endedAt)) continue;
+    const offset = offsetMinutes ?? deviceOffsetMinutes(session.endedAt);
+    const key = localDayKey(session.endedAt, offset);
+    if (days[key]?.pause) continue;
+    const base = days[key] ?? { focusMinutes: 0, modes: {}, attempts: 0 };
+    days = {
+      ...days,
+      [key]: { focusMinutes: base.focusMinutes, modes: { ...base.modes }, attempts: base.attempts, pause: true },
+    };
+    changed = true;
+  }
+  if (!changed) return state;
+  return { ...state, days: pruneDays(days) };
+}
+
+function dayMet(state: GamificationState, key: string): boolean {
+  return (state.days[key]?.focusMinutes ?? 0) >= state.goalMinutes;
+}
+
+function dayPause(state: GamificationState, key: string): boolean {
+  return state.days[key]?.pause === true && !dayMet(state, key);
+}
+
+function dayStatus(
+  state: GamificationState,
+  key: string,
+  todayKey: string,
+  met: boolean,
+  grace: ReadonlySet<string>,
+): DayMark {
+  if (key > todayKey) return 'open';
+  if (met) return 'met';
+  if (key === todayKey) return 'today';
+  if (grace.has(key)) return 'grace';
+  if (state.days[key]?.pause) return 'pause';
+  return 'missed';
+}
+
+function connects(start: string, used: Set<string>, pendingWeek: string, state: GamificationState): boolean {
+  const seen = new Set(used);
+  seen.add(pendingWeek);
+  let cursor = start;
+  for (let guard = 0; guard < DAY_WALK_CAP; guard += 1) {
+    if (dayMet(state, cursor)) return true;
+    if (dayPause(state, cursor)) {
+      cursor = addDays(cursor, -1);
+      continue;
+    }
+    const week = isoWeekKeyFromDay(cursor);
+    if (seen.has(week)) return false;
+    seen.add(week);
+    cursor = addDays(cursor, -1);
+  }
+  return false;
 }
 
 function pruneDays(days: Record<string, DayProgress>): Record<string, DayProgress> {
@@ -894,7 +1084,12 @@ function pruneDays(days: Record<string, DayProgress>): Record<string, DayProgres
 function cloneState(state: GamificationState): GamificationState {
   const days: Record<string, DayProgress> = {};
   for (const [key, value] of Object.entries(state.days)) {
-    days[key] = { focusMinutes: value.focusMinutes, attempts: value.attempts, modes: { ...value.modes } };
+    days[key] = {
+      focusMinutes: value.focusMinutes,
+      attempts: value.attempts,
+      modes: { ...value.modes },
+      ...(value.pause ? { pause: true } : {}),
+    };
   }
   return {
     ...state,

@@ -2,14 +2,16 @@ import type { BadgeId, LevelId } from '@/lib/gamification';
 
 export type Celebration =
   | { kind: 'badge'; id: BadgeId }
-  | { kind: 'level'; id: LevelId };
+  | { kind: 'level'; id: LevelId }
+  | { kind: 'forest' };
 
 type Listener = (items: readonly Celebration[]) => void;
 
 const listeners = new Set<Listener>();
 let pending: Celebration[] = [];
 
-function keyOf(item: Celebration): string {
+export function celebrationKey(item: Celebration): string {
+  if (item.kind === 'forest') return 'forest';
   return `${item.kind}:${item.id}`;
 }
 
@@ -17,7 +19,7 @@ export function dedupeCelebrations(items: readonly Celebration[]): Celebration[]
   const seen = new Set<string>();
   const out: Celebration[] = [];
   for (const item of items) {
-    const key = keyOf(item);
+    const key = celebrationKey(item);
     if (seen.has(key)) continue;
     seen.add(key);
     out.push(item);

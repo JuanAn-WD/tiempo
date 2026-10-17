@@ -1,9 +1,10 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { Pressable, StyleSheet, TextInput, View } from 'react-native';
 
 import { Text } from '@/components/app-text';
 import { PrimaryButton } from '@/components/primary-button';
 import { ProgressGarden } from '@/components/progress-garden';
+import { ShareCard } from '@/components/share-card';
 import { Screen } from '@/components/screen';
 import { Badge } from '@/components/ui';
 import { Palette, Radius, Type } from '@/constants/theme';
@@ -21,10 +22,10 @@ import {
   SKY_IDS,
   addDays,
   challengeSnapshot,
+  computeStreak,
   deviceOffsetMinutes,
   dominantMode,
   levelProgress,
-  plantResting,
   rewardSnapshot,
   stepGoalMinutes,
   weeklyProgress,
@@ -42,6 +43,7 @@ import {
 } from '@/lib/gamification-copy';
 import { MODES } from '@/lib/storage';
 import { useNow } from '@/lib/use-now';
+import { shareProgressImage } from '@/lib/share-progress';
 
 export default function ProgresoScreen() {
   const { state, setFocusGoalMinutes, setReward, setChallenge, setPurpose, setPlant, setSky } = useTiempo();
@@ -52,17 +54,22 @@ export default function ProgresoScreen() {
   const offset = deviceOffsetMinutes(now);
   const week = weeklyProgress(progress, now, offset);
   const level = levelProgress(progress.recoveredMinutes);
+  const streak = computeStreak(progress, now, offset);
   const reward = rewardSnapshot(progress);
   const challenge = challengeSnapshot(progress, now, offset);
   const mode = dominantMode(progress, now, offset);
-  const resting = plantResting(progress, now, offset, state.locked);
+  const planted = progress.recoveredMinutes > 0;
   const shownPlant = isPro ? progress.plant : FREE_PLANT;
   const shownSky = isPro ? progress.sky : FREE_SKY;
   const yesterday = progress.days[addDays(week.todayKey, -1)]?.attempts ?? 0;
   const todayAttempts = progress.days[week.todayKey]?.attempts ?? 0;
   const showAttempts = progress.attemptsNoted > 0 || todayAttempts > 0 || yesterday > 0;
   const modeMax = Math.max(1, ...MODE_IDS.map((id) => week.modes[id] ?? 0));
-  const nextName = level.nextId ? t(LEVEL_NAME[level.nextId]) : null;
+  const shotRef = useRef<View>(null);
+  const weekTime = formatRecovered(t, week.focusMinutes);
+  const streakLabel = t(streak.streak === 1 ? 'gamification.streakOne' : 'gamification.streak', {
+    count: streak.streak,
+  });
 
   const [rewardOpen, setRewardOpen] = useState(false);
   const [rewardHours, setRewardHours] = useState(progress.reward?.hours ?? 10);
@@ -87,46 +94,86 @@ export default function ProgresoScreen() {
     setSky(sky);
   };
 
+  const share = () => {
+    void shareProgressImage(
+      shotRef,
+      t('gamification.session.shareMessage', { time: weekTime, week: weekTime, streak: streak.streak }),
+      t('gamification.session.share'),
+    );
+  };
+
   return (
     <Screen scroll>
+      <View pointerEvents="none" style={styles.offscreen}>
+        <ShareCard
+          ref={shotRef}
+          planted={planted}
+          growth={level.overall}
+          mode={mode}
+          plant={shownPlant}
+          sky={shownSky}
+          brand={t('gamification.session.shareBrand')}
+          streak={streakLabel}
+          week={t('gamification.session.shareWeek', { time: weekTime })}
+          tagline={t('gamification.session.shareTag')}
+        />
+      </View>
       <Badge label={t('gamification.kicker')} tone="accent" />
       <Text style={styles.title}>{t('gamification.title')}</Text>
       <ProgressGarden
-        level={level.id}
+        growth={level.overall}
+        planted={planted}
         mode={mode}
         plant={shownPlant}
         sky={shownSky}
-        resting={resting}
         label={t('gamification.gardenLabel')}
-        restLabel={t('gamification.rest')}
+        caption={planted ? t('gamification.tagline') : t('gamification.unplanted')}
       />
 
+      <Text style={styles.kicker}>{t('gamification.forestTitle')}</Text>
+      <Text style={styles.weekLine}>
+        {level.forest === 0
+          ? t('gamification.forestEmpty')
+          : t(level.forest === 1 ? 'gamification.forestCountOne' : 'gamification.forestCount', {
+              count: level.forest,
+            })}
+      </Text>
+
       <Text style={styles.kicker}>{t('gamification.weekly')}</Text>
-      <Text style={styles.hero}>{formatRecovered(t, week.focusMinutes)}</Text>
+      <Text style={styles.hero}>{weekTime}</Text>
       {progress.purpose && week.focusMinutes > 0 ? (
         <Text style={styles.purpose}>
           {t('gamification.purposeLine', {
-            time: formatRecovered(t, week.focusMinutes),
+            time: weekTime,
             purpose: t(PURPOSE_NAME[progress.purpose]),
           })}
         </Text>
       ) : null}
+
+      <Text style={styles.weekLine}>{streakLabel}</Text>
+      <Text style={styles.note}>{streak.graceAvailable ? t('gamification.graceLeft') : t('gamification.graceSpent')}</Text>
+      <Text style={styles.note}>{t('gamification.streakHint')}</Text>
 
       <Text style={styles.weekLine}>{t('gamification.weekOf', { done: week.daysMet })}</Text>
       <View style={styles.dots}>
         {week.days.map((day) => (
           <View
             key={day.key}
-            accessibilityLabel={day.key}
+            accessibilityLabel={`${day.key} ${day.status}`}
             style={[
               styles.dot,
               day.status === 'met' && styles.dotMet,
               day.status === 'today' && styles.dotToday,
+              day.status === 'grace' && styles.dotGrace,
+              day.status === 'pause' && styles.dotPause,
             ]}
           />
         ))}
       </View>
-      {week.freshStart ? <Text style={styles.fresh}>{t('gamification.freshStart')}</Text> : null}
+
+      <View style={styles.share}>
+        <PrimaryButton muted label={t('gamification.session.share')} onPress={share} />
+      </View>
 
       <View style={styles.goalRow}>
         <Text style={styles.goalLabel}>
@@ -156,12 +203,12 @@ export default function ProgresoScreen() {
           <View style={[styles.fill, { width: `${Math.round(level.ratio * 100)}%` }]} />
         </View>
         <Text style={styles.note}>
-          {nextName
-            ? t('gamification.toNext', { time: formatRecovered(t, level.remainingMinutes), name: nextName })
-            : t('gamification.maxLevel', {
-                name: t(LEVEL_NAME[level.id]),
-                time: formatRecovered(t, level.minMinutes),
-              })}
+          {level.nextId
+            ? t('gamification.toNext', {
+                time: formatRecovered(t, level.remainingMinutes),
+                name: t(LEVEL_NAME[level.nextId]),
+              })
+            : t('gamification.toForest', { time: formatRecovered(t, level.remainingMinutes) })}
         </Text>
       </View>
 
@@ -466,10 +513,21 @@ const styles = StyleSheet.create({
     backgroundColor: 'transparent',
     borderColor: Palette.accentBright,
   },
-  fresh: {
-    ...Type.body,
-    color: Palette.muted,
-    marginTop: 8,
+  dotGrace: {
+    backgroundColor: Palette.focus,
+    borderColor: Palette.focus,
+  },
+  dotPause: {
+    backgroundColor: 'transparent',
+    borderColor: Palette.muted,
+  },
+  share: {
+    marginTop: 16,
+  },
+  offscreen: {
+    position: 'absolute',
+    left: -1200,
+    top: 0,
   },
   goalRow: {
     marginTop: 14,

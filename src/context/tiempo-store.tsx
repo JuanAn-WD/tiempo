@@ -24,9 +24,12 @@ import {
 import {
   applyFocusSession,
   applyUnlockedSession,
+  computeStreak,
   countedSessionMinutes,
   deviceOffsetMinutes,
+  dominantMode,
   evaluateProgress,
+  levelProgress,
   noteAttempts,
   setChallenge as applyChallenge,
   setGoalMinutes,
@@ -235,7 +238,7 @@ async function clearNativeLock() {
 }
 
 function emptyProgress(fallback: GamificationState): ProgressResult {
-  return { state: fallback, badges: [], levelUp: null, rewardCompleted: false };
+  return { state: fallback, badges: [], levelUp: null, treesCompleted: 0, rewardCompleted: false };
 }
 
 function guardGamification(run: () => ProgressResult, fallback: GamificationState): ProgressResult {
@@ -250,6 +253,7 @@ function guardGamification(run: () => ProgressResult, fallback: GamificationStat
 
 function celebrationsOf(result: ProgressResult): Celebration[] {
   const items: Celebration[] = [];
+  if (result.treesCompleted > 0) items.push({ kind: 'forest' });
   if (result.levelUp) items.push({ kind: 'level', id: result.levelUp });
   for (const id of result.badges) items.push({ kind: 'badge', id });
   return items;
@@ -291,20 +295,31 @@ export function TiempoProvider({ children }: { children: ReactNode }) {
     heldRef.current = [];
     const badges: BadgeId[] = [...result.badges];
     let levelUp: LevelId | null = result.levelUp;
+    let treesCompleted = result.treesCompleted;
     for (const item of held) {
       if (item.kind === 'badge' && !badges.includes(item.id)) badges.push(item.id);
       if (item.kind === 'level' && levelUp == null) levelUp = item.id;
+      if (item.kind === 'forest') treesCompleted = Math.max(treesCompleted, 1);
     }
-    const week = weeklyProgress(result.state, session.endedAt, deviceOffsetMinutes(session.endedAt));
+    const offset = deviceOffsetMinutes(session.endedAt);
+    const week = weeklyProgress(result.state, session.endedAt, offset);
+    const tree = levelProgress(result.state.recoveredMinutes);
     try {
       publishSessionClose({
         countedMinutes: countedSessionMinutes(session),
         weekMinutes: week.focusMinutes,
         badges,
         levelUp,
+        treesCompleted,
         rewardCompleted: result.rewardCompleted,
         rewardText: result.rewardCompleted ? (result.state.reward?.text ?? null) : null,
         purpose: result.state.purpose,
+        streak: computeStreak(result.state, session.endedAt, offset).streak,
+        growth: tree.overall,
+        stage: tree.id,
+        plant: result.state.plant,
+        sky: result.state.sky,
+        mode: dominantMode(result.state, session.endedAt, offset),
       });
       router.push('/session-done');
     } catch {

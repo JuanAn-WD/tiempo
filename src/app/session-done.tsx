@@ -1,24 +1,31 @@
 import * as Haptics from 'expo-haptics';
 import { useRouter } from 'expo-router';
-import { useEffect, useState } from 'react';
-import { Share, StyleSheet, View } from 'react-native';
+import { useEffect, useRef, useState } from 'react';
+import { StyleSheet, View } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
 
 import { Text } from '@/components/app-text';
 import { PrimaryButton } from '@/components/primary-button';
+import { ProgressGarden } from '@/components/progress-garden';
+import { ShareCard } from '@/components/share-card';
 import { Screen } from '@/components/screen';
 import { Palette, Radius, Type } from '@/constants/theme';
+import { usePro } from '@/context/pro-store';
 import { useI18n } from '@/i18n';
-import { BADGE_MARK, LEVELS } from '@/lib/gamification';
+import { BADGE_MARK, FREE_PLANT, FREE_SKY, LEVELS } from '@/lib/gamification';
 import { BADGE_TITLE, LEVEL_NAME, PURPOSE_NAME, formatRecovered } from '@/lib/gamification-copy';
+import { shareProgressImage } from '@/lib/share-progress';
 import { takeSessionClose, type SessionClose } from '@/lib/session-close';
 
 export default function SessionDone() {
   const router = useRouter();
   const { t } = useI18n();
+  const { isPro } = usePro();
   const [close] = useState<SessionClose | null>(() => takeSessionClose());
+  const shotRef = useRef<View>(null);
   const scale = useSharedValue(1);
-  const celebrate = close != null && (close.levelUp != null || close.badges.length > 0 || close.rewardCompleted);
+  const celebrate =
+    close != null && (close.levelUp != null || close.badges.length > 0 || close.rewardCompleted || close.treesCompleted > 0);
 
   useEffect(() => {
     if (!celebrate) return;
@@ -30,8 +37,13 @@ export default function SessionDone() {
   const markStyle = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
   const counted = close?.countedMinutes ?? 0;
   const week = close?.weekMinutes ?? 0;
+  const streak = close?.streak ?? 0;
   const time = formatRecovered(t, counted);
   const weekTime = formatRecovered(t, week);
+  const planted = close != null && (close.growth > 0 || close.treesCompleted > 0 || counted > 0);
+  const plant = isPro ? (close?.plant ?? FREE_PLANT) : FREE_PLANT;
+  const sky = isPro ? (close?.sky ?? FREE_SKY) : FREE_SKY;
+  const streakLabel = t(streak === 1 ? 'gamification.streakOne' : 'gamification.streak', { count: streak });
 
   const leave = () => {
     if (router.canGoBack()) router.back();
@@ -39,24 +51,51 @@ export default function SessionDone() {
   };
 
   const share = () => {
-    void Share.share({
-      message: t('gamification.session.shareMessage', { time, week: weekTime }),
-    });
+    void shareProgressImage(
+      shotRef,
+      t('gamification.session.shareMessage', { time, week: weekTime, streak }),
+      t('gamification.session.share'),
+    );
   };
 
   return (
     <Screen tabPadding={false}>
+      <View pointerEvents="none" style={styles.offscreen}>
+        <ShareCard
+          ref={shotRef}
+          planted={planted}
+          growth={close?.growth ?? 0}
+          mode={close?.mode ?? null}
+          plant={plant}
+          sky={sky}
+          brand={t('gamification.session.shareBrand')}
+          streak={streakLabel}
+          week={t('gamification.session.shareWeek', { time: weekTime })}
+          tagline={t('gamification.session.shareTag')}
+        />
+      </View>
       <Text style={styles.kicker}>{t('gamification.session.title')}</Text>
+      <ProgressGarden
+        growth={close?.growth ?? 0}
+        planted={planted}
+        mode={close?.mode ?? null}
+        plant={plant}
+        sky={sky}
+        label={t('gamification.gardenLabel')}
+        caption={t('gamification.tagline')}
+      />
       <Animated.View style={markStyle}>
         <Text style={styles.time}>{counted > 0 ? time : t('gamification.session.short')}</Text>
       </Animated.View>
       {counted > 0 ? <Text style={styles.lead}>{t('gamification.session.recovered', { time })}</Text> : null}
       <Text style={styles.week}>{t('gamification.session.week', { time: weekTime })}</Text>
+      <Text style={styles.week}>{streakLabel}</Text>
       {close?.purpose && week > 0 ? (
         <Text style={styles.purpose}>
           {t('gamification.purposeLine', { time: weekTime, purpose: t(PURPOSE_NAME[close.purpose]) })}
         </Text>
       ) : null}
+      {close && close.treesCompleted > 0 ? <Text style={styles.note}>{t('gamification.forestJoined')}</Text> : null}
       {close?.levelUp ? (
         <Text style={styles.note}>
           {t('gamification.reached', {
@@ -141,5 +180,10 @@ const styles = StyleSheet.create({
   actions: {
     marginTop: 28,
     gap: 10,
+  },
+  offscreen: {
+    position: 'absolute',
+    left: -1200,
+    top: 0,
   },
 });

@@ -2,13 +2,21 @@ import type { Translate } from '@/i18n';
 
 import { minuteParts, type BadgeId, type LevelId, type PlantId, type PurposeId, type SkyId } from '@/lib/gamification';
 
-export const LEVEL_NAME: Record<LevelId, 'gamification.levels.semilla' | 'gamification.levels.brote' | 'gamification.levels.raiz' | 'gamification.levels.arbol' | 'gamification.levels.bosque' | 'gamification.levels.ambar'> = {
+export const LEVEL_NAME: Record<
+  LevelId,
+  | 'gamification.levels.semilla'
+  | 'gamification.levels.brote'
+  | 'gamification.levels.planton'
+  | 'gamification.levels.joven'
+  | 'gamification.levels.arbol'
+  | 'gamification.levels.maduro'
+> = {
   semilla: 'gamification.levels.semilla',
   brote: 'gamification.levels.brote',
-  raiz: 'gamification.levels.raiz',
+  planton: 'gamification.levels.planton',
+  joven: 'gamification.levels.joven',
   arbol: 'gamification.levels.arbol',
-  bosque: 'gamification.levels.bosque',
-  ambar: 'gamification.levels.ambar',
+  maduro: 'gamification.levels.maduro',
 };
 
 export const BADGE_TITLE: Record<BadgeId, `gamification.achievements.${BadgeId}.title`> = {

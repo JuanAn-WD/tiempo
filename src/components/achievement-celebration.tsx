@@ -8,7 +8,7 @@ import { Palette, Radius, Type } from '@/constants/theme';
 import { useI18n } from '@/i18n';
 import { BADGE_MARK, LEVELS } from '@/lib/gamification';
 import { BADGE_BODY, BADGE_TITLE, LEVEL_NAME, formatRecovered } from '@/lib/gamification-copy';
-import { subscribeCelebrations, type Celebration } from '@/lib/gamification-feed';
+import { subscribeCelebrations, celebrationKey, type Celebration } from '@/lib/gamification-feed';
 
 const DISMISS_MS = 3200;
 
@@ -23,10 +23,10 @@ export function AchievementCelebration() {
     () =>
       subscribeCelebrations((items) => {
         setQueue((existing) => {
-          const seen = new Set(existing.map((item) => `${item.kind}:${item.id}`));
+          const seen = new Set(existing.map((item) => celebrationKey(item)));
           const next = [...existing];
           for (const item of items) {
-            const key = `${item.kind}:${item.id}`;
+            const key = celebrationKey(item);
             if (seen.has(key)) continue;
             seen.add(key);
             next.push(item);
@@ -68,14 +68,22 @@ export function AchievementCelebration() {
   if (!current) return null;
 
   const title =
-    current.kind === 'level'
-      ? t('gamification.reached', {
-          name: t(LEVEL_NAME[current.id]),
-          time: formatRecovered(t, LEVELS.find((level) => level.id === current.id)?.minMinutes ?? 0),
-        })
-      : t(BADGE_TITLE[current.id]);
-  const body = current.kind === 'level' ? t('gamification.levelNote') : t(BADGE_BODY[current.id]);
-  const mark = current.kind === 'level' ? t(LEVEL_NAME[current.id]).slice(0, 1) : BADGE_MARK[current.id];
+    current.kind === 'forest'
+      ? t('gamification.forestJoined')
+      : current.kind === 'level'
+        ? t('gamification.reached', {
+            name: t(LEVEL_NAME[current.id]),
+            time: formatRecovered(t, LEVELS.find((level) => level.id === current.id)?.minMinutes ?? 0),
+          })
+        : t(BADGE_TITLE[current.id]);
+  const body =
+    current.kind === 'forest'
+      ? t('gamification.tagline')
+      : current.kind === 'level'
+        ? t('gamification.levelNote')
+        : t(BADGE_BODY[current.id]);
+  const mark =
+    current.kind === 'forest' ? '↑' : current.kind === 'level' ? t(LEVEL_NAME[current.id]).slice(0, 1) : BADGE_MARK[current.id];
 
   return (
     <Modal transparent visible animationType="fade" onRequestClose={() => setQueue((existing) => existing.slice(1))}>
