@@ -167,7 +167,7 @@ export default function EmergencyScreen() {
                 : phase === 'confirming'
                   ? t('emergency.unlocking')
                   : phase === 'done'
-                    ? t('emergency.saved')
+                    ? t('emergency.saved', { count: state.emergencyLeft })
                     : t('emergency.left', { count: state.emergencyLeft })}
         </Text>
       </View>

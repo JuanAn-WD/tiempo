@@ -14,7 +14,10 @@ import { FontFamily, Palette, Radius, Type } from '@/constants/theme';
 import { useTiempo } from '@/context/tiempo-store';
 import { useI18n } from '@/i18n';
 import { usePermissionRecord } from '@/lib/permission-ack';
+import { deviceOffsetMinutes, localDayKey } from '@/lib/gamification';
+import { formatRecovered } from '@/lib/gamification-copy';
 import { formatClock, formatDuration, MODES } from '@/lib/storage';
+import { useNow } from '@/lib/use-now';
 
 export default function FocusScreen() {
   const router = useRouter();
@@ -51,6 +54,17 @@ export default function FocusScreen() {
   const sessionMs =
     enforcing && state.lockedAt && clock?.at === state.lockedAt ? clock.ms : 0;
   const mode = MODES.find((item) => item.id === state.mode);
+  const now = useNow(enforcing ? state.lockedAt : 0);
+  const offset = deviceOffsetMinutes(now);
+  const todayKey = localDayKey(now, offset);
+  const todayStored = state.gamification.days[todayKey]?.focusMinutes ?? 0;
+  const sessionMinutes = Math.floor(sessionMs / 60_000);
+  const todayLive = todayStored + (enforcing ? sessionMinutes : 0);
+  const strip = t('gamification.strip', {
+    session: formatRecovered(t, sessionMinutes),
+    today: formatRecovered(t, todayLive),
+    goal: formatRecovered(t, state.gamification.goalMinutes),
+  });
 
   useFocusEffect(
     useCallback(() => {
@@ -121,6 +135,12 @@ export default function FocusScreen() {
           );
         })}
       </View>
+
+      {enforcing ? (
+        <Text accessibilityRole="text" style={styles.sessionStrip}>
+          {strip}
+        </Text>
+      ) : null}
 
       <View style={styles.statsRow}>
         <StatTile
@@ -253,6 +273,12 @@ const styles = StyleSheet.create({
   },
   modeTitleOn: {
     color: Palette.ink,
+  },
+  sessionStrip: {
+    ...Type.body,
+    color: Palette.ink,
+    textAlign: 'center',
+    marginBottom: 14,
   },
   statsRow: {
     flexDirection: 'row',

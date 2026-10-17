@@ -1,7 +1,7 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 
 import { Text } from '@/components/app-text';
 import { DeviceOnlyNotice } from '@/components/device-only-notice';
@@ -16,9 +16,11 @@ import { useTiempo } from '@/context/tiempo-store';
 import { useI18n, type TranslationKey } from '@/i18n';
 import { usePermissionRecord } from '@/lib/permission-ack';
 import { openPermissionSettings } from '@/lib/permission-actions';
+import { PURPOSE_IDS, type PurposeId } from '@/lib/gamification';
+import { PURPOSE_NAME } from '@/lib/gamification-copy';
 import { outcomeFromNfc } from '@/lib/permission-flow';
 
-const STEP_ORDER = ['cost', 'key', 'pair'] as const;
+const STEP_ORDER = ['cost', 'key', 'purpose', 'pair'] as const;
 
 const STEP_COPY = {
   cost: {
@@ -30,6 +32,11 @@ const STEP_COPY = {
     kicker: 'onboarding.key.kicker',
     title: 'onboarding.key.title',
     body: 'onboarding.key.body',
+  },
+  purpose: {
+    kicker: 'onboarding.purpose.kicker',
+    title: 'onboarding.purpose.title',
+    body: 'onboarding.purpose.body',
   },
   pair: {
     kicker: 'onboarding.pair.kicker',
@@ -78,7 +85,7 @@ function StepVisual({ kind }: { kind: (typeof STEP_ORDER)[number] }) {
 
 export default function Onboarding() {
   const router = useRouter();
-  const { pairTag, pairSpareTag, completeOnboarding, nfcSupported, nfcEnabled, nfcNotice, state } = useTiempo();
+  const { pairTag, pairSpareTag, completeOnboarding, setPurpose, nfcSupported, nfcEnabled, nfcNotice, state } = useTiempo();
   const { t } = useI18n();
   const { record, ready: permissionsReady, markSeen, markAttempted } = usePermissionRecord();
   const [step, setStep] = useState(0);
@@ -86,6 +93,10 @@ export default function Onboarding() {
   const holdPair = current === 'pair' && !permissionsReady;
   const explainNfc = current === 'pair' && permissionsReady && !record.seen.includes('nfc');
   const nfcSnapshot = outcomeFromNfc({ supported: nfcSupported, enabled: nfcEnabled });
+  const choosePurpose = (purpose: PurposeId | null) => {
+    setPurpose(purpose);
+    setStep(step + 1);
+  };
 
   return (
     <Screen tabPadding={false}>
@@ -131,7 +142,21 @@ export default function Onboarding() {
       <Text style={styles.title}>{t(STEP_COPY[current].title)}</Text>
       <Text style={styles.body}>{t(STEP_COPY[current].body)}</Text>
 
-      {step === 2 ? (
+      {current === 'purpose' ? (
+        <View style={styles.visualWrap}>
+          <View style={styles.chips}>
+            {PURPOSE_IDS.map((id) => (
+              <Pressable
+                key={id}
+                accessibilityRole="button"
+                onPress={() => choosePurpose(id)}
+                style={styles.chip}>
+                <Text style={styles.chipText}>{t(PURPOSE_NAME[id])}</Text>
+              </Pressable>
+            ))}
+          </View>
+        </View>
+      ) : current === 'pair' ? (
         <View style={styles.tag}>
           <FocusOrb
             locked={false}
@@ -188,7 +213,12 @@ export default function Onboarding() {
       )}
 
       <View style={styles.actions}>
-        {step < 2 ? (
+        {current === 'purpose' ? (
+          <>
+            <PrimaryButton muted label={t('gamification.purpose.skip')} onPress={() => choosePurpose(null)} />
+            <PrimaryButton muted label={t('onboarding.back')} onPress={() => setStep(step - 1)} />
+          </>
+        ) : step < STEP_ORDER.length - 1 ? (
           <>
             <PrimaryButton label={t('onboarding.continue')} onPress={() => setStep(step + 1)} />
             {step > 0 ? <PrimaryButton muted label={t('onboarding.back')} onPress={() => setStep(step - 1)} /> : null}
@@ -315,6 +345,23 @@ const styles = StyleSheet.create({
     ...Type.body,
     color: Palette.muted,
     textAlign: 'center',
+  },
+  chips: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  chip: {
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    borderRadius: Radius.full,
+    backgroundColor: Palette.surfaceHigh,
+    borderWidth: 1,
+    borderColor: Palette.line,
+  },
+  chipText: {
+    ...Type.label,
+    color: Palette.ink,
   },
   actions: {
     gap: 10,

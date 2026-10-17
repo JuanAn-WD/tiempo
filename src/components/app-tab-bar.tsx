@@ -36,6 +36,12 @@ const TABS: Record<
     android: 'schedule',
     web: 'schedule',
   },
+  progreso: {
+    label: 'tabs.progreso',
+    ios: 'leaf.fill',
+    android: 'park',
+    web: 'park',
+  },
   ajustes: {
     label: 'tabs.settings',
     ios: 'gearshape.fill',
@@ -106,6 +112,7 @@ export function AppTabBar({ state, descriptors, navigation }: BottomTabBarProps)
                 {showLockDot ? <View style={styles.lockDot} /> : null}
               </View>
               <Text
+                numberOfLines={1}
                 style={[
                   styles.label,
                   focused && styles.labelOn,

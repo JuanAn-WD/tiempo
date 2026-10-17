@@ -23,6 +23,7 @@ const FREE_FEATURES = [
   'pro.freeModes',
   'pro.freeEmergency',
   'pro.freeUsage',
+  'pro.freeGamification',
 ] as const satisfies readonly TranslationKey[];
 
 function noticeStyle(notice: ProNotice) {

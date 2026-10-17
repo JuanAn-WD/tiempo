@@ -15,7 +15,41 @@ import { Alert, AppState, Platform } from 'react-native';
 import type { AndroidBlockableApp, IOSBlockedItem, PermissionStatus } from 'expo-app-blocker';
 
 import { useI18n, type Translate } from '@/i18n';
-import { refreshBlockedAttempts, watchBlockedAttempts } from '@/lib/blocked-attempts-sync';
+import {
+  getAttemptsSnapshot,
+  refreshBlockedAttempts,
+  subscribeAttempts,
+  watchBlockedAttempts,
+} from '@/lib/blocked-attempts-sync';
+import {
+  applyFocusSession,
+  applyUnlockedSession,
+  computeStreak,
+  countedSessionMinutes,
+  deviceOffsetMinutes,
+  dominantMode,
+  evaluateProgress,
+  levelProgress,
+  noteAttempts,
+  setChallenge as applyChallenge,
+  setGoalMinutes,
+  setPlant as applyPlant,
+  setPurpose as applyPurpose,
+  setReward as applyReward,
+  setSky as applySky,
+  weeklyProgress,
+  type BadgeId,
+  type GamificationState,
+  type LevelId,
+  type PlantId,
+  type ProgressResult,
+  type PurposeId,
+  type SkyId,
+} from '@/lib/gamification';
+import { formatRecovered } from '@/lib/gamification-copy';
+import { dedupeCelebrations, publishCelebrations, type Celebration } from '@/lib/gamification-feed';
+import { syncSundaySummary } from '@/lib/gamification-notify';
+import { publishSessionClose } from '@/lib/session-close';
 import {
   applyAndroidOverlayTheme,
   getPermissions,
@@ -113,6 +147,12 @@ type TiempoContextValue = {
   setUsageStrict: (value: boolean) => void;
   setUsageLimitMinutes: (minutes: number) => void;
   setUsageOverride: (pkg: string, minutes: number | null) => void;
+  setFocusGoalMinutes: (minutes: number) => void;
+  setPurpose: (purpose: PurposeId | null) => void;
+  setReward: (hours: number | null, text?: string) => void;
+  setChallenge: (text: string | null, mode?: ModeId, target?: number) => void;
+  setPlant: (plant: PlantId) => void;
+  setSky: (sky: SkyId) => void;
   emergencyUnlock: () => Promise<boolean>;
   refreshEmergencyClock: () => Promise<void>;
   /** True when the wall clock is behind the last accepted timestamp. */
@@ -197,6 +237,28 @@ async function clearNativeLock() {
   await stopIosBlock();
 }
 
+function emptyProgress(fallback: GamificationState): ProgressResult {
+  return { state: fallback, badges: [], levelUp: null, treesCompleted: 0, rewardCompleted: false };
+}
+
+function guardGamification(run: () => ProgressResult, fallback: GamificationState): ProgressResult {
+  try {
+    const result = run();
+    if (!result?.state) return emptyProgress(fallback);
+    return result;
+  } catch {
+    return emptyProgress(fallback);
+  }
+}
+
+function celebrationsOf(result: ProgressResult): Celebration[] {
+  const items: Celebration[] = [];
+  if (result.treesCompleted > 0) items.push({ kind: 'forest' });
+  if (result.levelUp) items.push({ kind: 'level', id: result.levelUp });
+  for (const id of result.badges) items.push({ kind: 'badge', id });
+  return items;
+}
+
 function lockedGuard(current: TiempoState, action: string, t: Translate) {
   if (!current.locked) return false;
   Alert.alert(t('alerts.locked.title'), t('alerts.locked.body', { action }));
@@ -222,10 +284,48 @@ export function TiempoProvider({ children }: { children: ReactNode }) {
   const lastLaunch = useRef<{ id: string; at: number } | null>(null);
   const [clockSkewed, setClockSkewed] = useState(false);
   const stateRef = useRef(state);
+  const heldRef = useRef<Celebration[]>([]);
   const lockBusy = useRef(false);
   const clockRef = useRef<MonoClock>(INITIAL_MONO_CLOCK);
   const persistQueue = useRef(Promise.resolve());
   const consumeNativeTapRef = useRef<() => Promise<TiempoState | null>>(async () => null);
+
+  const presentSession = useCallback((result: ProgressResult, session: { mode: string; startedAt: number; endedAt: number; emergency?: boolean }) => {
+    const held = heldRef.current;
+    heldRef.current = [];
+    const badges: BadgeId[] = [...result.badges];
+    let levelUp: LevelId | null = result.levelUp;
+    let treesCompleted = result.treesCompleted;
+    for (const item of held) {
+      if (item.kind === 'badge' && !badges.includes(item.id)) badges.push(item.id);
+      if (item.kind === 'level' && levelUp == null) levelUp = item.id;
+      if (item.kind === 'forest') treesCompleted = Math.max(treesCompleted, 1);
+    }
+    const offset = deviceOffsetMinutes(session.endedAt);
+    const week = weeklyProgress(result.state, session.endedAt, offset);
+    const tree = levelProgress(result.state.recoveredMinutes);
+    try {
+      publishSessionClose({
+        countedMinutes: countedSessionMinutes(session),
+        weekMinutes: week.focusMinutes,
+        badges,
+        levelUp,
+        treesCompleted,
+        rewardCompleted: result.rewardCompleted,
+        rewardText: result.rewardCompleted ? (result.state.reward?.text ?? null) : null,
+        purpose: result.state.purpose,
+        streak: computeStreak(result.state, session.endedAt, offset).streak,
+        growth: tree.overall,
+        stage: tree.id,
+        plant: result.state.plant,
+        sky: result.state.sky,
+        mode: dominantMode(result.state, session.endedAt, offset),
+      });
+      router.push('/session-done');
+    } catch {
+      /* the unlock already finished */
+    }
+  }, []);
 
   useEffect(() => {
     consumeNativeTapRef.current = async () => {
@@ -239,13 +339,35 @@ export function TiempoProvider({ children }: { children: ReactNode }) {
           return;
         }
         if (!result.applied) return;
-        adopted = result.state;
-        if (result.state !== prev) {
-          stateRef.current = result.state;
-          setState(result.state);
-          await saveState(result.state);
+        let next = result.state;
+        let applied = emptyProgress(prev.gamification);
+        const newest = next.sessions[0];
+        const previous = prev.sessions[0];
+        const isNewSession = Boolean(
+          newest &&
+            (!previous ||
+              previous.startedAt !== newest.startedAt ||
+              previous.endedAt !== newest.endedAt ||
+              Boolean(previous.emergency) !== Boolean(newest.emergency)),
+        );
+        if (result.applied === 'unlock' && newest) {
+          const endedAt = newest.endedAt;
+          applied = guardGamification(
+            () => applyUnlockedSession(prev.gamification, prev.sessions, next.sessions, deviceOffsetMinutes(endedAt)),
+            prev.gamification,
+          );
+          if (applied.state !== prev.gamification) next = { ...next, gamification: applied.state };
         }
-        setAndroidEnforcing(result.state.locked);
+        adopted = next;
+        if (next !== prev) {
+          stateRef.current = next;
+          setState(next);
+          await saveState(next);
+        }
+        setAndroidEnforcing(next.locked);
+        if (result.applied === 'unlock' && isNewSession && newest && !newest.emergency) {
+          presentSession(applied, newest);
+        }
       });
       persistQueue.current = run.then(
         () => undefined,
@@ -464,10 +586,73 @@ export function TiempoProvider({ children }: { children: ReactNode }) {
     [],
   );
 
+  const attemptsBaseline = useRef(true);
+  useEffect(() => {
+    if (!ready) return;
+    const apply = () => {
+      const snap = getAttemptsSnapshot();
+      if (!snap.hydrated) return;
+      const total = snap.ledger.total;
+      const firstLook = attemptsBaseline.current;
+      attemptsBaseline.current = false;
+      void persist((prev) => {
+        const baseline = firstLook && prev.gamification.attemptsNoted === 0;
+        const applied = guardGamification(
+          () => noteAttempts(prev.gamification, total, Date.now(), deviceOffsetMinutes(), { baseline }),
+          prev.gamification,
+        );
+        if (applied.state === prev.gamification) return prev;
+        return { ...prev, gamification: applied.state };
+      }).catch(() => undefined);
+    };
+    const unsubscribe = subscribeAttempts(apply);
+    apply();
+    return () => {
+      unsubscribe();
+    };
+  }, [persist, ready]);
+
   useEffect(() => {
     watchBlockedAttempts();
     void refreshBlockedAttempts();
   }, []);
+
+  useEffect(() => {
+    if (!ready) return;
+    const sync = () => {
+      const now = Date.now();
+      const current = stateRef.current;
+      const week = weeklyProgress(current.gamification, now, deviceOffsetMinutes(now));
+      const translate = tRef.current;
+      void syncSundaySummary({
+        title: translate('gamification.sunday.title'),
+        body: translate('gamification.sunday.body', { time: formatRecovered(translate, week.focusMinutes) }),
+        channelName: translate('gamification.channel'),
+      });
+      if (current.locked) return;
+      let result = emptyProgress(current.gamification);
+      void persist((prev) => {
+        if (prev.locked) return prev;
+        const applied = guardGamification(() => evaluateProgress(prev.gamification, now), prev.gamification);
+        result = applied;
+        if (applied.state === prev.gamification) return prev;
+        return { ...prev, gamification: applied.state };
+      }).then(() => {
+        const items = celebrationsOf(result);
+        if (items.length === 0) return;
+        if (stateRef.current.locked) {
+          heldRef.current = dedupeCelebrations([...heldRef.current, ...items]);
+          return;
+        }
+        publishCelebrations(items);
+      }, () => undefined);
+    };
+    sync();
+    const sub = AppState.addEventListener('change', (next) => {
+      if (next === 'active') sync();
+    });
+    return () => sub.remove();
+  }, [persist, ready]);
 
   useEffect(() => {
     if (Platform.OS !== 'ios') return;
@@ -655,6 +840,8 @@ export function TiempoProvider({ children }: { children: ReactNode }) {
       setAndroidEnforcing(false);
       await clearNativeLock();
       let spent = false;
+      let applied = emptyProgress(stateRef.current.gamification);
+      let closed: { mode: string; startedAt: number; endedAt: number; emergency?: boolean } | null = null;
       await persist((prev) => {
         if (!prev.locked) return prev;
         const endedAt = Date.now();
@@ -662,6 +849,21 @@ export function TiempoProvider({ children }: { children: ReactNode }) {
         const consumed = options?.emergency ? consumeEmergency(snapshot(prev), endedAt) : null;
         if (options?.emergency && !consumed) return prev;
         spent = true;
+        const session = prev.lockedAt
+          ? {
+              mode: prev.mode,
+              startedAt: prev.lockedAt,
+              endedAt,
+              ...(options?.emergency ? { emergency: true as const } : {}),
+            }
+          : null;
+        applied = session
+          ? guardGamification(
+              () => applyFocusSession(prev.gamification, session, deviceOffsetMinutes(endedAt)),
+              prev.gamification,
+            )
+          : emptyProgress(prev.gamification);
+        closed = session;
         return {
           ...prev,
           ...(consumed
@@ -685,17 +887,8 @@ export function TiempoProvider({ children }: { children: ReactNode }) {
           locked: false,
           lockedAt: null,
           recoveredMs: prev.recoveredMs + recovered,
-          sessions: prev.lockedAt
-            ? [
-                {
-                  mode: prev.mode,
-                  startedAt: prev.lockedAt,
-                  endedAt,
-                  ...(options?.emergency ? { emergency: true as const } : {}),
-                },
-                ...prev.sessions,
-              ].slice(0, 40)
-            : prev.sessions,
+          sessions: session ? [session, ...prev.sessions].slice(0, 40) : prev.sessions,
+          gamification: applied.state,
         };
       });
       if (!spent) {
@@ -710,9 +903,15 @@ export function TiempoProvider({ children }: { children: ReactNode }) {
         }
         return false;
       }
+      if (closed && !options?.emergency) presentSession(applied, closed);
+      else if (options?.emergency) {
+        const items = dedupeCelebrations([...heldRef.current, ...celebrationsOf(applied)]);
+        heldRef.current = [];
+        if (items.length > 0) publishCelebrations(items);
+      }
       return true;
     },
-    [persist],
+    [persist, presentSession],
   );
 
   const lock = useCallback(
@@ -1225,6 +1424,97 @@ export function TiempoProvider({ children }: { children: ReactNode }) {
     [persist, t],
   );
 
+  const setFocusGoalMinutes = useCallback(
+    (minutes: number) => {
+      let result = emptyProgress(stateRef.current.gamification);
+      let locked = false;
+      void persist((prev) => {
+        locked = prev.locked;
+        const applied = guardGamification(
+          () => setGoalMinutes(prev.gamification, minutes, Date.now()),
+          prev.gamification,
+        );
+        result = applied;
+        if (applied.state === prev.gamification) return prev;
+        return { ...prev, gamification: applied.state };
+      }).then(() => {
+        const items = celebrationsOf(result);
+        if (items.length === 0) return;
+        if (locked || stateRef.current.locked) {
+          heldRef.current = dedupeCelebrations([...heldRef.current, ...items]);
+          return;
+        }
+        publishCelebrations(items);
+      }, () => undefined);
+    },
+    [persist],
+  );
+
+  const setPurpose = useCallback(
+    (purpose: PurposeId | null) => {
+      void persist((prev) => {
+        const applied = guardGamification(() => applyPurpose(prev.gamification, purpose), prev.gamification);
+        if (applied.state === prev.gamification) return prev;
+        return { ...prev, gamification: applied.state };
+      });
+    },
+    [persist],
+  );
+
+  const setReward = useCallback(
+    (hours: number | null, text?: string) => {
+      void persist((prev) => {
+        const applied = guardGamification(
+          () => applyReward(prev.gamification, hours == null ? null : { hours, text: text ?? '' }, Date.now()),
+          prev.gamification,
+        );
+        if (applied.state === prev.gamification) return prev;
+        return { ...prev, gamification: applied.state };
+      });
+    },
+    [persist],
+  );
+
+  const setChallenge = useCallback(
+    (text: string | null, mode?: ModeId, target?: number) => {
+      void persist((prev) => {
+        const applied = guardGamification(
+          () =>
+            applyChallenge(
+              prev.gamification,
+              text == null || !mode || target == null ? null : { text, mode, target },
+            ),
+          prev.gamification,
+        );
+        if (applied.state === prev.gamification) return prev;
+        return { ...prev, gamification: applied.state };
+      });
+    },
+    [persist],
+  );
+
+  const setPlant = useCallback(
+    (plant: PlantId) => {
+      void persist((prev) => {
+        const applied = guardGamification(() => applyPlant(prev.gamification, plant), prev.gamification);
+        if (applied.state === prev.gamification) return prev;
+        return { ...prev, gamification: applied.state };
+      });
+    },
+    [persist],
+  );
+
+  const setSky = useCallback(
+    (sky: SkyId) => {
+      void persist((prev) => {
+        const applied = guardGamification(() => applySky(prev.gamification, sky), prev.gamification);
+        if (applied.state === prev.gamification) return prev;
+        return { ...prev, gamification: applied.state };
+      });
+    },
+    [persist],
+  );
+
   const setStrict = useCallback(
     (value: boolean, confirmation?: string) => {
       const current = stateRef.current;
@@ -1317,6 +1607,12 @@ export function TiempoProvider({ children }: { children: ReactNode }) {
       setUsageStrict,
       setUsageLimitMinutes,
       setUsageOverride,
+      setFocusGoalMinutes,
+      setPurpose,
+      setReward,
+      setChallenge,
+      setPlant,
+      setSky,
       emergencyUnlock,
       refreshEmergencyClock,
       clockSkewed,
@@ -1353,6 +1649,12 @@ export function TiempoProvider({ children }: { children: ReactNode }) {
       setStrict,
       setUsageLimitMinutes,
       setUsageOverride,
+      setFocusGoalMinutes,
+      setPurpose,
+      setReward,
+      setChallenge,
+      setPlant,
+      setSky,
       setUsageStrict,
       state,
       toggleLockWithMobileKey,

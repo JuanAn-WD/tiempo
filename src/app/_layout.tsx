@@ -5,6 +5,7 @@ import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 import { ActivityIndicator, StyleSheet, View } from 'react-native';
 
+import { AchievementCelebration } from '@/components/achievement-celebration';
 import { LauncherFeedback } from '@/components/launcher-feedback';
 import { StoreReviewPrompt } from '@/components/store-review-prompt';
 import { brandFonts } from '@/constants/fonts';
@@ -51,12 +52,14 @@ function Gate({ fontsReady }: { fontsReady: boolean }) {
       <StatusBar style="light" />
       <StoreReviewPrompt />
       <LauncherFeedback />
+      <AchievementCelebration />
       <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: Palette.bg } }}>
         <Stack.Screen name="(tabs)" />
         <Stack.Screen name="onboarding" />
         <Stack.Screen name="permissions" options={{ presentation: 'modal' }} />
         <Stack.Screen name="blocked" options={{ presentation: 'modal' }} />
         <Stack.Screen name="emergency" options={{ presentation: 'modal' }} />
+        <Stack.Screen name="session-done" options={{ presentation: 'modal' }} />
         <Stack.Screen name="scan-key" options={{ presentation: 'modal' }} />
         <Stack.Screen name="pair-key" options={{ presentation: 'modal' }} />
         <Stack.Screen name="claim-key" options={{ presentation: 'modal' }} />
