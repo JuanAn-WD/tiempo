@@ -321,7 +321,7 @@ export function TiempoProvider({ children }: { children: ReactNode }) {
         sky: result.state.sky,
         mode: dominantMode(result.state, session.endedAt, offset),
       });
-      router.push('/session-done');
+      router.navigate('/progreso');
     } catch {
       /* the unlock already finished */
     }

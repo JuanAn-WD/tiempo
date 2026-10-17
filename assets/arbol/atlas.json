@@ -1,0 +1,12 @@
+{
+  "size": 64,
+  "columns": 8,
+  "rows": 6,
+  "season": "summer",
+  "species": {
+    "default": "roble.png",
+    "olive": "olivo.png",
+    "fern": "pino.png",
+    "clay": "cerezo.png"
+  }
+}
