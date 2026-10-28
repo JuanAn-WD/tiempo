@@ -41,5 +41,7 @@ function loadTs(rel) {
 }
 
 const { testGamification } = loadTs('src/lib/gamification.test.ts');
+const { testTreeGrowth } = loadTs('src/lib/tree-growth.test.ts');
 testGamification();
+testTreeGrowth();
 console.log('gamification tests ok');
